@@ -62,7 +62,12 @@ class InspectorApi extends DemoApi implements WorkspaceInspectorApi {
 
   @override
   Future<Session> snapshot(String sid) async => Session(sid, pending: [
-        {'id': 'approval', 'kind': 'approval'}
+        {
+          'id': 'approval',
+          'expires_at': 4102444800,
+          'allowed_channels': ['authenticated_ui'],
+          'kind': 'approval'
+        }
       ], events: [
         SessionEvent(1, 'result', {
           'tool_observations': [
@@ -122,6 +127,8 @@ void main() {
     await controller.open('readme.txt', directory: false);
     controller.attachCurrent();
     expect(await controller.reviewedAttachmentText(), contains('Hello Odessy'));
+    await controller.bind(sessionId: 'sid', serviceInstanceId: 'instance');
+    expect(await controller.reviewedAttachmentText(), contains('Hello Odessy'));
     controller.removeAttachment('readme.txt');
     expect(controller.attachments, isEmpty);
     expect(api.mutations, 0);
@@ -176,6 +183,8 @@ void main() {
     controller.acceptSnapshot(
         Session('sid', pending: [
           {
+            'expires_at': 4102444800,
+            'allowed_channels': ['authenticated_ui'],
             'kind': 'approval',
             'id': 'broker-interaction',
             'proposed_change': {

@@ -36,6 +36,15 @@ class VoiceController extends ChangeNotifier {
   int _epoch = 0;
   int _operation = 0, _event = 0;
   Future<void>? _refreshing;
+  int _readVersion = 0;
+
+  void _invalidateRead() {
+    _readVersion++;
+    _refreshing = null;
+  }
+
+  Future<VoiceSnapshot>? _starting;
+  Future<void>? _releasing;
   VoiceSnapshot? snapshot;
   VoiceTranscript? transcript;
   String error = '';
@@ -74,14 +83,11 @@ class VoiceController extends ChangeNotifier {
     final sid = session.session?.id;
     if (!identical(_api, session.api) || _sid != sid) {
       final previousApi = _api, previousSid = _sid, previous = snapshot;
-      if (previousSid != null &&
-          previousApi is DesktopVoiceApi &&
-          previous != null &&
-          _ownedAudio(previous)) {
-        // The old owner may still be recording or playing. Release it on the
-        // old transport; that call carries its own epoch and target guard.
-        unawaited(
-            _release(previousApi as DesktopVoiceApi, previousSid, previous));
+      final starting = _starting;
+      _starting = null;
+      if (previousSid != null && previousApi is DesktopVoiceApi) {
+        unawaited(_releaseOwner(
+            previousApi as DesktopVoiceApi, previousSid, previous, starting));
       }
       _api = session.api;
       _sid = sid;
@@ -100,6 +106,7 @@ class VoiceController extends ChangeNotifier {
       if (event.type == 'voice_state') {
         try {
           snapshot = VoiceSnapshot.fromJson(event.data);
+          _invalidateRead();
           if (!_disposed) notifyListeners();
         } catch (_) {/* Unknown event remains in activity. */}
       } else if (event.type == 'voice_transcript') {
@@ -120,7 +127,7 @@ class VoiceController extends ChangeNotifier {
     if (api is! DesktopVoiceApi || sid == null) return;
     final pending = _refreshing;
     if (pending != null) return pending;
-    final task = _refresh(api as DesktopVoiceApi, sid, epoch);
+    final task = _refresh(api as DesktopVoiceApi, sid, epoch, _readVersion);
     _refreshing = task;
     try {
       await task;
@@ -129,15 +136,16 @@ class VoiceController extends ChangeNotifier {
     }
   }
 
-  Future<void> _refresh(DesktopVoiceApi api, String sid, int epoch) async {
+  Future<void> _refresh(
+      DesktopVoiceApi api, String sid, int epoch, int readVersion) async {
     try {
       final value = await api.voiceState(sid);
-      if (!_disposed && epoch == _epoch) {
+      if (!_disposed && epoch == _epoch && readVersion == _readVersion) {
         snapshot = value;
         notifyListeners();
       }
     } catch (_) {
-      if (!_disposed && epoch == _epoch) {
+      if (!_disposed && epoch == _epoch && readVersion == _readVersion) {
         error = 'Desktop audio unavailable. Text remains available.';
         notifyListeners();
       }
@@ -149,7 +157,8 @@ class VoiceController extends ChangeNotifier {
       action = 'disable_wake';
     }
     final api = _api, sid = _sid, epoch = _epoch;
-    if (api is! DesktopVoiceApi ||
+    if (_releasing != null ||
+        api is! DesktopVoiceApi ||
         sid == null ||
         (busy &&
             action != 'cancel_capture' &&
@@ -164,10 +173,17 @@ class VoiceController extends ChangeNotifier {
     final pending = session.session?.pending ?? [];
     final interaction =
         pending.length == 1 ? pending.first['id'] as String? : null;
+    Future<VoiceSnapshot>? starting;
     try {
-      final value = await (api as DesktopVoiceApi).voiceCommand(sid, action,
+      final task = (api as DesktopVoiceApi).voiceCommand(sid, action,
           captureId: snapshot?.captureId, interactionId: interaction);
+      if (const {'start_capture', 'enable_wake', 'test_input', 'test_output'}
+          .contains(action)) {
+        _starting = starting = task;
+      }
+      final value = await task;
       if (!_disposed && epoch == _epoch && operation == _operation) {
+        _invalidateRead();
         snapshot = value;
       }
     } catch (_) {
@@ -176,6 +192,7 @@ class VoiceController extends ChangeNotifier {
             'Audio action failed. Check voice settings or answer in text; no model request was retried.';
       }
     } finally {
+      if (starting != null && identical(_starting, starting)) _starting = null;
       if (!_disposed && epoch == _epoch && operation == _operation) {
         busy = false;
         notifyListeners();
@@ -190,14 +207,41 @@ class VoiceController extends ChangeNotifier {
   /// session change. It never starts capture and ignores failures: a revoked or
   /// closed target simply stays released.
   Future<void> release({bool stopPlayback = true}) async {
-    final api = _api, sid = _sid, value = snapshot;
-    if (api is! DesktopVoiceApi || sid == null || value == null) {
-      _forgetLocal();
-      return;
-    }
+    final releasing = _releasing;
+    if (releasing != null) return releasing;
+    final api = _api, sid = _sid, value = snapshot, starting = _starting;
+    _starting = null;
     _forgetLocal();
-    await _release(api as DesktopVoiceApi, sid, value,
-        stopPlayback: stopPlayback);
+    try {
+      if (api is DesktopVoiceApi && sid != null) {
+        final task = _releaseOwner(api as DesktopVoiceApi, sid, value, starting,
+            stopPlayback: stopPlayback);
+        _releasing = task;
+        await task;
+      }
+    } finally {
+      _releasing = null;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  Future<void> _releaseOwner(DesktopVoiceApi api, String sid,
+      VoiceSnapshot? value, Future<VoiceSnapshot>? starting,
+      {bool stopPlayback = true}) async {
+    if (starting != null) {
+      try {
+        value = await starting;
+      } catch (_) {
+        try {
+          value = await api.voiceState(sid);
+        } catch (_) {
+          // Attempt release using the last known owner.
+        }
+      }
+    }
+    if (value != null && _ownedAudio(value)) {
+      await _release(api, sid, value, stopPlayback: stopPlayback);
+    }
   }
 
   void _forgetLocal() {
@@ -243,11 +287,8 @@ class VoiceController extends ChangeNotifier {
     _disposed = true;
     _epoch++;
     session.removeListener(_changed);
-    if (api is DesktopVoiceApi &&
-        sid != null &&
-        value != null &&
-        _ownedAudio(value)) {
-      unawaited(_release(api as DesktopVoiceApi, sid, value));
+    if (api is DesktopVoiceApi && sid != null) {
+      unawaited(_releaseOwner(api as DesktopVoiceApi, sid, value, _starting));
     }
     super.dispose();
   }

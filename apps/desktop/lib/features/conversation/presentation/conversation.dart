@@ -181,7 +181,10 @@ class _ConversationPageState extends State<ConversationPage> {
           : await c.send(contextText.isEmpty ? text : '$text\n\n$contextText');
       if (accepted) {
         for (final attachment in attachments) {
-          owner!.removeAttachment(attachment.file.path);
+          if (owner!.attachments
+              .any((current) => identical(current, attachment))) {
+            owner.removeAttachment(attachment.file.path);
+          }
         }
         if (!mounted) return;
         if (input.text == text) input.clear();
@@ -618,13 +621,11 @@ class _ConversationPageState extends State<ConversationPage> {
                         tooltip: voice.recording
                             ? 'Finish recording and submit speech'
                             : 'Record on the coordinator computer',
-                        onPressed: voice.supported &&
-                                !voice.busy &&
-                                voice.snapshot?.mode != 'wake'
-                            ? () => voice.command(voice.recording
-                                ? 'finish_capture'
-                                : 'start_capture')
-                            : null,
+                        onPressed: voice.canFinishCapture
+                            ? () => voice.command('finish_capture')
+                            : voice.canStartCapture
+                                ? () => voice.command('start_capture')
+                                : null,
                         icon: Icon(
                             voice.recording
                                 ? Icons.stop_circle_outlined
