@@ -251,7 +251,7 @@ void main() {
             key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
         final frame = await boundary.toImage(pixelRatio: 1);
         final bytes = await frame.toByteData(format: ui.ImageByteFormat.png);
-        final dir = Directory('../../docs/view');
+        final dir = Directory('../../docs/view/agent-basics/wave1');
         await dir.create(recursive: true);
         await File('${dir.path}/$name.png')
             .writeAsBytes(bytes!.buffer.asUint8List());
@@ -294,21 +294,38 @@ void main() {
         .jumpTo(0);
     await tester.pumpAndSettle();
     await capture('01-assistant-approval');
+    tester.view.physicalSize = const Size(1280, 800);
+    await tester.pumpAndSettle();
+    await capture('conversation-1280');
+    tester.view.physicalSize = const Size(1600, 1050);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Files · Output · Changes').last);
+    await tester.pumpAndSettle();
+    tester
+        .widget<WorkspaceInspector>(find.byType(WorkspaceInspector))
+        .controller
+        .show(InspectorPanel.terminal);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Activity & provenance'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('command_output'));
     await tester.pumpAndSettle();
-    expect(find.text('Inspect recorded output'), findsOneWidget);
+    expect(find.textContaining('Recorded command output · read only.'),
+        findsOneWidget);
     await capture('01b-activity-expanded');
     await tester.tap(find.text('Activity & provenance'));
     await tester.pumpAndSettle();
-    expect(find.text('Activity & usage'), findsOneWidget);
+    await tester.tap(find.byTooltip('Close workspace panel'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Activity & usage'), findsOneWidget);
     await tester.enterText(
         find.byKey(const Key('composer')), 'My retained draft');
-    await tester.ensureVisible(find.text('Voice options'));
-    await tester.tap(find.text('Voice options'));
+    await tester.ensureVisible(find.byTooltip('Voice options'));
+    await tester.tap(find.byTooltip('Voice options'));
     await tester.pumpAndSettle();
     await capture('02-composer-voice');
+    await tester.tapAt(const Offset(500, 500));
+    await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Files · Output · Changes').last);
     await tester.pumpAndSettle();
     final panel =
@@ -347,15 +364,9 @@ void main() {
     await capture('09-device-performance');
     await tester.tap(find.widgetWithText(ChoiceChip, 'Overview'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('inspect-host_demo_jetson')), 180,
-        scrollable: find
-            .descendant(
-                of: find.byKey(const Key('device-sidebar-scroll')),
-                matching: find.byType(Scrollable))
-            .first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('inspect-host_demo_jetson')));
+    await tester.ensureVisible(
+        find.byKey(const ValueKey('host-card-host_demo_jetson')));
+    await tester.tap(find.byKey(const ValueKey('host-card-host_demo_jetson')));
     await tester.pumpAndSettle();
     await capture('10-device-details');
 
@@ -387,7 +398,8 @@ void main() {
     await tester.tap(find.byTooltip('Open navigation menu'));
     await tester.pumpAndSettle();
     await capture('narrow-navigation');
-    await tester.tap(find.byKey(const ValueKey('nav-Assistant')));
+    await tester
+        .tap(find.byKey(const ValueKey('nav-Assistant')).hitTestable().last);
     await tester.pumpAndSettle();
     await capture('narrow-assistant');
     api.pending = [reviewFixture];
@@ -410,7 +422,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Open navigation menu'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('nav-Settings')));
+    await tester
+        .tap(find.byKey(const ValueKey('nav-Settings')).hitTestable().last);
     await tester.pumpAndSettle();
     await capture('narrow-settings');
     await tester.pumpWidget(const SizedBox.shrink());

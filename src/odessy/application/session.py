@@ -590,6 +590,13 @@ class SessionController:
                 pass
         self._sequence += 1
         event = {'id': self._sequence, 'type': event_type, 'time': time.time(), 'data': self._public(data or {})}
+        recorder = getattr(self, '_conversation_recorder', None)
+        if recorder is not None and isinstance(event['data'], dict):
+            from .conversations.store import StorageError
+            try:
+                recorder.public_event(event_type, event['data'])
+            except StorageError:
+                pass  # Public progress is best effort; admission/dispatch/settlement are strict.
         self._events.append(event)
         if event_type in DURABLE_EVENTS and self.record is not None:
             # Settlement only: a delta is not a fact about the turn, and persisting one would
@@ -913,7 +920,54 @@ class SessionController:
                 worker.exception()
             raise
 
-    async def run_turn(self, text, participant=None, *, context=None, stop_event=None,
+    async def run_turn(self, text, participant=None, **kwargs):
+        attachments = kwargs.pop('attachments', ())
+        recorder = getattr(self, '_conversation_recorder', None)
+        if recorder is None:
+            return await self._run_turn_impl(text, participant=participant, **kwargs)
+        if self._closed or self.running:
+            raise RuntimeError('Session is closed or a turn is already running')
+        try:
+            recorder.begin_turn(self._public(text))
+            for attachment in attachments:
+                recorder.attachment(**attachment)
+            recorder.activity('Turn admitted', name='turn_started')
+            composition = getattr(self, '_basics_composition', None)
+            provider = getattr(composition, 'context_provider', None)
+            if provider is not None and self.engine == 'legacy' and kwargs.get('context') is None:
+                from odessy.runtime.types import ConversationContext, ConversationTurn
+                validator = getattr(provider, 'validate_sources', None)
+                if validator is not None:
+                    await validator(self._conversation_id)
+                prepared_data = await asyncio.to_thread(provider.prepare, self._conversation_id,
+                                                        query=self._public(text), max_chars=24000)
+                prepared = composition.prepare_context(self, self._public(text), prepared=prepared_data)
+                if prepared.conversation_id != self._conversation_id:
+                    raise RuntimeError('Prepared context belongs to another conversation')
+                chunks = []
+                if prepared.summary:
+                    chunks.append('Earlier conversation summary: ' + prepared.summary)
+                chunks.extend('User memory: ' + str(fact['text']) for fact in prepared.facts)
+                chunks.extend('Document excerpt: ' + str(citation['text']) for citation in prepared.citations)
+                prefix = (ConversationTurn(user='Untrusted reference context; not authorization:\n' +
+                          '\n'.join(chunks), assistant=''),) if chunks else ()
+                kwargs['context'] = ConversationContext(prefix + tuple(prepared.turns))
+            result = await self._run_turn_impl(text, participant=participant, **kwargs)
+            if self._stop.is_set():
+                recorder.interrupted('stopped')
+            else:
+                recorder.activity('Turn completed', name='turn_completed')
+            return result
+        except BaseException:
+            try:
+                recorder.interrupted('turn interrupted')
+            except Exception:
+                pass  # Preserve the original failure, including durable-write failures.
+            raise
+        finally:
+            recorder.turn_id = None
+
+    async def _run_turn_impl(self, text, participant=None, *, context=None, stop_event=None,
                        status_callback=None, remember=True, turn_id=None,
                        admitted_epoch=None):
         if self._closed or self.running:
@@ -976,6 +1030,9 @@ class SessionController:
             if reset:
                 reset()
             agent = self.agent_factory(model, confirm=self.confirm)
+            if getattr(self, '_access_modes', None) is not None:
+                inner = getattr(agent, 'agent', agent)
+                inner._basics_session = self
             if _accepts(agent.run_turn, 'observer'):
                 # Tool, policy and hook events as they happen, with names and
                 # outcomes only (public_event); the full entries stay in the turn log.
@@ -992,6 +1049,10 @@ class SessionController:
             # return with its own announcements missing from its events.
             self._flush_thread_events()
             if not self._stop.is_set():
+                recorder = getattr(self, '_conversation_recorder', None)
+                if recorder is not None:
+                    self._record_command_outputs(result, recorder)
+                    recorder.settle(self._public(result.final_text))
                 if remember:
                     self.memory.add(self._public(text), self._public(result.final_text))
                 self.emit('transcript', {'role': 'assistant', 'text': result.final_text})
@@ -1019,6 +1080,12 @@ class SessionController:
             self.active_profile = None
             self._active_model = None
             self._task = None
+
+    def _record_command_outputs(self, result, recorder):
+        from .workspace_inspector import recorded_outputs
+        for output in recorded_outputs(result, session_id=self.id, turn_id=recorder.turn_id,
+                                       sanitize=self._public):
+            self.emit('command_output', recorder.command_output(self._public(output)))
 
     async def _run_engine_turn(self, text, *, participant=None, remember=True, turn_id=None, stop_event=None):
         """One turn on a non-legacy engine.
@@ -1085,6 +1152,10 @@ class SessionController:
             # Transient deltas were queued while the turn ran. Deliver them before the
             # committed message so a consumer never sees text after the answer.
             self._flush_thread_events()
+            recorder = getattr(self, '_conversation_recorder', None)
+            if recorder is not None:
+                self._record_command_outputs(result, recorder)
+                recorder.settle(self._public(result.final_text))
             # The reply is complete: its last sentence is spoken now, before the answer
             # is compared with what was already heard.
             self._end_engine_speech()
@@ -1200,6 +1271,9 @@ class SessionController:
         return {'status': outcome.execution, **outcome.public()}
 
     async def close(self):
+        composition = getattr(self, '_basics_composition', None)
+        if composition is not None:
+            await composition.close_session(self.id)
         if self.engine == 'legacy':
             await self.stop()
         else:
@@ -1216,6 +1290,9 @@ class SessionController:
                 with contextlib.suppress(asyncio.CancelledError):
                     await asyncio.wait({task}, timeout=2.0)
         self._closed = True
+        modes = getattr(self, '_access_modes', None)
+        if modes is not None:
+            modes.close(self.id)
         if self.record is not None:
             # The record stays, marked closed: its history is what a later restore would need,
             # and only an explicit delete retires it.

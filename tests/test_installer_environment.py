@@ -100,6 +100,10 @@ class EnvironmentTests(unittest.TestCase):
         (repo/'tools'/'package.json').write_text(json.dumps({'version':'0.1.0'}))
         (repo/'tools'/'package-lock.json').write_text(json.dumps({'packages':{'':{'version':'0.1.0'}}}))
         (repo/'tools'/'tsconfig.json').write_text('{}')
+        (repo/'tools'/'copy-resources.cjs').write_text('// fixture resource copier')
+        helper=repo/'tools'/'src'/'agent_basics_terminal'; helper.mkdir()
+        (helper/'helper.cjs').write_text('// owned terminal helper')
+        (helper/'dependency-receipt.json').write_text('{}')
         (repo/'LICENSE').write_text('license'); (repo/'THIRD-PARTY-NOTICES.md').write_text('notices')
         (repo/'tools'/'.npmrc').write_text('private-token')
         (repo/'THIRD-PARTY-LICENSES').mkdir()
@@ -114,6 +118,10 @@ class EnvironmentTests(unittest.TestCase):
                 p=tools/name; p.parent.mkdir(parents=True,exist_ok=True); p.write_text('fixture')
         if '-p' in command:
             entry=tools/'dist'/'src'/'server.js'; entry.parent.mkdir(parents=True); entry.write_text('export {};')
+        if any(str(arg).endswith('copy-resources.cjs') for arg in command):
+            target=tools/'dist'/'src'/'agent_basics_terminal'; target.mkdir(parents=True)
+            for name in ('helper.cjs','dependency-receipt.json'):
+                (target/name).write_bytes((tools/'src'/'agent_basics_terminal'/name).read_bytes())
         return 'ok'
 
     def test_tool_bundle_is_precompiled_and_excludes_user_npm_configuration(self):
@@ -122,6 +130,8 @@ class EnvironmentTests(unittest.TestCase):
         self.assertTrue(report['precompiled']); self.assertFalse(report['published'])
         with zipfile.ZipFile(self.root/'bundle'/'tool-server.zip') as archive:
             self.assertIn('tools/dist/src/server.js',archive.namelist())
+            self.assertIn('tools/dist/src/agent_basics_terminal/helper.cjs',archive.namelist())
+            self.assertIn('tools/dist/src/agent_basics_terminal/dependency-receipt.json',archive.namelist())
             self.assertIn('tools/node_modules/.bin/tsc.cmd',archive.namelist())
             self.assertIn('tools/_licenses/LICENSE',archive.namelist())
             self.assertIn('tools/_licenses/THIRD-PARTY-LICENSES/vendor.txt',archive.namelist())

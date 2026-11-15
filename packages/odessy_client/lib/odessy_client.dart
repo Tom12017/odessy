@@ -1,5 +1,9 @@
 library;
 
+export 'src/agent_basics.dart';
+export 'src/basics_client.dart';
+import 'src/basics_client.dart';
+
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -311,8 +315,10 @@ class ApiFailure implements Exception {
 class LocalApi
     implements
         OdessyApi,
+        AgentBasicsConnection,
         SessionDirectoryApi,
         WorkspaceInspectorApi,
+        WorkspaceAttachmentApi,
         UsageHistoryApi,
         ProfileMetadataApi,
         JobsApi,
@@ -356,6 +362,17 @@ class LocalApi
   final Set<HttpClient> _streams = {};
   final Set<MonitoringClient> _monitoring = {};
   bool _closed = false;
+
+  @override
+  late final AgentBasicsClient agentBasics = AgentBasicsClient(
+      (path, method, body) => _json(
+          path,
+          method,
+          body,
+          method != 'GET' &&
+                  RegExp(r'/(terminals|checkpoints|restore)$').hasMatch(path)
+              ? const Duration(minutes: 5)
+              : const Duration(seconds: 12)));
 
   /// Read-only monitoring bound to this immutable origin and in-memory bearer.
   MonitoringClient createMonitoringClient() {
@@ -855,6 +872,29 @@ class LocalApi
   @override
   Future<void> send(String sid, String text) async {
     await _json('${_session(sid)}/turns', 'POST', {'text': text});
+  }
+
+  @override
+  Future<void> sendWithAttachments(
+      String sid, String text, List<WorkspaceTextFile> attachments) async {
+    if (attachments.isEmpty || attachments.length > 16) {
+      throw ArgumentError('Select 1 to 16 reviewed workspace files');
+    }
+    if (attachments.any((file) => file.sessionId != sid)) {
+      throw StateError('Attachment session changed');
+    }
+    await _json('${_session(sid)}/turns', 'POST', {
+      'text': text,
+      'attachments': [
+        for (final file in attachments)
+          {
+            'path': file.path,
+            'sha256': file.sha256,
+            'service_instance_id': file.serviceInstanceId,
+            'workspace_id': file.workspaceId,
+          }
+      ],
+    });
   }
 
   @override

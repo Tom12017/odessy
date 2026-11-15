@@ -1,3 +1,7 @@
+import '../features/shell/presentation/app_icon_rail.dart';
+import '../features/history/controllers/basics_controller.dart';
+import '../features/history/presentation/basics_page.dart';
+import 'preferences/shell_layout_store.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -33,6 +37,7 @@ import 'package:flutter/material.dart';
 import 'package:odessy_client/odessy_client.dart';
 
 import '../features/conversation/presentation/conversation.dart';
+import '../features/conversation/presentation/session_activity.dart';
 import '../features/conversation/presentation/activity_usage_page.dart';
 import '../features/conversation/presentation/usage_history_dashboard.dart';
 import '../features/settings/presentation/settings.dart';
@@ -63,22 +68,23 @@ import '../features/workspaces/presentation/project_catalog_page.dart';
 import '../features/workspaces/presentation/workspace_inspector.dart';
 
 class OdessyApp extends StatefulWidget {
-  const OdessyApp({
-    super.key,
-    this.api,
-    this.installed,
-    this.localDesktop = false,
-    this.managementBackend,
-    this.onExitApproved,
-    this.onConfigured,
-    this.onRestartSaved,
-    this.onShutdownOwned,
-    this.restoreConfiguration = false,
-    this.setupBackend,
-    this.coordinatorFactory,
-    this.preferencesStore,
-    this.projectStore,
-  });
+  const OdessyApp(
+      {super.key,
+      this.api,
+      this.installed,
+      this.localDesktop = false,
+      this.managementBackend,
+      this.onExitApproved,
+      this.onConfigured,
+      this.onRestartSaved,
+      this.onShutdownOwned,
+      this.restoreConfiguration = false,
+      this.setupBackend,
+      this.coordinatorFactory,
+      this.preferencesStore,
+      this.projectStore,
+      this.shellLayoutStore});
+  final ShellLayoutStore? shellLayoutStore;
   final DesktopPreferencesStore? preferencesStore;
   final ProjectCatalogStore? projectStore;
   final InstalledCoordinatorHandle Function(Json)? coordinatorFactory;
@@ -101,10 +107,95 @@ class OdessyApp extends StatefulWidget {
 
 class _OdessyAppState extends State<OdessyApp> {
   late final DesktopSession controller;
+  late final BasicsController basics;
+  String basicsTab = 'History';
   late final DesktopPreferencesController preferences;
   ProjectCatalogController? projects;
   WorkspaceInspectorController? inspector;
   bool inspectorOpen = false, sidebarCollapsed = false;
+  double inspectorWidth = 390;
+  late ShellLayoutStore shellLayoutStore;
+  int shellLayoutRevision = 0;
+  Future<void> shellSave = Future.value();
+  late Future<void> shellLoad;
+  int shellEditEpoch = 0;
+  bool desiredInspectorOpen = false, restoringInspector = false;
+  void _restoreInspectorIfReady() {
+    if (!mounted ||
+        !desiredInspectorOpen ||
+        inspectorOpen ||
+        restoringInspector ||
+        inspector == null ||
+        controller.session == null ||
+        readiness.current == null) {
+      return;
+    }
+    restoringInspector = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (mounted && desiredInspectorOpen) {
+        await _openInspector();
+      }
+      restoringInspector = false;
+    });
+  }
+
+  String? shellLayoutError;
+  Future<void> _loadShellLayout() async {
+    final epoch = shellEditEpoch;
+    try {
+      final saved = await shellLayoutStore.load();
+      if (!mounted) return;
+      setState(() {
+        shellLayoutRevision = saved.revision;
+        if (epoch == shellEditEpoch) {
+          sidebarCollapsed = saved.layout.sidebarCollapsed;
+          inspectorWidth = saved.layout.inspectorWidth;
+          desiredInspectorOpen = saved.layout.inspectorOpen;
+        }
+      });
+      _restoreInspectorIfReady();
+    } catch (_) {
+      if (mounted) {
+        setState(
+            () => shellLayoutError = 'Layout preferences could not be loaded.');
+      }
+    }
+  }
+
+  void _saveShellLayout() {
+    shellEditEpoch++;
+    final value = ShellLayout(
+        sidebarCollapsed: sidebarCollapsed,
+        inspectorWidth: inspectorWidth,
+        inspectorOpen: desiredInspectorOpen);
+    shellSave = shellSave.then((_) async {
+      await shellLoad;
+      try {
+        final saved =
+            await shellLayoutStore.save(value, revision: shellLayoutRevision);
+        shellLayoutRevision = saved.revision;
+      } catch (_) {
+        if (mounted) {
+          setState(() =>
+              shellLayoutError = 'Layout preferences could not be saved.');
+        }
+      }
+    });
+  }
+
+  void _closeInspector() {
+    setState(() {
+      inspectorOpen = false;
+      desiredInspectorOpen = false;
+    });
+    _saveShellLayout();
+  }
+
+  void _toggleSidebar() {
+    setState(() => sidebarCollapsed = !sidebarCollapsed);
+    _saveShellLayout();
+  }
+
   final sessionDrafts = <String, String>{};
 
   ThemeMode get preferenceMode => switch (preferences.value.theme) {
@@ -182,7 +273,41 @@ class _OdessyAppState extends State<OdessyApp> {
     }
   }
 
-  Future<void> _openSession(String sid) async {
+  Future<void> _openSession(String sid, {bool takeOwnership = false}) async {
+    if (!await _mayNavigate() ||
+        !mounted ||
+        controller.busy ||
+        basics.busy ||
+        controller.session?.running == true) {
+      return;
+    }
+    await voice.release();
+    final old = controller.session?.id;
+    if (old != null) sessionDrafts[old] = conversationDraft.text;
+    if (await controller.resumeSession(sid, takeOwnership: takeOwnership)) {
+      conversationDraft.text = sessionDrafts[sid] ?? '';
+      inspector?.invalidate();
+      inspectorOpen = false;
+      setState(() => page = 'Conversation');
+      _restoreInspectorIfReady();
+    }
+  }
+
+  Future<void> _openBasics([String tab = 'History']) async {
+    if (!await _mayNavigate() || !mounted) return;
+    // Existing navigation releases active audio deliberately; no audio resumes
+    // when returning. The external draft controller retains unsent text.
+    await voice.release();
+    if (!mounted) return;
+    scaffoldKey.currentState?.closeDrawer();
+    setState(() {
+      basicsTab = tab;
+      page = 'History & tools';
+    });
+    await basics.refresh();
+  }
+
+  Future<void> _resumeSavedConversation() async {
     if (!await _mayNavigate() ||
         !mounted ||
         controller.busy ||
@@ -190,14 +315,9 @@ class _OdessyAppState extends State<OdessyApp> {
       return;
     }
     await voice.release();
-    final old = controller.session?.id;
-    if (old != null) sessionDrafts[old] = conversationDraft.text;
-    if (await controller.resumeSession(sid)) {
-      conversationDraft.text = sessionDrafts[sid] ?? '';
-      inspector?.invalidate();
-      inspectorOpen = false;
-      setState(() => page = 'Conversation');
-    }
+    final receipt = await basics.resumeSelected();
+    if (receipt == null || !mounted) return;
+    await _openSession(receipt.sessionId, takeOwnership: true);
   }
 
   Future<void> _openInspector([
@@ -205,10 +325,20 @@ class _OdessyAppState extends State<OdessyApp> {
   ]) async {
     final owner = inspector, sid = controller.session?.id;
     final instance = readiness.current?.serviceInstance;
+    if (!mounted) return;
     if (owner == null || sid == null || instance == null) return;
     owner.show(panel);
-    setState(() => inspectorOpen = true);
+    setState(() {
+      inspectorOpen = true;
+      desiredInspectorOpen = true;
+    });
+    _saveShellLayout();
     await owner.bind(sessionId: sid, serviceInstanceId: instance);
+    if (!mounted ||
+        !identical(owner, inspector) ||
+        controller.session?.id != sid) {
+      return;
+    }
     if (controller.session case final snapshot?) {
       owner.acceptSnapshot(snapshot, serviceInstanceId: instance);
     }
@@ -259,6 +389,7 @@ class _OdessyAppState extends State<OdessyApp> {
       deviceInventory.bind(controller.api);
       _bindWorkspaceOwners();
     }
+    _restoreInspectorIfReady();
     final owner = inspector,
         snapshot = controller.session,
         instance = readiness.current?.serviceInstance;
@@ -275,6 +406,7 @@ class _OdessyAppState extends State<OdessyApp> {
 
   Future<void> _restartSaved() async {
     if (restarting ||
+        basics.busy ||
         _settingsBusy ||
         controller.busy ||
         controller.session?.running == true) {
@@ -377,6 +509,7 @@ class _OdessyAppState extends State<OdessyApp> {
   final navigatorKey = GlobalKey<NavigatorState>();
   final scaffoldKey = GlobalKey<ScaffoldState>();
   final navigationFocus = <String, FocusNode>{};
+  final drawerNavigationFocus = <String, FocusNode>{};
   final conversationDraft = TextEditingController();
   bool _navigating = false;
 
@@ -549,16 +682,22 @@ class _OdessyAppState extends State<OdessyApp> {
   void initState() {
     super.initState();
     controller = DesktopSession(widget.api ?? DisconnectedApi());
-    preferences = DesktopPreferencesController(
-      widget.preferencesStore ??
-          (controller.api.isDemo
-              ? _DemoPreferencesStore()
-              : LocalPreferencesStore.forUser()),
-    );
+    basics = BasicsController(controller);
+    shellLayoutStore = widget.shellLayoutStore ??
+        (controller.api.isDemo
+            ? MemoryShellLayoutStore()
+            : LocalShellLayoutStore.forUser());
+    shellLoad = _loadShellLayout();
+    unawaited(shellLoad);
+    preferences = DesktopPreferencesController(widget.preferencesStore ??
+        (controller.api.isDemo
+            ? _DemoPreferencesStore()
+            : LocalPreferencesStore.forUser()));
     unawaited(preferences.load());
     jobs = JobsController(controller);
     handoffs = HandoffController(controller);
     voice = VoiceController(controller);
+    readiness.addListener(_restoreInspectorIfReady);
     controller.addListener(_observeConnection);
     _observeConnection();
     setup = SetupController(
@@ -630,10 +769,14 @@ class _OdessyAppState extends State<OdessyApp> {
   @override
   void dispose() {
     unawaited(sessionModelCredentials.clear().catchError((Object _) {}));
-    for (final node in navigationFocus.values) {
+    for (final node in [
+      ...navigationFocus.values,
+      ...drawerNavigationFocus.values
+    ]) {
       node.dispose();
     }
     lifecycle.dispose();
+    basics.dispose();
     conversationDraft.dispose();
     monitoring.dispose();
     preferences.dispose();
@@ -663,8 +806,8 @@ class _OdessyAppState extends State<OdessyApp> {
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-        listenable: preferences,
-        builder: (context, _) => MaterialApp(
+      listenable: preferences,
+      builder: (context, _) => MaterialApp(
           navigatorKey: navigatorKey,
           title: 'Odessy',
           debugShowCheckedModeBanner: false,
@@ -682,98 +825,105 @@ class _OdessyAppState extends State<OdessyApp> {
             );
           },
           home: ListenableBuilder(
-            listenable: Listenable.merge([
-              controller,
-              setup,
-              componentSettings,
-              readiness,
-              voice,
-              deviceInventory,
-            ]),
-            builder: (context, _) => LayoutBuilder(
-              builder: (context, constraints) {
-                final narrow = constraints.maxWidth < 900;
-                final sidebar = _sidebar(context);
+              listenable: Listenable.merge([
+                controller,
+                basics,
+                setup,
+                componentSettings,
+                readiness,
+                voice,
+                deviceInventory
+              ]),
+              builder: (context, _) =>
+                  LayoutBuilder(builder: (context, constraints) {
+                    final narrow = constraints.maxWidth < 900;
+                    final sidebar = _sidebar(context);
 
-                return Scaffold(
-                  key: scaffoldKey,
-                  drawer: narrow ? Drawer(child: sidebar) : null,
-                  appBar: narrow ? AppBar(title: const Text('Odessy')) : null,
-                  body: Row(
-                    children: [
-                      if (!narrow && !sidebarCollapsed)
-                        SizedBox(
-                          width: 264,
-                          child: GlassSurface(
-                            radius: 0,
-                            reduceTransparency:
-                                preferences.value.reduceTransparency,
-                            child: sidebar,
-                          ),
-                        ),
-                      if (!narrow && !sidebarCollapsed)
-                        const VerticalDivider(width: 1),
-                      Expanded(
-                        child: Column(
-                          children: [
+                    return Scaffold(
+                        key: scaffoldKey,
+                        drawer: narrow
+                            ? Drawer(
+                                child: Row(children: [
+                                _iconRail(context, drawer: true),
+                                Expanded(child: sidebar)
+                              ]))
+                            : null,
+                        appBar: null,
+                        body: Row(children: [
+                          _iconRail(context),
+                          const VerticalDivider(width: 1),
+                          if (!narrow && !sidebarCollapsed)
+                            SizedBox(
+                                key: const Key('project-chat-sidebar'),
+                                width: 280,
+                                child: GlassSurface(
+                                    radius: 0,
+                                    reduceTransparency:
+                                        preferences.value.reduceTransparency,
+                                    child: sidebar)),
+                          if (!narrow && !sidebarCollapsed)
+                            const VerticalDivider(width: 1),
+                          Expanded(
+                              child: Column(children: [
                             Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              child: Row(
-                                children: [
-                                  if (!narrow)
-                                    IconButton(
-                                      tooltip: sidebarCollapsed
-                                          ? 'Expand sidebar'
-                                          : 'Collapse sidebar',
-                                      onPressed: () => setState(
-                                        () => sidebarCollapsed =
-                                            !sidebarCollapsed,
-                                      ),
-                                      icon: Icon(
-                                        sidebarCollapsed
-                                            ? Icons.menu
-                                            : Icons.menu_open,
-                                      ),
-                                    ),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 10),
+                                child: Row(children: [
+                                  IconButton(
+                                      tooltip: narrow
+                                          ? 'Open navigation menu'
+                                          : sidebarCollapsed
+                                              ? 'Expand sidebar'
+                                              : 'Collapse sidebar',
+                                      onPressed: narrow
+                                          ? () => scaffoldKey.currentState
+                                              ?.openDrawer()
+                                          : _toggleSidebar,
+                                      icon: Icon(sidebarCollapsed
+                                          ? Icons.menu
+                                          : Icons.menu_open)),
                                   if (DesktopNavigation.parent(page) != page)
                                     IconButton(
-                                      tooltip:
-                                          'Back to ${DesktopNavigation.title(DesktopNavigation.parent(page))}',
-                                      onPressed: () => _navigate(
-                                          DesktopNavigation.parent(page)),
-                                      icon: const Icon(Icons.arrow_back,
-                                          size: 20),
-                                    ),
-                                  Text(
-                                    DesktopNavigation.title(page),
-                                    style:
-                                        Theme.of(context).textTheme.titleMedium,
-                                  ),
-                                  const Spacer(),
-                                  _badge(
-                                    context,
-                                    controller.api is DisconnectedApi
-                                        ? (setup.saved ||
-                                                setup.activeSelection != null
-                                            ? 'OFFLINE'
-                                            : 'NOT CONFIGURED')
-                                        : controller.api.isDemo
-                                            ? 'DEMO'
+                                        tooltip:
+                                            'Back to ${DesktopNavigation.title(DesktopNavigation.parent(page))}',
+                                        onPressed: () => _navigate(
+                                            DesktopNavigation.parent(page)),
+                                        icon: const Icon(Icons.arrow_back,
+                                            size: 20)),
+                                  Expanded(
+                                      child: Semantics(
+                                          header: true,
+                                          child: Text(
+                                              DesktopNavigation.title(page),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium))),
+                                  if (constraints.maxWidth >= 600)
+                                    _badge(
+                                        context,
+                                        controller.api is DisconnectedApi
+                                            ? (setup.saved ||
+                                                    setup.activeSelection !=
+                                                        null
+                                                ? 'OFFLINE'
+                                                : 'NOT CONFIGURED')
+                                            : controller.api.isDemo
+                                                ? 'DEMO'
+                                                : controller.connected
+                                                    ? 'CONNECTED'
+                                                    : 'DISCONNECTED',
+                                        controller.api.isDemo
+                                            ? Colors.amber
                                             : controller.connected
-                                                ? 'CONNECTED'
-                                                : 'DISCONNECTED',
-                                    controller.api.isDemo
-                                        ? Colors.amber
-                                        : controller.connected
-                                            ? Colors.green
-                                            : Colors.grey,
-                                  ),
+                                                ? Colors.green
+                                                : Colors.grey),
                                   const SizedBox(width: 10),
-                                  if (widget.localDesktop ||
-                                      controller.api is SessionDirectoryApi)
+                                  if (constraints.maxWidth >= 600 &&
+                                      (widget.localDesktop ||
+                                          controller.api
+                                              is SessionDirectoryApi))
                                     IconButton(
                                       tooltip: 'Start new session',
                                       icon: const Icon(
@@ -797,20 +947,45 @@ class _OdessyAppState extends State<OdessyApp> {
                                             ? null
                                             : () => _connect(context),
                                   ),
-                                  IconButton(
-                                    tooltip: 'Toggle light / dark theme',
-                                    icon: Icon(
-                                      preferenceMode == ThemeMode.dark
-                                          ? Icons.light_mode_outlined
-                                          : Icons.dark_mode_outlined,
-                                      size: 20,
-                                    ),
-                                    onPressed: _toggleTheme,
-                                  ),
-                                ],
-                              ),
-                            ),
+                                  if (constraints.maxWidth >= 600)
+                                    IconButton(
+                                        tooltip: 'Toggle light / dark theme',
+                                        icon: Icon(
+                                            preferenceMode == ThemeMode.dark
+                                                ? Icons.light_mode_outlined
+                                                : Icons.dark_mode_outlined,
+                                            size: 20),
+                                        onPressed: _toggleTheme),
+                                  if (page == 'Conversation')
+                                    IconButton(
+                                        tooltip: inspectorOpen
+                                            ? 'Close workspace inspector'
+                                            : 'Open workspace inspector',
+                                        onPressed: inspector == null
+                                            ? null
+                                            : () {
+                                                if (inspectorOpen) {
+                                                  _closeInspector();
+                                                } else {
+                                                  unawaited(_openInspector());
+                                                }
+                                              },
+                                        icon: Icon(
+                                            inspectorOpen
+                                                ? Icons.vertical_split
+                                                : Icons.vertical_split_outlined,
+                                            size: 20)),
+                                ])),
                             const Divider(height: 1),
+                            if (shellLayoutError != null)
+                              Text(shellLayoutError!,
+                                  style: TextStyle(
+                                      color:
+                                          Theme.of(context).colorScheme.error)),
+                            if (page == 'Conversation' && basics.error != null)
+                              ComponentStateBanner(
+                                  message: basics.error!,
+                                  tone: BannerTone.error),
                             if ([
                               'preparing',
                               'recording',
@@ -881,232 +1056,245 @@ class _OdessyAppState extends State<OdessyApp> {
                                 tone: BannerTone.error,
                               ),
                             Expanded(
-                              child: switch (page) {
-                                'Device details' => _devicePage(),
-                                'Jobs' => JobsPage(controller: jobs),
-                                'Handoffs' => HandoffPage(controller: handoffs),
-                                'Activity & usage' => controller.api
-                                        is UsageHistoryApi
+                                child: switch (page) {
+                              'Device details' => _devicePage(),
+                              'Jobs' => JobsPage(controller: jobs),
+                              'Handoffs' => HandoffPage(controller: handoffs),
+                              'History & tools' => BasicsPage(
+                                  controller: basics,
+                                  initialTab: basicsTab,
+                                  workspaceLabel: readiness
+                                      .current?.configuration?.workspace,
+                                  onResume: _resumeSavedConversation),
+                              'Activity & usage' =>
+                                controller.api is UsageHistoryApi
                                     ? UsageHistoryDashboard(session: controller)
                                     : ActivityUsagePage(
                                         events: controller.session?.events ??
                                             const [],
                                         connected: controller.connected,
                                       ),
-                                'Monitor' || 'Devices' => DevicesHub(
-                                    session: controller,
-                                    monitoring: monitoring,
-                                    devices: deviceInventory,
-                                    onManagePairing: () =>
-                                        _navigate('Local pairing'),
-                                    initialPerformance: page == 'Monitor',
-                                    onConnect: () => _navigate('Pairing'),
-                                  ),
-                                'Workspaces' when projects != null =>
-                                  ProjectCatalogPage(
-                                    controller: projects!,
-                                    onOpenSession: (sid) =>
-                                        unawaited(_openSession(sid)),
-                                    onConfigureWorkspace: () =>
-                                        _navigate('Workspace configuration'),
-                                  ),
-                                'Workspaces' ||
-                                'Workspace configuration' =>
-                                  WorkspacePage(
-                                    readiness: readiness,
-                                    connected: controller.connected,
-                                    componentController: componentSettings,
-                                    backend: setup.backend,
-                                    root:
-                                        widget.installed?['root'] as String? ??
-                                            '',
-                                    picker: const FileSelectorPicker(),
-                                  ),
-                                'Setup' => SetupWizardPage(
-                                    key: ValueKey(setupStep),
-                                    controller: setup,
-                                    initialStep: setupStep,
-                                    picker: const FileSelectorPicker(),
-                                  ),
-                                'Manage installation' => ManagePage(
-                                    controller: installManagement!,
-                                    external: runningOutsideInstallation(
+                              'Monitor' || 'Devices' => DevicesHub(
+                                  session: controller,
+                                  monitoring: monitoring,
+                                  devices: deviceInventory,
+                                  onManagePairing: () =>
+                                      _navigate('Local pairing'),
+                                  initialPerformance: page == 'Monitor',
+                                  onConnect: () => _navigate('Pairing'),
+                                ),
+                              'Workspaces' when projects != null =>
+                                ProjectCatalogPage(
+                                  controller: projects!,
+                                  onOpenSession: (sid) =>
+                                      unawaited(_openSession(sid)),
+                                  onConfigureWorkspace: () =>
+                                      _navigate('Workspace configuration'),
+                                ),
+                              'Workspaces' ||
+                              'Workspace configuration' =>
+                                WorkspacePage(
+                                  readiness: readiness,
+                                  connected: controller.connected,
+                                  componentController: componentSettings,
+                                  backend: setup.backend,
+                                  root: widget.installed?['root'] as String? ??
+                                      '',
+                                  picker: const FileSelectorPicker(),
+                                ),
+                              'Setup' => SetupWizardPage(
+                                  key: ValueKey(setupStep),
+                                  controller: setup,
+                                  initialStep: setupStep,
+                                  picker: const FileSelectorPicker(),
+                                ),
+                              'Manage installation' => ManagePage(
+                                  controller: installManagement!,
+                                  external: runningOutsideInstallation(
+                                      widget.installed?['root'] as String? ??
+                                          ''),
+                                  onOpenMaintenance: () =>
+                                      installManagement!.openMaintenance()),
+                              'Get started' => GetStartedPage(
+                                  controller: installManagement!,
+                                  picker: const FileSelectorPicker(),
+                                  onStart: widget.onConfigured ??
+                                      () =>
+                                          setState(() => page = 'Conversation'),
+                                  onClose: () =>
+                                      setState(() => page = 'Conversation')),
+                              'Voice setup' => GetStartedPage(
+                                  controller: installManagement!,
+                                  picker: const FileSelectorPicker(),
+                                  initialVoice: true,
+                                  onStart: widget.onConfigured ?? () {},
+                                  onClose: () =>
+                                      setState(() => page = 'Conversation')),
+                              'Installer' => MaintenancePage(
+                                  key: const ValueKey('installer-engine'),
+                                  controller: installerEngine,
+                                  installer: true),
+                              'Maintenance' =>
+                                MaintenancePage(controller: maintenance),
+                              'Pairing' => ExecutionHostsPage(
+                                  key: const ValueKey('execution-hosts'),
+                                  controller: _executionHostController(),
+                                  ssh: _sshConnectionController()),
+                              'Local pairing' => MaintenancePage(
+                                  key: const ValueKey('pairing'),
+                                  controller: pairing,
+                                  pairing: true),
+                              'Settings' => SettingsPage(
+                                  onStartNewSession: () => _newSession(context),
+                                  preferencesController: preferences,
+                                  readiness: readiness,
+                                  onRestartSaved: ((configuredCoordinator != null ||
+                                              widget.onRestartSaved != null) &&
+                                          readiness.current?.configuration !=
+                                              null)
+                                      ? _restartSaved
+                                      : null,
+                                  key: ValueKey(
+                                      (controller.api, settingsSection)),
+                                  initialSection: settingsSection,
+                                  controller: controller,
+                                  componentController: componentSettings,
+                                  configurationBackend: setup.backend,
+                                  formController: _collaborationForm(),
+                                  installationRoot:
                                       widget.installed?['root'] as String? ??
                                           '',
+                                  installed: widget.installed != null,
+                                  modelConfigured:
+                                      (widget.installed?['model_configured'] == true ||
+                                          (setup.activeSelection ??
+                                                  (setup.saved
+                                                      ? setup.selection
+                                                      : const {}))['model'] !=
+                                              null),
+                                  voiceEnabled: (widget.installed?['voice_enabled'] == true ||
+                                      ((setup.activeSelection ?? (setup.saved ? setup.selection : const {}))['voice'] as Map?)?['enabled'] == true),
+                                  themeMode: preferenceMode,
+                                  onToggleTheme: _toggleTheme,
+                                  onOpenDevices: () => _navigate('Devices'),
+                                  onOpenPairingTools: () => _navigate('Local pairing'),
+                                  onOpenConversation: () => _navigate('Conversation'),
+                                  onConnectSaved: setup.busy || setup.completing || controller.session?.running == true || (widget.installed != null && widget.onConfigured == null) ? null : _activateSaved,
+                                  onOpenInstaller: () => _navigate('Installer'),
+                                  onOpenMaintenance: () => _navigate('Maintenance'),
+                                  maintenanceBlocked: controller.session?.running == true,
+                                  onOpenGetStarted: () => setState(() {
+                                        page = 'Settings';
+                                      }),
+                                  onOpenVoice: () => setState(() {
+                                        page = 'Settings';
+                                      }),
+                                  onOpenManagement: widget.installed == null ? null : () => setState(() => page = 'Manage installation')),
+                              _ => LayoutBuilder(builder: (context, box) {
+                                  final sideBySide = box.maxWidth >= 920;
+                                  final panelWidth = inspectorWidth.clamp(320.0,
+                                      (box.maxWidth - 480).clamp(320.0, 480.0));
+                                  final conversation = ConversationPage(
+                                      accessMode: basics.mode?.mode,
+                                      accessModeDescription:
+                                          basics.modeDescription,
+                                      supportedAccessModes:
+                                          basics.mode?.supported ?? const [],
+                                      onAccessModeChanged: basics.canAct &&
+                                              basics.mode?.supported
+                                                      .isNotEmpty ==
+                                                  true &&
+                                              !controller.busy &&
+                                              controller.session?.running !=
+                                                  true
+                                          ? (value) =>
+                                              unawaited(basics.setMode(value))
+                                          : null,
+                                      draftController: conversationDraft,
+                                      voice: voice,
+                                      inspector: inspector,
+                                      controller: controller,
+                                      readiness: readiness,
+                                      onOpenInspector: inspector == null
+                                          ? null
+                                          : _openInspector,
+                                      onOpenModels: () => _openSettings(
+                                          SettingsSections.models));
+                                  final panel =
+                                      inspectorOpen && inspector != null
+                                          ? WorkspaceInspector(
+                                              controller: inspector!,
+                                              activity: controller.session
+                                                          ?.events.isNotEmpty ==
+                                                      true
+                                                  ? SessionActivity(
+                                                      events: controller
+                                                          .session!.events)
+                                                  : null,
+                                              onOpenTerminal: () => unawaited(
+                                                  _openBasics('Terminal')),
+                                              onClose: _closeInspector)
+                                          : null;
+                                  return Stack(children: [
+                                    Positioned.fill(
+                                      right: panel != null && sideBySide
+                                          ? panelWidth + 8
+                                          : 0,
+                                      child: Offstage(
+                                        offstage: panel != null && !sideBySide,
+                                        child: conversation,
+                                      ),
                                     ),
-                                    onOpenMaintenance: () =>
-                                        installManagement!.openMaintenance(),
-                                  ),
-                                'Get started' => GetStartedPage(
-                                    controller: installManagement!,
-                                    picker: const FileSelectorPicker(),
-                                    onStart: widget.onConfigured ??
-                                        () => setState(
-                                            () => page = 'Conversation'),
-                                    onClose: () =>
-                                        setState(() => page = 'Conversation'),
-                                  ),
-                                'Voice setup' => GetStartedPage(
-                                    controller: installManagement!,
-                                    picker: const FileSelectorPicker(),
-                                    initialVoice: true,
-                                    onStart: widget.onConfigured ?? () {},
-                                    onClose: () =>
-                                        setState(() => page = 'Conversation'),
-                                  ),
-                                'Installer' => MaintenancePage(
-                                    key: const ValueKey('installer-engine'),
-                                    controller: installerEngine,
-                                    installer: true,
-                                  ),
-                                'Maintenance' => MaintenancePage(
-                                    controller: maintenance,
-                                  ),
-                                'Pairing' => ExecutionHostsPage(
-                                    key: const ValueKey('execution-hosts'),
-                                    controller: _executionHostController(),
-                                    ssh: _sshConnectionController(),
-                                  ),
-                                'Local pairing' => MaintenancePage(
-                                    key: const ValueKey('pairing'),
-                                    controller: pairing,
-                                    pairing: true,
-                                  ),
-                                'Settings' => SettingsPage(
-                                    preferencesController: preferences,
-                                    onStartNewSession: () =>
-                                        _newSession(context),
-                                    readiness: readiness,
-                                    onRestartSaved: ((configuredCoordinator !=
-                                                    null ||
-                                                widget.onRestartSaved !=
-                                                    null) &&
-                                            readiness.current?.configuration !=
-                                                null)
-                                        ? _restartSaved
-                                        : null,
-                                    key: ValueKey(
-                                        (controller.api, settingsSection)),
-                                    initialSection: settingsSection,
-                                    controller: controller,
-                                    componentController: componentSettings,
-                                    configurationBackend: setup.backend,
-                                    formController: _collaborationForm(),
-                                    installationRoot:
-                                        widget.installed?['root'] as String? ??
-                                            '',
-                                    installed: widget.installed != null,
-                                    modelConfigured: (widget.installed?[
-                                                'model_configured'] ==
-                                            true ||
-                                        (setup.activeSelection ??
-                                                (setup.saved
-                                                    ? setup.selection
-                                                    : const {}))['model'] !=
-                                            null),
-                                    voiceEnabled: (widget
-                                                .installed?['voice_enabled'] ==
-                                            true ||
-                                        ((setup.activeSelection ??
-                                                    (setup.saved
-                                                        ? setup.selection
-                                                        : const {}))['voice']
-                                                as Map?)?['enabled'] ==
-                                            true),
-                                    themeMode: preferenceMode,
-                                    onToggleTheme: _toggleTheme,
-                                    onOpenDevices: () => _navigate('Devices'),
-                                    onOpenConversation: () =>
-                                        _navigate('Conversation'),
-                                    onConnectSaved: setup.busy ||
-                                            setup.completing ||
-                                            controller.session?.running ==
-                                                true ||
-                                            (widget.installed != null &&
-                                                widget.onConfigured == null)
-                                        ? null
-                                        : _activateSaved,
-                                    onOpenInstaller: () =>
-                                        _navigate('Installer'),
-                                    onOpenMaintenance: () =>
-                                        _navigate('Maintenance'),
-                                    maintenanceBlocked:
-                                        controller.session?.running == true,
-                                    onOpenGetStarted: () => setState(() {
-                                      page = 'Settings';
-                                    }),
-                                    onOpenVoice: () => setState(() {
-                                      page = 'Settings';
-                                    }),
-                                    onOpenManagement: widget.installed == null
-                                        ? null
-                                        : () => setState(
-                                              () =>
-                                                  page = 'Manage installation',
+                                    if (panel != null && sideBySide)
+                                      Positioned(
+                                        top: 0,
+                                        bottom: 0,
+                                        right: panelWidth,
+                                        width: 8,
+                                        child: Semantics(
+                                          label: 'Resize workspace inspector',
+                                          child: MouseRegion(
+                                            cursor:
+                                                SystemMouseCursors.resizeColumn,
+                                            child: GestureDetector(
+                                              key: const Key(
+                                                  'inspector-resize-handle'),
+                                              behavior: HitTestBehavior.opaque,
+                                              onHorizontalDragUpdate: (event) =>
+                                                  setState(() =>
+                                                      inspectorWidth =
+                                                          (inspectorWidth -
+                                                                  event
+                                                                      .delta.dx)
+                                                              .clamp(320.0,
+                                                                  480.0)),
+                                              onHorizontalDragEnd: (_) =>
+                                                  _saveShellLayout(),
+                                              child: Center(
+                                                  child: Container(
+                                                      width: 1,
+                                                      color: Theme.of(context)
+                                                          .dividerColor)),
                                             ),
-                                  ),
-                                _ => LayoutBuilder(
-                                    builder: (context, box) {
-                                      final sideBySide = box.maxWidth >= 1000;
-                                      final conversation = ConversationPage(
-                                        draftController: conversationDraft,
-                                        voice: voice,
-                                        inspector: inspector,
-                                        controller: controller,
-                                        readiness: readiness,
-                                        onOpenInspector: inspector == null
-                                            ? null
-                                            : _openInspector,
-                                        onOpenModels: () => _openSettings(
-                                            SettingsSections.models),
-                                      );
-                                      final panel =
-                                          inspectorOpen && inspector != null
-                                              ? WorkspaceInspector(
-                                                  controller: inspector!,
-                                                  onClose: () => setState(
-                                                    () => inspectorOpen = false,
-                                                  ),
-                                                )
-                                              : null;
-                                      return Stack(
-                                        fit: StackFit.expand,
-                                        children: [
-                                          Row(children: [
-                                            Expanded(
-                                              child: Visibility(
-                                                visible:
-                                                    panel == null || sideBySide,
-                                                maintainState: true,
-                                                child: conversation,
-                                              ),
-                                            ),
-                                            if (panel != null &&
-                                                sideBySide) ...[
-                                              const VerticalDivider(width: 1),
-                                              SizedBox(
-                                                  width: 390, child: panel),
-                                            ],
-                                          ]),
-                                          if (panel != null && !sideBySide)
-                                            panel,
-                                        ],
-                                      );
-                                    },
-                                  ),
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      );
+                                          ),
+                                        ),
+                                      ),
+                                    if (panel != null)
+                                      Positioned(
+                                        top: 0,
+                                        bottom: 0,
+                                        right: 0,
+                                        width: sideBySide
+                                            ? panelWidth
+                                            : box.maxWidth,
+                                        child: panel,
+                                      ),
+                                  ]);
+                                }),
+                            }),
+                          ])),
+                        ]));
+                  }))));
   Future<void> _inspectDevice(String id) async {
     if (!await _mayNavigate() || !mounted) return;
     await voice.release();
@@ -1116,153 +1304,279 @@ class _OdessyAppState extends State<OdessyApp> {
     scaffoldKey.currentState?.closeDrawer();
   }
 
+  Widget _iconRail(BuildContext context, {bool drawer = false}) => AppIconRail(
+          navigationFocus: drawer ? drawerNavigationFocus : navigationFocus,
+          settingsSelected: page == 'Settings',
+          onSettings: _openSettings,
+          destinations: [
+            SidebarDestination(
+                label: 'Assistant',
+                icon: Icons.chat_bubble_outline,
+                selected: page == 'Conversation',
+                onTap: () => _navigate('Conversation')),
+            SidebarDestination(
+                label: 'Activity & usage',
+                icon: Icons.insights_outlined,
+                selected: page == 'Activity & usage',
+                onTap: () => _navigate('Activity & usage')),
+            SidebarDestination(
+                label: 'Devices',
+                icon: Icons.devices_outlined,
+                selected:
+                    ['Devices', 'Monitor', 'Device details'].contains(page),
+                onTap: () => _navigate('Devices')),
+            SidebarDestination(
+                label: 'Jobs',
+                icon: Icons.work_outline,
+                selected: page == 'Jobs',
+                onTap: () => _navigate('Jobs')),
+            SidebarDestination(
+                label: 'Handoffs',
+                icon: Icons.swap_horiz,
+                selected: page == 'Handoffs',
+                onTap: () => _navigate('Handoffs')),
+            SidebarDestination(
+                label: 'Workspaces',
+                icon: Icons.folder_open_outlined,
+                selected: page == 'Workspaces',
+                onTap: () => _navigate('Workspaces')),
+          ]);
+
   Widget _sidebar(BuildContext context) => DeviceSidebar(
-        onNewSession: controller.busy || controller.session?.running == true
-            ? null
-            : () => _newSession(context),
-        hosts: deviceInventory.hosts,
-        projectNavigation: projects == null ? null : _projectNavigation(),
-        sessionSearch: projects == null
-            ? null
-            : TextField(
-                decoration: const InputDecoration(
-                  hintText: 'Find a session',
-                  prefixIcon: Icon(Icons.search, size: 18),
-                  isDense: true,
-                ),
-                onChanged: projects!.search,
-              ),
-        conversationLabel: 'Assistant',
-        navigationFocus: navigationFocus,
-        selectedHostId:
-            page == 'Device details' ? deviceInventory.selectedId : null,
-        conversationSelected: page == 'Conversation',
-        settingsSelected: page == 'Settings',
-        loading: deviceInventory.loadingInventory,
-        retained: deviceInventory.inventoryRetained,
-        error: deviceInventory.inventoryError,
-        demo: deviceInventory.demo,
-        connectionLabel: controller.api.isDemo
-            ? 'Demo · no tools execute'
-            : controller.api.identity,
-        onConversation: () => _navigate('Conversation'),
-        onSettings: _openSettings,
-        onInspect: _inspectDevice,
-        onRefresh: () => unawaited(deviceInventory.refresh()),
-        onPair: () => _navigate('Pairing'),
-        primaryDestinations: [
-          SidebarDestination(
-            label: 'Workspaces',
-            icon: Icons.folder_open_outlined,
-            selected: page == 'Workspaces',
-            onTap: () => _navigate('Workspaces'),
-          ),
-          SidebarDestination(
-            label: 'Devices',
-            icon: Icons.devices_outlined,
-            selected: page == 'Devices' || page == 'Monitor',
-            onTap: () => _navigate('Devices'),
-          ),
-          SidebarDestination(
-            label: 'Activity & usage',
-            icon: Icons.insights_outlined,
-            selected: page == 'Activity & usage',
-            onTap: () => _navigate('Activity & usage'),
-          ),
-          SidebarDestination(
-            label: 'Jobs',
-            icon: Icons.work_outline,
-            selected: page == 'Jobs',
-            onTap: () => _navigate('Jobs'),
-          ),
-          SidebarDestination(
-            label: 'Handoffs',
-            icon: Icons.swap_horiz,
-            selected: page == 'Handoffs',
-            onTap: () => _navigate('Handoffs'),
-          ),
-        ],
-        destinations: [
-          SidebarDestination(
-            label: 'Installation',
-            icon: Icons.settings_outlined,
-            selected: page == 'Installer' || page == 'Maintenance',
-            onTap: () => _openSettings(SettingsSections.installation),
-          ),
-          SidebarDestination(
-            label: 'Runtime maintenance',
-            icon: Icons.handyman_outlined,
-            selected: page == 'Maintenance',
-            onTap: controller.session?.running == true
-                ? null
-                : () => _navigate('Maintenance'),
-          ),
-          SidebarDestination(
-            label: 'Local pairing tools',
-            icon: Icons.shield_outlined,
-            selected: page == 'Local pairing',
-            onTap: () => _navigate('Local pairing'),
-          ),
-        ],
-      );
+          projectOnly: true,
+          onNewSession: controller.busy || controller.session?.running == true
+              ? null
+              : () => _newSession(context),
+          hosts: deviceInventory.hosts,
+          projectNavigation: projects == null
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                      _projectSectionHeading(context, 'Projects'),
+                      _projectSectionHeading(context, 'Recent'),
+                    ])
+              : _projectNavigation(),
+          onSearch: () => _openBasics(),
+          conversationLabel: 'Assistant',
+          navigationFocus: navigationFocus,
+          selectedHostId:
+              page == 'Device details' ? deviceInventory.selectedId : null,
+          conversationSelected: page == 'Conversation',
+          settingsSelected: page == 'Settings',
+          loading: deviceInventory.loadingInventory,
+          retained: deviceInventory.inventoryRetained,
+          error: deviceInventory.inventoryError,
+          demo: deviceInventory.demo,
+          connectionLabel: controller.api.isDemo
+              ? 'Demo · no tools execute'
+              : controller.api.identity,
+          onConversation: () => _navigate('Conversation'),
+          onSettings: _openSettings,
+          onInspect: _inspectDevice,
+          onRefresh: () => unawaited(deviceInventory.refresh()),
+          onPair: () => _navigate('Pairing'),
+          primaryDestinations: [
+            SidebarDestination(
+                label: 'Workspaces',
+                icon: Icons.folder_open_outlined,
+                selected: page == 'Workspaces',
+                onTap: () => _navigate('Workspaces')),
+            SidebarDestination(
+                label: 'Devices',
+                icon: Icons.devices_outlined,
+                selected: page == 'Devices' || page == 'Monitor',
+                onTap: () => _navigate('Devices')),
+            SidebarDestination(
+                label: 'Activity & usage',
+                icon: Icons.insights_outlined,
+                selected: page == 'Activity & usage',
+                onTap: () => _navigate('Activity & usage')),
+            SidebarDestination(
+                label: 'Jobs',
+                icon: Icons.work_outline,
+                selected: page == 'Jobs',
+                onTap: () => _navigate('Jobs')),
+            SidebarDestination(
+                label: 'Handoffs',
+                icon: Icons.swap_horiz,
+                selected: page == 'Handoffs',
+                onTap: () => _navigate('Handoffs')),
+          ]);
+
+  Widget _projectSectionHeading(BuildContext context, String label,
+          {Widget? action}) =>
+      Padding(
+          padding: EdgeInsets.fromLTRB(12, label == 'Projects' ? 0 : 16, 4, 4),
+          child: SizedBox(
+              height: 32,
+              child: Row(children: [
+                Expanded(
+                    child: Semantics(
+                        header: true,
+                        child: Text(label,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelMedium
+                                ?.copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant)))),
+                if (action != null)
+                  SizedBox(width: 32, height: 32, child: action),
+              ])));
 
   Widget _projectNavigation() => ListenableBuilder(
-        listenable: projects!,
-        builder: (context, _) {
-          final c = projects!;
-          Widget sessionLink(SessionSummary row) => ListTile(
+      listenable: projects!,
+      builder: (context, _) {
+        final c = projects!;
+        Widget heading(String label, {Widget? action}) =>
+            _projectSectionHeading(context, label, action: action);
+        Widget sessionLink(SessionSummary row) => ListTile(
+            dense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            visualDensity: const VisualDensity(vertical: -1),
+            selected: controller.session?.id == row.id,
+            title: Text(row.id, maxLines: 1, overflow: TextOverflow.ellipsis),
+            trailing: row.running ? const Icon(Icons.circle, size: 8) : null,
+            onTap: row.running ||
+                    controller.busy ||
+                    controller.session?.running == true
+                ? null
+                : () => _openSession(row.id));
+        Widget savedLink(SavedConversation chat, {bool nested = true}) =>
+            ListTile(
                 dense: true,
-                selected: controller.session?.id == row.id,
-                title:
-                    Text(row.id, maxLines: 1, overflow: TextOverflow.ellipsis),
-                subtitle: Text('${row.engine} · ${row.selectedProfile}'),
-                onTap: row.running ||
-                        controller.busy ||
-                        controller.session?.running == true
+                contentPadding:
+                    EdgeInsets.only(left: nested ? 32 : 12, right: 12),
+                visualDensity: const VisualDensity(vertical: -1),
+                selected: basics.selected?.id == chat.id,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                title: Text(chat.title,
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: chat.pinned
+                    ? const Icon(Icons.push_pin_outlined, size: 14)
+                    : null,
+                onTap: basics.busy
                     ? null
-                    : () => _openSession(row.id),
-              );
-          return ExpansionTile(
-            initiallyExpanded: true,
-            tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-            title: const Text(
-              'Projects & sessions',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-            ),
+                    : () async {
+                        await _openBasics();
+                        await basics.open(chat.id);
+                      });
+        final saved = basics.conversations.where((r) => !r.archived).toList();
+        return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextButton.icon(
-                onPressed: c.loading ? null : c.refresh,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Refresh sessions'),
-              ),
-              if (c.error != null) Text(c.error!),
+              heading('Projects',
+                  action: PopupMenuButton<String>(
+                      tooltip: 'Project actions',
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
+                      padding: const EdgeInsets.all(6),
+                      icon: const Icon(Icons.more_horiz, size: 18),
+                      onSelected: (value) {
+                        if (value == 'refresh') {
+                          unawaited(c.refresh());
+                          unawaited(basics.refresh());
+                        }
+                        if (value == 'manage') _navigate('Workspaces');
+                        if (value == 'history') _openBasics();
+                      },
+                      itemBuilder: (_) => const [
+                            PopupMenuItem(
+                                value: 'refresh',
+                                child: Text('Refresh sessions')),
+                            PopupMenuItem(
+                                value: 'manage',
+                                child: Text('Manage workspaces')),
+                            PopupMenuItem(
+                                value: 'history',
+                                child: Text('History & tools')),
+                          ])),
+              if (basics.supports('conversations'))
+                for (final project in basics.projects)
+                  ExpansionTile(
+                      key: PageStorageKey('saved-project-${project.id}'),
+                      dense: true,
+                      visualDensity: const VisualDensity(vertical: -2),
+                      tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+                      leading: const Icon(Icons.folder_outlined, size: 18),
+                      title: Text(project.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14)),
+                      children: [
+                        for (final chat
+                            in saved.where((r) => r.projectId == project.id))
+                          savedLink(chat)
+                      ]),
               for (final project in c.records)
                 ExpansionTile(
-                  title: Text(project.label),
-                  subtitle: Text(c.status(project)),
-                  children: [
-                    for (final row in c.filteredSessions.where(
-                      (s) =>
+                    key: PageStorageKey('live-project-${project.id}'),
+                    dense: true,
+                    visualDensity: const VisualDensity(vertical: -2),
+                    tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+                    leading: const Icon(Icons.folder_outlined, size: 18),
+                    title: Text(project.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 14)),
+                    children: [
+                      Align(
+                          alignment: Alignment.centerRight,
+                          child: PopupMenuButton<String>(
+                              tooltip: 'Live project actions',
+                              onSelected: (_) async {
+                                final confirmed = await showDialog<bool>(
+                                    context: context,
+                                    builder: (ctx) => AlertDialog(
+                                            title: const Text(
+                                                'Create a durable project?'),
+                                            content: Text(
+                                                'Copy the label "${project.label}" into a saved project. Messages, workspace bindings and permissions stay with their existing owners.'),
+                                            actions: [
+                                              TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(ctx, false),
+                                                  child: const Text('Cancel')),
+                                              FilledButton(
+                                                  onPressed: () =>
+                                                      Navigator.pop(ctx, true),
+                                                  child: const Text(
+                                                      'Create project'))
+                                            ]));
+                                if (confirmed == true) {
+                                  await basics.createProject(project.label);
+                                }
+                              },
+                              itemBuilder: (_) => [
+                                    PopupMenuItem(
+                                        value: 'copy',
+                                        enabled: !basics.busy &&
+                                            basics.supports('conversations'),
+                                        child: const Text(
+                                            'Copy label to saved project'))
+                                  ])),
+                      for (final row in c.filteredSessions.where((r) =>
                           c.matches(project) &&
-                          project.sessionIds.contains(s.id),
-                    ))
-                      sessionLink(row),
-                  ],
-                ),
-              for (final row in c.filteredSessions.where(
-                (s) => !c.records.any(
-                  (p) => c.matches(p) && p.sessionIds.contains(s.id),
-                ),
-              ))
+                          project.sessionIds.contains(r.id)))
+                        sessionLink(row),
+                    ]),
+              if (c.error != null)
+                Padding(
+                    padding: const EdgeInsets.all(12), child: Text(c.error!)),
+              heading('Recent'),
+              for (final chat in saved.take(12)) savedLink(chat, nested: false),
+              for (final row in c.filteredSessions.where((r) => !c.records
+                  .any((p) => c.matches(p) && p.sessionIds.contains(r.id))))
                 sessionLink(row),
-              TextButton(
-                onPressed: () => _navigate('Workspaces'),
-                child: const Text('Manage workspaces'),
-              ),
-            ],
-          );
-        },
-      );
+              if (saved.isEmpty && c.filteredSessions.isEmpty)
+                const Padding(
+                    padding: EdgeInsets.all(12),
+                    child:
+                        Text('No chats yet', style: TextStyle(fontSize: 13))),
+            ]);
+      });
 
   Widget _devicePage() => DevicePage(
         key: ValueKey(deviceInventory.selectedId),
@@ -1327,27 +1641,27 @@ class _OdessyAppState extends State<OdessyApp> {
       );
 
   Future<void> _newSession(BuildContext context) async {
+    if (basics.busy) return;
     if (!await _mayNavigate(deferDiscard: true) || !context.mounted) return;
     final approved = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Start a new session?'),
-        content: const Text(
-          'Creates an empty conversation using the latest saved configuration. Live sessions stay selectable while this service is running. No history is replayed.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Start new session'),
-          ),
-        ],
-      ),
-    );
-    if (approved == true && mounted && await _discardApprovedSettings()) {
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('Start a new session?'),
+              content: const Text(
+                  'Creates an empty conversation using the latest saved configuration. Live sessions stay selectable while this service is running. No history is replayed.'),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel')),
+                FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Start new session')),
+              ],
+            ));
+    if (approved == true &&
+        mounted &&
+        !basics.busy &&
+        await _discardApprovedSettings()) {
       await voice.release();
       inspector?.invalidate();
       final old = controller.session?.id;
@@ -1361,6 +1675,10 @@ class _OdessyAppState extends State<OdessyApp> {
   }
 
   Future<void> _connectConfigured(Json spec) async {
+    if (basics.busy) {
+      throw StateError(
+          'Wait for the current history or tool operation before reconnecting.');
+    }
     if (_settingsBusy) {
       throw StateError(
         'Wait for the current settings operation before changing connection.',
@@ -1412,7 +1730,7 @@ class _OdessyAppState extends State<OdessyApp> {
   }
 
   Future<void> _connect(BuildContext context) async {
-    if (restarting) return;
+    if (restarting || basics.busy) return;
     if (_settingsBusy) {
       await showDialog<void>(
         context: context,

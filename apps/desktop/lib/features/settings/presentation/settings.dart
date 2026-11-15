@@ -64,6 +64,7 @@ class SettingsPage extends StatefulWidget {
     this.onOpenGetStarted,
     this.onOpenVoice,
     this.onOpenDevices,
+    this.onOpenPairingTools,
     this.onOpenConversation,
     this.installed = false,
     this.modelConfigured = false,
@@ -83,7 +84,7 @@ class SettingsPage extends StatefulWidget {
   final SettingsFormController<int>? formController;
   final String installationRoot, initialSection;
   final VoidCallback? onOpenManagement, onOpenGetStarted, onOpenDevices;
-  final VoidCallback? onOpenConversation;
+  final VoidCallback? onOpenConversation, onOpenPairingTools;
   final VoidCallback? onOpenVoice;
   final VoidCallback? onOpenInstaller, onOpenMaintenance;
   final bool maintenanceBlocked;
@@ -246,39 +247,45 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _rail(BuildContext context) => SizedBox(
       width: 206,
-      child: ListView(shrinkWrap: true, children: [
-        Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 0, 18),
-            child: Semantics(
-                header: true,
-                child: Text('Preferences',
-                    style: Theme.of(context).textTheme.bodySmall))),
-        for (final name in SettingsSections.all)
-          ListTile(
-              key: ValueKey('settings-section-$name'),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-              selected: section == name,
-              selectedTileColor:
-                  Theme.of(context).colorScheme.secondaryContainer,
-              selectedColor: Theme.of(context).colorScheme.onSecondaryContainer,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-              minVerticalPadding: 18,
-              leading: Icon(
-                  switch (name) {
-                    SettingsSections.general => Icons.tune,
-                    SettingsSections.models => Icons.hub_outlined,
-                    SettingsSections.stt => Icons.hearing_outlined,
-                    SettingsSections.tts => Icons.record_voice_over_outlined,
-                    SettingsSections.voice => Icons.mic_none,
-                    SettingsSections.devices => Icons.shield_outlined,
-                    SettingsSections.advanced => Icons.code,
-                    _ => Icons.inventory_2_outlined
-                  },
-                  size: 19),
-              title: Text(name, style: Theme.of(context).textTheme.labelLarge),
-              onTap: () => _selectSection(name)),
-      ]));
+      child: ListView(
+          key: const Key('settings-section-list'),
+          shrinkWrap: true,
+          children: [
+            Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 0, 18),
+                child: Semantics(
+                    header: true,
+                    child: Text('Preferences',
+                        style: Theme.of(context).textTheme.bodySmall))),
+            for (final name in SettingsSections.all)
+              ListTile(
+                  key: ValueKey('settings-section-$name'),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  selected: section == name,
+                  selectedTileColor:
+                      Theme.of(context).colorScheme.secondaryContainer,
+                  selectedColor:
+                      Theme.of(context).colorScheme.onSecondaryContainer,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                  minVerticalPadding: 18,
+                  leading: Icon(
+                      switch (name) {
+                        SettingsSections.general => Icons.tune,
+                        SettingsSections.models => Icons.hub_outlined,
+                        SettingsSections.stt => Icons.hearing_outlined,
+                        SettingsSections.tts =>
+                          Icons.record_voice_over_outlined,
+                        SettingsSections.voice => Icons.mic_none,
+                        SettingsSections.devices => Icons.shield_outlined,
+                        SettingsSections.advanced => Icons.code,
+                        _ => Icons.inventory_2_outlined
+                      },
+                      size: 19),
+                  title:
+                      Text(name, style: Theme.of(context).textTheme.labelLarge),
+                  onTap: () => _selectSection(name)),
+          ]));
 
   Widget _narrowPicker(BuildContext context) => KeyedSubtree(
       key: const Key('settings-section-picker'),
@@ -594,6 +601,16 @@ class _SettingsPageState extends State<SettingsPage> {
                       onPressed: widget.onOpenDevices,
                       icon: const Icon(Icons.devices_other, size: 18),
                       label: const Text('Open devices'))),
+          ]),
+        if (section == SettingsSections.devices &&
+            widget.onOpenPairingTools != null)
+          _card(context, 'Local pairing tools', [
+            const Text(
+                'Manage local pairing identity and permissions through the existing maintenance tools.'),
+            OutlinedButton.icon(
+                onPressed: widget.onOpenPairingTools,
+                icon: const Icon(Icons.shield_outlined, size: 18),
+                label: const Text('Open local pairing tools')),
           ]),
         if (section == SettingsSections.advanced)
           RuntimeEngine(
