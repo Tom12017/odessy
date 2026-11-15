@@ -41,9 +41,8 @@ def test_small_budget_omits_summary_and_long_prompt_is_supported(tmp_path):
     store, _, conversation, _, _, _, context = setup(tmp_path)
     for index in range(8):
         exchange(store, conversation['id'], index, 'q' * 200, 'a' * 300)
-    prepared = context.prepare(conversation['id'], query='x' * 1500, max_chars=512)
-    assert wrapper_chars(prepared) <= 512
-    assert context.get_used(conversation['id'])['summary'] is None
+    with pytest.raises(Invalid, match='Latest exchange exceeds'):
+        context.prepare(conversation['id'], query='x' * 1500, max_chars=512)
     store.close()
 
 
@@ -232,3 +231,17 @@ def test_deletion_cascades_derived_rows_and_reopen_keeps_used_context(tmp_path):
         assert db.execute('SELECT COUNT(*) FROM context_summaries').fetchone()[0] == 0
         assert db.execute('SELECT COUNT(*) FROM context_usage').fetchone()[0] == 0
     reopened.close()
+
+
+def test_large_memory_preserves_latest_exchange_and_citation_labels(tmp_path):
+    store, project, conversation, _, memory, retrieval, context = setup(
+        tmp_path, {'boat.md': 'alpha source evidence'})
+    exchange(store, conversation['id'], 0, 'latest question', 'latest answer')
+    for index in range(12):
+        memory.create(project['id'], str(index) + 'z' * 1900)
+    from test_retrieval_service import ingest
+    ingest(retrieval, project['id'], 'boat.md')
+    prepared = context.prepare(conversation['id'], query='alpha')
+    assert prepared.turns[-1].user == 'latest question'
+    assert wrapper_chars(prepared) <= 24000
+    store.close()

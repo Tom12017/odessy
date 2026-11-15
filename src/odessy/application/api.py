@@ -1143,11 +1143,13 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
             # This turn's voice phases: the audio adapter marked capture and recognition;
             # the session marks the first engine text on the same object (prompt 13).
             settled = False
+            entered_controller = False
             controller.bind_turn_timing(timing)
             try:
                 if data.get('_verified_attachments'):
                     workspace_inspector.binding(sid, data['_attachment_binding'])
                 extra = {'attachments': data['_verified_attachments']} if data.get('_verified_attachments') else {}
+                entered_controller = True
                 result=await controller.run_turn(data['text'], participant=data.get('participant'), turn_id=turn_id, admitted_epoch=epoch, **extra)
                 settled = True
                 if timing is not None:
@@ -1157,9 +1159,10 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
                 if spoken and desktop_voice is not None:
                     await desktop_voice.speak(controller,result.final_text)
                 return result.final_text
-            except (Exception, asyncio.CancelledError):
-                # Controller emits the public failure; retrieve the task exception.
-                pass
+            except (Exception, asyncio.CancelledError) as exc:
+                if not entered_controller:
+                    controller.emit('error', {'message': 'Turn admission authority changed', 'error_type': type(exc).__name__})
+                    controller._finish_turn(turn_id, 'failed')
             finally:
                 tasks.pop(sid, None)
                 if timing is not None:

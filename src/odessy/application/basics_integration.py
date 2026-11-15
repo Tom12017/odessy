@@ -1,6 +1,7 @@
 """Application-owned bridge between durable data and fresh live authority."""
 from __future__ import annotations
 
+import asyncio
 import inspect
 import json
 import os
@@ -110,7 +111,7 @@ class PersistentComposition:
             requests = [ToolRequest('filesystem.list', {'path': '.'})]
         elif action == 'checkpoint.restore':
             requests = [ToolRequest('filesystem.write', item) for item in
-                        self.checkpoints.restore_policy_requests(sid, plan['checkpoint_id'])]
+                        await asyncio.to_thread(self.checkpoints.restore_policy_requests, sid, plan['checkpoint_id'])]
         else:
             return False
         hooks = load_hooks(binding.root_path)
@@ -182,10 +183,20 @@ class PersistentComposition:
             return None
 
     def attach(self, controller, cid=None):
+        record = getattr(controller, 'record', None)
+        if cid is None and record is not None and record.get('conversation_id'):
+            cid = record['conversation_id']
+            self.service.store.get(cid)
+            self.check_workspace(controller, cid)
         if cid is None:
             workspace_identity = self.workspace_identity(controller)
-            projects = self.service.store.projects()
-            project = projects[0] if projects else self.service.store.create_project('Workspace')
+            with self.service.store.connection() as db:
+                project = db.execute('SELECT p.* FROM projects p JOIN conversations c ON c.project_id=p.id '
+                                     'JOIN conversation_workspace_bindings b ON b.conversation_id=c.id '
+                                     'WHERE b.identity_json=? ORDER BY c.created_at LIMIT 1',
+                                     (workspace_identity,)).fetchone()
+            if project is None:
+                project = self.service.store.create_project('Workspace')
             cid = uuid.uuid4().hex
             self.service.store.create(conversation_id=cid, project_id=project['id'],
                                       engine=controller.engine,
@@ -194,6 +205,9 @@ class PersistentComposition:
                 with db:
                     db.execute('INSERT INTO conversation_workspace_bindings VALUES (?,?)',
                                (cid, workspace_identity))
+        if record is not None:
+            record['conversation_id'] = cid
+            controller._persist()
         controller._conversation_id = cid
         controller._conversation_recorder = ConversationRecorder(self.service, cid,
                                                                  session_id=controller.id)
@@ -292,14 +306,15 @@ class PersistentComposition:
             raise Conflict('Context source authority changed')
         return value
 
-    def prepare_context(self, controller, query):
+    def prepare_context(self, controller, query, *, prepared=None):
         if self.dependencies.find_session(controller.id) is not controller or controller._closed:
             raise Conflict('Context session is no longer live')
         self.check_workspace(controller, controller._conversation_id)
         binding = None
         if getattr(controller, '_workspace_policy_factory', None) is not None:
             binding = self.resolve_context_scope(controller.id, controller._conversation_id)
-        prepared = self.context_provider.prepare(controller._conversation_id, query=query, max_chars=24000)
+        if prepared is None:
+            prepared = self.context_provider.prepare(controller._conversation_id, query=query, max_chars=24000)
         if not isinstance(prepared, PreparedContext):
             raise Conflict('Context provider returned an invalid prepared context')
         if prepared.conversation_id != controller._conversation_id:

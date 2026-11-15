@@ -418,3 +418,37 @@ def test_binary_and_runtime_database_are_excluded_and_preserved(tmp_path):
                 expected_revision=preview['expected_revision'])
     assert (root / 'readme.txt').read_text(encoding='utf-8') == 'Before\n'
     assert (root / 'binary.dat').read_bytes() == b'\x00\xffkeep newer'
+
+
+@needs_git
+def test_checkpoint_without_user_git_identity_preserves_configuration(tmp_path, monkeypatch):
+    root, binding = workspace(tmp_path)
+    git(root, 'config', '--unset', 'user.name')
+    git(root, 'config', '--unset', 'user.email')
+    monkeypatch.setenv('GIT_CONFIG_NOSYSTEM', '1')
+    monkeypatch.setenv('GIT_CONFIG_GLOBAL', str(tmp_path / 'no-global-config'))
+    for key in ('GIT_AUTHOR_NAME', 'GIT_AUTHOR_EMAIL', 'GIT_COMMITTER_NAME',
+                'GIT_COMMITTER_EMAIL', 'EMAIL'):
+        monkeypatch.delenv(key, raising=False)
+    config = (root / '.git' / 'config').read_bytes()
+    head = git(root, 'rev-parse', 'HEAD')
+    created = service(tmp_path, binding).create('s1', 'no personal identity')
+    author = git(root, 'show', '-s', '--format=%an <%ae>',
+                 f'refs/odessy/checkpoints/{created["id"]}').strip()
+    assert author == 'Odessy <checkpoints@odessy.invalid>'
+    assert (root / '.git' / 'config').read_bytes() == config
+    assert git(root, 'rev-parse', 'HEAD') == head
+
+
+@needs_git
+def test_restore_refuses_binary_destination_without_losing_bytes(tmp_path):
+    root, binding = workspace(tmp_path)
+    api = service(tmp_path, binding)
+    saved = api.create('s1', 'text before binary')
+    raw = b'new\x00binary'
+    (root / 'readme.txt').write_bytes(raw)
+    preview = api.preview('s1', saved['id'])
+    with pytest.raises(CheckpointError, match='recoverable safety copy'):
+        api.restore('s1', saved['id'], preview_hash=preview['preview_hash'],
+                    expected_revision=preview['expected_revision'])
+    assert (root / 'readme.txt').read_bytes() == raw

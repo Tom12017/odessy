@@ -143,6 +143,10 @@ class LocalTerminalService:
         _integer(columns, 20, 400)
         _integer(rows, 5, 200)
         async with self._admission:
+            if len(self.handles) >= 64:
+                for key, row in tuple(self.handles.items()):
+                    if row['status'] != 'running' and row['process'].returncode is not None:
+                        self.handles.pop(key, None)
             if len(self.handles) >= 64 or sum(r['status'] == 'running' for r in self.handles.values()) >= 8:
                 raise TerminalError(409, 'Terminal resource limit reached')
             binding = self._binding(sid)

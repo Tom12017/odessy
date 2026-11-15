@@ -140,7 +140,7 @@ class ConversationService:
 
     async def resume(self, conversation_id: str, *, expected_revision: int) -> dict[str, Any]:
         expected_revision = _check_int(expected_revision, 'expected_revision', 0)
-        row = self.store.get(conversation_id)
+        row = await asyncio.to_thread(self.store.get, conversation_id)
         if row['engine'] != 'legacy':
             raise Unsupported('This engine has durable history only; it cannot be resumed')
         if self._continuation is None:
@@ -151,7 +151,7 @@ class ConversationService:
             # create a second controller for the same durable conversation.
             raise Conflict('A resume of this conversation is already in progress')
         async with lock:
-            prepared = self.store.prepare_resume(conversation_id)
+            prepared = await asyncio.to_thread(self.store.prepare_resume, conversation_id)
             if prepared['revision'] != expected_revision:
                 raise Conflict('Conversation changed; reload before resuming')
             result = self._continuation(prepared)

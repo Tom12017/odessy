@@ -12,6 +12,7 @@ or cloud access is required.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import uuid
@@ -79,8 +80,10 @@ class ContextService:
         if self.resolve_owner is None or self.resolve_workspace is None:
             raise Conflict('Context source validation requires the shared live owner')
         owner = self.resolve_owner(conversation_id)
-        project_id = self.store.get(conversation_id)['project_id']
-        if not self.retrieval.documents(project_id):
+        project_id = (await asyncio.to_thread(self.store.get, conversation_id))['project_id']
+        if self.resolve_owner(conversation_id) is not owner:
+            raise Conflict('Context owner changed')
+        if not await asyncio.to_thread(self.retrieval.documents, project_id):
             return
         previous = self.resolve_workspace(conversation_id)
         identity = previous.identity() if hasattr(previous, 'identity') else previous
@@ -159,7 +162,22 @@ class ContextService:
             summary_row = self.summarize(conversation_id, keep_recent=RECENT_TURNS)
         summary_text = (summary_row or {}).get('text', '')
 
-        budget = max_chars - len(HEADER) - 64
+        summary_reserve = min(len(summary_text) + len(SUMMARY_LABEL) + 1, max_chars // 3) if summary_text else 0
+        recent_limit = max_chars - len(HEADER) - summary_reserve - 80
+        reserved, recent_chars = [], 0
+        for turn in reversed(recent):
+            size = len(turn['user']) + len(turn['assistant'])
+            if recent_chars + size > recent_limit:
+                break
+            reserved.append(turn)
+            recent_chars += size
+        if recent and not reserved:
+            raise Invalid('Latest exchange exceeds context budget; increase the budget')
+        recent = list(reversed(reserved))
+        optional_limit = max_chars - recent_chars
+        budget = optional_limit - len(HEADER) - 64
+        if summary_text:
+            summary_text = summary_text[:max(0, budget - len(SUMMARY_LABEL) - 1)]
         chunks, used = [], [len(HEADER)]
         if summary_text:
             piece = SUMMARY_LABEL + summary_text
@@ -172,7 +190,7 @@ class ContextService:
         facts = []
         for fact in self.memory.enabled_facts(row['project_id']):
             piece = FACT_LABEL + fact['text']
-            if used[0] + len(piece) + 1 > max_chars - 256:
+            if used[0] + len(piece) + 1 > optional_limit - 256:
                 break
             facts.append(fact)
             used[0] += len(piece) + 1
@@ -184,8 +202,11 @@ class ContextService:
         for citation in retrieved['citations']:
             if not isinstance(citation.get('text'), str) or not citation['text']:
                 continue
+            citation = dict(citation)
+            source = f"[{citation.get('path', '')}:{citation.get('start_line', '')}-{citation.get('end_line', '')} sha256={citation.get('source_hash', '')}] "
+            citation['text'] = source + citation['text']
             piece = CITATION_LABEL + citation['text']
-            if used[0] + len(piece) + 1 > max_chars - 512:
+            if used[0] + len(piece) + 1 > optional_limit - 512:
                 break
             citations.append(citation)
             used[0] += len(piece) + 1

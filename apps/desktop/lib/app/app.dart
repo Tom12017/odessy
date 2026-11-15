@@ -1145,6 +1145,7 @@ class _OdessyAppState extends State<OdessyApp> {
                                   controller: pairing,
                                   pairing: true),
                               'Settings' => SettingsPage(
+                                  onStartNewSession: () => _newSession(context),
                                   preferencesController: preferences,
                                   readiness: readiness,
                                   onRestartSaved: ((configuredCoordinator != null ||

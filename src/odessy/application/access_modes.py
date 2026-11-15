@@ -252,6 +252,8 @@ class AccessModeService:
         if data.decision == 'deny':
             # Hard denials are never converted into an approval by any mode.
             return self._record(data, 'deny', 'policy denied this action')
+        if data.decision == 'allow' and 'escalation' in data.scopes:
+            return self._record(data, 'ask', 'escalation requires the existing exact approval')
         if data.decision == 'allow':
             return self._record(data, 'approve',
                                 'policy allowed this action without confirmation')

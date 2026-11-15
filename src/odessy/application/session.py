@@ -939,7 +939,9 @@ class SessionController:
                 validator = getattr(provider, 'validate_sources', None)
                 if validator is not None:
                     await validator(self._conversation_id)
-                prepared = composition.prepare_context(self, self._public(text))
+                prepared_data = await asyncio.to_thread(provider.prepare, self._conversation_id,
+                                                        query=self._public(text), max_chars=24000)
+                prepared = composition.prepare_context(self, self._public(text), prepared=prepared_data)
                 if prepared.conversation_id != self._conversation_id:
                     raise RuntimeError('Prepared context belongs to another conversation')
                 chunks = []

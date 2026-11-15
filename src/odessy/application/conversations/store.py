@@ -351,15 +351,18 @@ class ConversationStore:
                 except sqlite3.DatabaseError as exc:
                     with _suppress():
                         db.rollback()
+                        self._fts = None
                     raise self._translate(exc) from exc
                 except OSError as exc:
                     with _suppress():
                         db.rollback()
+                        self._fts = None
                     raise StorageError(
                         f'Conversation storage failed: {exc}; nothing was saved') from exc
                 except BaseException:
                     with _suppress():
                         db.rollback()
+                        self._fts = None
                     raise
             finally:
                 db.close()
@@ -368,6 +371,7 @@ class ConversationStore:
         db = self._connect()
         try:
             self._initialize(db)
+            db.execute('BEGIN')
             return work(db)
         except sqlite3.DatabaseError as exc:
             raise self._translate(exc) from exc
@@ -580,6 +584,9 @@ class ConversationStore:
             if project_id is not None:
                 project_clause = ' AND c.project_id = ?'
                 project_args.append(project_id)
+            if position is not None:
+                project_clause += ' AND (e.conversation_id, e.sequence) > (?, ?)'
+                project_args.extend((position['conversation_id'], position['sequence']))
             if self._fts_available(db):
                 match = _fts_query(query)
                 rows = db.execute(
@@ -588,16 +595,16 @@ class ConversationStore:
                     'ON e.conversation_id = f.conversation_id AND e.sequence = f.sequence '
                     'JOIN conversations c ON c.id = e.conversation_id '
                     'WHERE conversation_events_fts MATCH ?' + project_clause +
-                    ' ORDER BY e.conversation_id, e.sequence LIMIT 4000',
-                    (match, *project_args)).fetchall()
+                    ' ORDER BY e.conversation_id, e.sequence LIMIT ?',
+                    (match, *project_args, limit + 1)).fetchall()
             else:
                 escaped = query.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
                 rows = db.execute(
                     "SELECT e.conversation_id, e.sequence, e.event_id, e.kind, e.payload_json "
                     "FROM conversation_events e JOIN conversations c ON c.id = e.conversation_id "
                     "WHERE e.payload_json LIKE ? ESCAPE '\\'" + project_clause +
-                    " AND e.kind != 'assistant_delta' ORDER BY e.conversation_id, e.sequence LIMIT 4000",
-                    (f'%{escaped}%', *project_args)).fetchall()
+                    " AND e.kind != 'assistant_delta' ORDER BY e.conversation_id, e.sequence LIMIT ?",
+                    (f'%{escaped}%', *project_args, limit + 1)).fetchall()
             return [dict(row) for row in rows]
 
         rows = self._read(work)
@@ -699,7 +706,7 @@ class ConversationStore:
                 if exists is None:
                     raise NotFound('Conversation not found')
                 raise Conflict('Conversation changed; reload before deleting')
-            if self._fts:
+            if db.execute("SELECT 1 FROM sqlite_master WHERE name='conversation_events_fts'").fetchone():
                 db.execute('DELETE FROM conversation_events_fts WHERE conversation_id = ?',
                            (conversation_id,))
 

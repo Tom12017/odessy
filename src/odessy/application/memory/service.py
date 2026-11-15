@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
+from odessy.redaction import redact_text
 
 from ..conversations.store import Conflict, ConversationStore, Invalid, NotFound, StorageError
 from ..conversations.store import _check_id, _check_int, utc_now
@@ -25,7 +26,7 @@ def _text(value, name='text'):
     text = value.strip()
     if not 1 <= len(text) <= MAX_TEXT:
         raise Invalid(f'{name} must be 1-{MAX_TEXT} characters')
-    return text
+    return redact_text(text)
 
 
 class MemoryService:
@@ -74,8 +75,7 @@ class MemoryService:
             return self._wire(db.execute('SELECT * FROM memory_facts WHERE id = ?',
                                          (fact['id'],)).fetchone())
 
-        with self.store.connection() as db, db:
-            return work(db)
+        return self.store._write('extension', work)
 
     def _fact(self, db, project_id, fact_id):
         _check_id(fact_id, 'memory_id')
@@ -105,8 +105,7 @@ class MemoryService:
             return self._wire(db.execute('SELECT * FROM memory_facts WHERE id = ?',
                                          (fact_id,)).fetchone())
 
-        with self.store.connection() as db, db:
-            return work(db)
+        return self.store._write('extension', work)
 
     def delete(self, project_id, fact_id, *, expected_revision):
         expected_revision = _check_int(expected_revision, 'expected_revision')
@@ -118,8 +117,7 @@ class MemoryService:
                 raise Conflict('Memory fact changed; reload before deleting')
             db.execute('DELETE FROM memory_facts WHERE id = ?', (fact_id,))
 
-        with self.store.connection() as db, db:
-            work(db)
+        self.store._write('extension', work)
 
     def enabled_facts(self, project_id, *, limit=MAX_ENABLED):
         limit = _check_int(limit, 'limit', 1)

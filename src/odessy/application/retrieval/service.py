@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 import sqlite3
 import uuid
+from odessy.redaction import redact_text
 from pathlib import PurePosixPath
 
 from ..conversations.store import (Conflict, ConversationStore, Invalid, NotFound,
@@ -215,7 +216,7 @@ class RetrievalService:
         if '\x00' in text:
             raise Invalid('Binary files are not indexed')
         now = self.clock()
-        chunks = _chunks(text)
+        chunks = _chunks(redact_text(text))
 
         def work(db):
             self._project_exists(db, project_id)
@@ -262,8 +263,7 @@ class RetrievalService:
             return self._wire(db.execute('SELECT * FROM retrieval_documents WHERE id = ?',
                                          (document_id,)).fetchone())
 
-        with self.store.connection() as db, db:
-            return work(db)
+        return self.store._write('extension', work)
 
     async def refresh(self, project_id, *, session_id, service_instance_id, path):
         return await self.ingest(project_id, session_id=session_id,
@@ -283,25 +283,26 @@ class RetrievalService:
                 value = await self.read_file(conversation_id, document['path'])
                 text = _text_of(value)
                 if not isinstance(text, str) or _hash_of(value) != document['source_hash']:
-                    self._mark(project_id, document['id'], 'stale', 'Source changed; refresh required')
+                    self._mark(project_id, document, 'stale', 'Source changed; refresh required')
                 else:
-                    self._mark(project_id, document['id'], 'ready', None, verified=True)
+                    self._mark(project_id, document, 'ready', None, verified=True)
             except Exception as exc:  # denied, missing or unreadable after revocation
-                self._mark(project_id, document['id'], 'error', type(exc).__name__)
+                self._mark(project_id, document, 'error', type(exc).__name__)
             verified += 1
         return {'verified': verified, 'documents': self.documents(project_id)}
 
-    def _mark(self, project_id, document_id, status, error, *, verified=False):
+    def _mark(self, project_id, document, status, error, *, verified=False):
+        document_id = document['id']
         now = self.clock()
 
         def work(db):
             self._document(db, project_id, document_id)
             db.execute('UPDATE retrieval_documents SET status = ?, error = ?, verified_at = ?, '
-                       'updated_at = ? WHERE id = ?',
-                       (status, error, now if verified else None, now, document_id))
+                       'updated_at = ? WHERE id = ? AND revision = ? AND source_hash = ?',
+                       (status, error, now if verified else None, now, document_id,
+                        document['revision'], document['source_hash']))
 
-        with self.store.connection() as db, db:
-            work(db)
+        self.store._write('extension', work)
 
     def delete(self, project_id, document_id, *, expected_revision):
         expected_revision = _check_int(expected_revision, 'expected_revision')
@@ -314,8 +315,7 @@ class RetrievalService:
             self._drop_index(db, document_id)
             db.execute('DELETE FROM retrieval_documents WHERE id = ?', (document_id,))
 
-        with self.store.connection() as db, db:
-            work(db)
+        self.store._write('extension', work)
 
     # -- retrieval -------------------------------------------------------
 

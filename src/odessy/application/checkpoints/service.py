@@ -158,9 +158,9 @@ class CheckpointService:
         return directory
 
     def _lock(self, binding) -> threading.Lock:
-        key = hashlib.sha256(_canonical(list(binding.identity())).encode()).hexdigest()
+        key = str(self._workspace_dir(binding))
         with self._locks_guard:
-            return self._locks.setdefault(key, threading.Lock())
+            return self._locks.setdefault(key, threading.RLock())
 
     def _metadata_path(self, binding) -> Path:
         return self._workspace_dir(binding) / 'checkpoints.json'
@@ -299,7 +299,7 @@ class CheckpointService:
             total += len(data)
         return captured, unsupported, hashes, total
 
-    def _snapshot(self, binding, label: str, *, kind: str) -> Checkpoint:
+    def _snapshot(self, binding, label: str, *, kind: str, pinned: str | None = None) -> Checkpoint:
         root = self._repository_root(binding)
         captured, unsupported, hashes, total = self._collect(binding, root)
         if not captured and unsupported:
@@ -328,6 +328,12 @@ class CheckpointService:
             commit = self._git(
                 root, 'commit-tree', tree, '-p', 'HEAD', '-m',
                 f'odessy checkpoint {kind}: {label}'.encode('utf-8')[:512],
+                # These are service-owned snapshots, not user-authored commits.
+                # Do not depend on or mutate the user's Git identity/configuration.
+                env={'GIT_AUTHOR_NAME': 'Odessy',
+                     'GIT_AUTHOR_EMAIL': 'checkpoints@odessy.invalid',
+                     'GIT_COMMITTER_NAME': 'Odessy',
+                     'GIT_COMMITTER_EMAIL': 'checkpoints@odessy.invalid'},
             ).decode().strip()
             self._git(root, 'update-ref', f'{REF_PREFIX}{checkpoint_id}', commit)
         finally:
@@ -351,15 +357,17 @@ class CheckpointService:
                                         'kind': kind,
                                         'files_sha256': hashes,
                                         'unsupported': unsupported[:200]})
-            self._prune(binding, data)
+            self._prune(binding, data, pinned=pinned)
             self._write_metadata(binding, data)
         return checkpoint
 
-    def _prune(self, binding, data: dict[str, Any]) -> None:
+    def _prune(self, binding, data: dict[str, Any], *, pinned=None) -> None:
         entries = data['checkpoints']
         if len(entries) <= RETENTION:
             return
-        keep, drop = entries[-RETENTION:], entries[:-RETENTION]
+        candidates = [e for e in entries if e['checkpoint']['id'] != pinned]
+        drop = candidates[:len(entries) - RETENTION]
+        keep = [e for e in entries if e not in drop]
         for entry in drop:
             checkpoint_id = entry['checkpoint']['id']
             try:
@@ -566,21 +574,27 @@ class CheckpointService:
             'preview_hash': preview_hash,
             'changes': [c for c in plan['changes'] if c['status'] != 'unchanged'],
         })
-        # Revalidate immediately before the effect (grant prompts can take time).
         binding = self._binding(sid)
-        if self._plan(binding, self._entry(binding, checkpoint_id))['preview_hash'] != preview_hash:
-            raise CheckpointError(409, 'Workspace changed during authorization')
-        safety = self._snapshot(binding, f'pre-restore {entry["checkpoint"]["label"]}'[:MAX_LABEL],
-                                kind='safety')
-        self._apply(binding, entry)
         with self._lock(binding):
+            current = self._current_hashes(binding, entry)
+            if self._plan(binding, self._entry(binding, checkpoint_id))['preview_hash'] != preview_hash:
+                raise CheckpointError(409, 'Workspace changed during authorization')
+            _, _, available, _ = self._collect(binding, self._repository_root(binding))
+            if any(digest is not None and available.get(path) != digest
+                   for path, digest in current.items()):
+                raise CheckpointError(409, 'Restore requires a recoverable safety copy of every target')
+            safety = self._snapshot(binding, f'pre-restore {entry["checkpoint"]["label"]}'[:MAX_LABEL],
+                                    kind='safety', pinned=checkpoint_id)
+            if self._current_hashes(binding, entry) != current:
+                raise CheckpointError(409, 'Workspace changed during safety capture')
+            self._apply(binding, entry, current=current)
             data = self._read_metadata(binding)
             data['revision'] = int(data['revision']) + 1
             self._write_metadata(binding, data)
         return {'version': 1, 'checkpoint_id': entry['checkpoint']['id'],
                 'safety_checkpoint_id': safety.id, 'status': 'restored'}
 
-    def _apply(self, binding, entry) -> None:
+    def _apply(self, binding, entry, *, current=None) -> None:
         root = Path(binding.root_path)
         ref = f'{REF_PREFIX}{entry["checkpoint"]["id"]}'
         restored = 0
@@ -601,6 +615,15 @@ class CheckpointService:
                 raise
             except OSError:
                 raise CheckpointError(503, 'Checkpoint file could not be restored') from None
+            # Recheck after the Git subprocess, which is an external scheduling gap.
+            target = self._safe_path(binding, path)
+            if current is not None:
+                observed = _hash_bytes(target.read_bytes()) if target.is_file() else None
+                if observed != current[path]:
+                    raise CheckpointError(409, 'Restore target changed after approval')
+            if os.name != 'nt':
+                self._replace_at_root(binding, path, data, current)
+                continue
             handle, tmp = tempfile.mkstemp(dir=str(parent), prefix='.ckpt-', suffix='.tmp')
             try:
                 with os.fdopen(handle, 'wb') as stream:
@@ -612,6 +635,47 @@ class CheckpointService:
             finally:
                 if os.path.exists(tmp):
                     os.unlink(tmp)
+
+    def _replace_at_root(self, binding, path, data, current):
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        fd = os.open(binding.root_path, flags)
+        temporary = '.ckpt-' + uuid.uuid4().hex
+        try:
+            info = os.fstat(fd)
+            if (info.st_dev, info.st_ino) != binding.root_identity:
+                raise CheckpointError(409, 'Workspace root changed')
+            parts = Path(path).parts
+            for component in parts[:-1]:
+                try:
+                    next_fd = os.open(component, flags, dir_fd=fd)
+                except FileNotFoundError:
+                    os.mkdir(component, dir_fd=fd)
+                    next_fd = os.open(component, flags, dir_fd=fd)
+                os.close(fd)
+                fd = next_fd
+            if current is not None:
+                try:
+                    source = os.open(parts[-1], os.O_RDONLY | os.O_NOFOLLOW, dir_fd=fd)
+                except FileNotFoundError:
+                    digest = None
+                else:
+                    with os.fdopen(source, 'rb') as stream:
+                        digest = _hash_bytes(stream.read(MAX_FILE_BYTES + 1))
+                if digest != current[path]:
+                    raise CheckpointError(409, 'Restore target changed after approval')
+            handle = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                             0o600, dir_fd=fd)
+            with os.fdopen(handle, 'wb') as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, parts[-1], src_dir_fd=fd, dst_dir_fd=fd)
+        finally:
+            try:
+                os.unlink(temporary, dir_fd=fd)
+            except FileNotFoundError:
+                pass
+            os.close(fd)
 
     def delete(self, sid: str, checkpoint_id: str) -> None:
         binding = self._binding(sid)
