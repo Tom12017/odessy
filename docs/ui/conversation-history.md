@@ -78,7 +78,7 @@ on restart; they were never claimed as saved.
 ## Extension and deletion lifecycle
 
 * `ConversationStore.connection()` — serialized extension migration/access after core
-  setup; The context subsystem owns `context_*`, `memory_*`, `retrieval_*` tables and versions them in
+  setup; the context subsystem owns `context_*`, `memory_*`, `retrieval_*` tables and versions them in
   `schema_extensions`.
 * `ConversationService.register_before_delete(callback)` — derived summaries,
   search/context-use data and citations are invalidated before a conversation's rows

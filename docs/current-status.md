@@ -11,10 +11,10 @@ The reviewed feature tip was `b89361b58b4aa0da8efb3b313eaac89dd2ccdcb8`.
 Required hosted jobs passed on that PR head; the last CodeRabbit check was cancelled.
 That is not a claim that every review finding is resolved.
 
-At documentation preparation the local checkout was still `80f2580`. This
-documentation-only update does not pull or merge production code. If your source
-lacks the modules described here, inspect `git log -1` and synchronize your branch
-through your normal review workflow. Do not assume documentation enables a feature.
+The local develop integration combines this implementation with the refreshed
+developer-preview documentation. Earlier `80f2580` source lacked these modules;
+check your actual source revision when diagnosing an unavailable feature.
+Documentation alone does not enable a runtime capability.
 
 `v0.5.0-alpha` is the intended next preview label, not a claim that an artifact
 has been published. The older `v0.5.0-unstable` release remains a separate snapshot.

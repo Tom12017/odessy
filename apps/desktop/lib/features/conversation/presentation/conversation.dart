@@ -1,3 +1,5 @@
+import 'package:odessy_client/odessy_client.dart'
+    show AccessMode, WorkspaceAttachmentApi;
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +9,6 @@ import '../../../widgets/pixel_boat.dart';
 import '../controllers/voice_controller.dart';
 import 'interaction_card.dart';
 import 'message_content.dart';
-import 'session_activity.dart';
 import '../../workspaces/controllers/workspace_inspector_controller.dart';
 
 class ConversationPage extends StatefulWidget {
@@ -19,7 +20,15 @@ class ConversationPage extends StatefulWidget {
       this.voice,
       this.draftController,
       this.onOpenModels,
-      this.onOpenInspector});
+      this.onOpenInspector,
+      this.accessMode,
+      this.accessModeDescription,
+      this.supportedAccessModes = const [],
+      this.onAccessModeChanged});
+  final AccessMode? accessMode;
+  final String? accessModeDescription;
+  final List<AccessMode> supportedAccessModes;
+  final ValueChanged<AccessMode>? onAccessModeChanged;
   final DesktopSession controller;
   final WorkspaceInspectorController? inspector;
   final ReadinessController? readiness;
@@ -34,7 +43,7 @@ class ConversationPage extends StatefulWidget {
 class _ConversationPageState extends State<ConversationPage> {
   late TextEditingController input;
   final scroll = ScrollController();
-  bool submitting = false, showLatest = false, showVoiceOptions = false;
+  bool submitting = false, showLatest = false;
   Object? contentStamp;
   int scrollEpoch = 0;
   late VoiceController voice;
@@ -166,7 +175,11 @@ class _ConversationPageState extends State<ConversationPage> {
           !c.connected) {
         return;
       }
-      if (await c.send(contextText.isEmpty ? text : '$text\n\n$contextText')) {
+      final accepted = attachments.isNotEmpty && api is WorkspaceAttachmentApi
+          ? await c.sendAttachments(
+              text, attachments.map((a) => a.file).toList())
+          : await c.send(contextText.isEmpty ? text : '$text\n\n$contextText');
+      if (accepted) {
         for (final attachment in attachments) {
           if (owner!.attachments
               .any((current) => identical(current, attachment))) {
@@ -220,16 +233,14 @@ class _ConversationPageState extends State<ConversationPage> {
                       children: [
                     Semantics(
                         header: true,
-                        child: Text('odessy / assistant',
+                        child: Text(
+                            widget.controller.busy &&
+                                    widget.controller.session == null
+                                ? 'Connecting'
+                                : widget.controller.connected
+                                    ? 'Connected'
+                                    : 'Offline',
                             style: Theme.of(context).textTheme.bodySmall)),
-                    Text(
-                        widget.controller.busy &&
-                                widget.controller.session == null
-                            ? 'Connecting'
-                            : widget.controller.connected
-                                ? 'Connected'
-                                : 'Offline',
-                        style: Theme.of(context).textTheme.bodySmall),
                     if (widget.controller.session?.running == true &&
                         widget.controller.session?.activeProfile != null)
                       Text(
@@ -322,18 +333,6 @@ class _ConversationPageState extends State<ConversationPage> {
         _welcome(context),
       for (final message in s?.messages ?? [])
         _content(_message(context, message.role, message.text)),
-      if (s != null && s.events.isNotEmpty)
-        _content(Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-                border: Border.all(color: Theme.of(context).dividerColor),
-                borderRadius: BorderRadius.circular(10)),
-            child: SessionActivity(
-                events: s.events,
-                showUsage: false,
-                onOpenOutput: widget.onOpenInspector == null
-                    ? null
-                    : () => widget.onOpenInspector!(InspectorPanel.terminal)))),
       for (final entry in s?.pending ?? [])
         _content(InteractionCard(
             key: ValueKey(entry['id']),
@@ -514,20 +513,21 @@ class _ConversationPageState extends State<ConversationPage> {
             Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                child: Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      Icon(Icons.folder_outlined,
-                          size: 16, color: scheme.secondary),
-                      Text(
+                child: Row(children: [
+                  Icon(Icons.folder_outlined,
+                      size: 16, color: scheme.secondary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text(
                           widget.readiness?.current?.configuration?.workspace ??
                               'Workspace not reported',
-                          style: Theme.of(context).textTheme.bodySmall),
-                      const Text('· Coordinator computer',
-                          style: TextStyle(fontSize: 11)),
-                    ])),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall)),
+                  if (!narrow)
+                    const Text('· Coordinator computer',
+                        style: TextStyle(fontSize: 11)),
+                ])),
             const Divider(height: 1),
             if (widget.inspector != null)
               ListenableBuilder(
@@ -553,7 +553,7 @@ class _ConversationPageState extends State<ConversationPage> {
                 child: TextField(
                     key: const Key('composer'),
                     controller: input,
-                    minLines: 2,
+                    minLines: narrow ? 1 : 2,
                     maxLines: narrow ? 3 : 5,
                     textInputAction: TextInputAction.newline,
                     enabled: c.connected &&
@@ -573,6 +573,50 @@ class _ConversationPageState extends State<ConversationPage> {
                 child: LayoutBuilder(builder: (context, box) {
                   final actions =
                       Row(mainAxisSize: MainAxisSize.min, children: [
+                    PopupMenuButton<String>(
+                        tooltip: 'Voice options',
+                        onSelected: (action) {
+                          if (action == 'refresh') {
+                            unawaited(voice.refresh());
+                          } else {
+                            unawaited(voice.command(action));
+                          }
+                        },
+                        itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                  value: 'refresh',
+                                  child: Text('Check voice availability')),
+                              if (voice.snapshot?.message.isNotEmpty == true)
+                                PopupMenuItem(
+                                    enabled: false,
+                                    child: Text(voice.snapshot!.message)),
+                              if (voice.supported) ...[
+                                PopupMenuItem(
+                                    value: voice.snapshot?.mode == 'wake'
+                                        ? 'disable_wake'
+                                        : 'enable_wake',
+                                    enabled: !voice.busy ||
+                                        voice.snapshot?.mode == 'wake',
+                                    child: Text(voice.snapshot?.mode == 'wake'
+                                        ? 'Stop wake listening'
+                                        : 'Enable wake listening on coordinator')),
+                                if (voice.snapshot?.mode != 'wake' &&
+                                    !voice.busy &&
+                                    !voice.recording) ...[
+                                  const PopupMenuItem(
+                                      value: 'test_input',
+                                      child: Text(
+                                          'Test speech input · no model call')),
+                                  const PopupMenuItem(
+                                      value: 'test_output',
+                                      child: Text('Test speech output')),
+                                ],
+                                const PopupMenuItem(
+                                    value: 'stop_playback',
+                                    child: Text('Stop playback')),
+                              ],
+                            ],
+                        icon: const Icon(Icons.keyboard_arrow_down, size: 18)),
                     IconButton(
                         tooltip: voice.recording
                             ? 'Finish recording and submit speech'
@@ -617,22 +661,56 @@ class _ConversationPageState extends State<ConversationPage> {
                               tooltip: 'Files · Output · Changes',
                               onPressed: () => widget.onOpenInspector!(),
                               icon: const Icon(Icons.attach_file, size: 20)),
-                        Tooltip(
-                            message:
-                                'Permissions are decided by the service. Opening a panel grants nothing.',
-                            child:
-                                Row(mainAxisSize: MainAxisSize.min, children: [
-                              Icon(Icons.shield_outlined,
-                                  size: 15, color: scheme.tertiary),
-                              const SizedBox(width: 6),
-                              const Flexible(
-                                  child: Text('Service permissions',
-                                      style: TextStyle(fontSize: 11)))
-                            ])),
+                        PopupMenuButton<AccessMode>(
+                            tooltip: widget.accessModeDescription ??
+                                'Service permissions',
+                            onSelected: widget.onAccessModeChanged,
+                            itemBuilder: (context) => [
+                                  for (final mode in AccessMode.values)
+                                    PopupMenuItem(
+                                        value: mode,
+                                        enabled: widget.onAccessModeChanged !=
+                                                null &&
+                                            (widget.supportedAccessModes
+                                                    .isEmpty ||
+                                                widget.supportedAccessModes
+                                                    .contains(mode)),
+                                        child: Text(_accessLabel(mode))),
+                                  if (widget.onAccessModeChanged == null)
+                                    const PopupMenuItem(
+                                        enabled: false,
+                                        child: Text(
+                                            'Service mode control is not available yet.')),
+                                  if (widget.accessModeDescription != null)
+                                    PopupMenuItem(
+                                        enabled: false,
+                                        child: Text(
+                                            widget.accessModeDescription!)),
+                                ],
+                            child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 12),
+                                child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.shield_outlined,
+                                          size: 16),
+                                      const SizedBox(width: 6),
+                                      Flexible(
+                                          child: Text(
+                                              widget.accessMode == null
+                                                  ? 'Service permissions'
+                                                  : _accessLabel(
+                                                      widget.accessMode!),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                  fontSize: 11))),
+                                      const Icon(Icons.expand_more, size: 16),
+                                    ]))),
                       ]);
-                  final model = SizedBox(
-                      width: box.maxWidth < 420 ? box.maxWidth : 180,
-                      child: _modelPicker(context));
+                  final model =
+                      SizedBox(width: 180, child: _modelPicker(context));
                   if (box.maxWidth < 500 ||
                       MediaQuery.textScalerOf(context).scale(14) > 20) {
                     return Column(
@@ -640,9 +718,10 @@ class _ConversationPageState extends State<ConversationPage> {
                         children: [
                           contextControls,
                           const SizedBox(height: 6),
-                          model,
-                          Align(
-                              alignment: Alignment.centerRight, child: actions)
+                          Row(children: [
+                            Expanded(child: _modelPicker(context)),
+                            actions
+                          ])
                         ]);
                   }
                   return Row(children: [
@@ -654,15 +733,16 @@ class _ConversationPageState extends State<ConversationPage> {
                 })),
           ])),
       const SizedBox(height: 8),
-      if (c.route.isNotEmpty)
+      if (c.route.isNotEmpty && !narrow)
         Text(c.route, style: Theme.of(context).textTheme.bodySmall),
       Wrap(spacing: 16, runSpacing: 4, children: [
         Text(c.status, style: Theme.of(context).textTheme.bodySmall),
-        Text(
-            running
-                ? 'Stop does not undo completed actions.'
-                : 'Enter to send · Shift+Enter for a new line',
-            style: Theme.of(context).textTheme.bodySmall),
+        if (!narrow)
+          Text(
+              running
+                  ? 'Stop does not undo completed actions.'
+                  : 'Enter to send · Shift+Enter for a new line',
+              style: Theme.of(context).textTheme.bodySmall),
         if (c.api.isDemo)
           Text('Demo · no model or tool executes',
               style: Theme.of(context).textTheme.bodySmall),
@@ -682,68 +762,25 @@ class _ConversationPageState extends State<ConversationPage> {
               liveRegion: true,
               child: Text('Audio: ${voice.snapshot!.state}',
                   style: Theme.of(context).textTheme.bodySmall)),
-        TextButton.icon(
-            style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 8)),
-            onPressed: () =>
-                setState(() => showVoiceOptions = !showVoiceOptions),
-            icon: Icon(showVoiceOptions ? Icons.expand_less : Icons.expand_more,
-                size: 18),
-            label: const Text('Voice options')),
-        if (!showVoiceOptions &&
-            voice.supported &&
-            voice.snapshot?.mode == 'wake')
+        if (voice.supported && voice.snapshot?.mode == 'wake')
           TextButton(
               onPressed: () => voice.command('disable_wake'),
               child: const Text('Stop wake listening')),
-        if (!showVoiceOptions &&
-            voice.supported &&
-            voice.snapshot?.state == 'speaking')
+        if (voice.supported && voice.snapshot?.state == 'speaking')
           TextButton(
               onPressed: () => voice.command('stop_playback'),
               child: const Text('Stop playback')),
       ]),
       if (voice.error.isNotEmpty)
         Semantics(liveRegion: true, child: Text(voice.error)),
-      if (showVoiceOptions) ...[
-        if (voice.snapshot?.message.isNotEmpty == true)
-          Text(voice.snapshot!.message,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        Wrap(spacing: 8, runSpacing: 4, children: [
-          TextButton(
-              onPressed: voice.refresh,
-              child: const Text('Check voice availability')),
-          if (voice.supported)
-            TextButton(
-                onPressed: voice.busy && voice.snapshot?.mode != 'wake'
-                    ? null
-                    : () => voice.command(voice.snapshot?.mode == 'wake'
-                        ? 'disable_wake'
-                        : 'enable_wake'),
-                child: Text(voice.snapshot?.mode == 'wake'
-                    ? 'Stop wake listening'
-                    : 'Enable wake listening on coordinator')),
-          if (voice.supported &&
-              voice.snapshot?.mode != 'wake' &&
-              !voice.busy &&
-              !voice.recording) ...[
-            TextButton(
-                onPressed: () => voice.command('test_input'),
-                child: const Text('Test speech input · no model call')),
-            TextButton(
-                onPressed: () => voice.command('test_output'),
-                child: const Text('Test speech output')),
-          ],
-          if (voice.supported)
-            TextButton(
-                onPressed: () => voice.command('stop_playback'),
-                child: const Text('Stop playback')),
-        ]),
-      ],
     ]);
   }
+
+  String _accessLabel(AccessMode mode) => switch (mode) {
+        AccessMode.ask => 'Ask every time',
+        AccessMode.auto => 'Approve for me',
+        AccessMode.full => 'Full control',
+      };
 
   Widget _welcome(BuildContext context) => _content(Padding(
       padding: const EdgeInsets.symmetric(vertical: 24),

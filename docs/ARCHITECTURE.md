@@ -37,7 +37,6 @@ Commands below are component entry points after
 | [`apps/desktop/`](../apps/desktop) | Dart/Flutter conversation, settings, interactions | In directory: `flutter pub get`, `flutter analyze`, `flutter test`; Windows build: `flutter build windows` | UI/accessibility contributors; UI is not execution authority |
 | [`packages/odessy_client/`](../packages/odessy_client) | Dart backend client and models | In directory: `dart pub get`, `dart analyze`, `dart test` | Client/API contributors; authentication needs maintainer review |
 | [`services/monitoring/`](../services/monitoring) | Go aggregation/internal API; optional, opt-in | In directory: `go build ./cmd/odessy-monitor`, `go test ./...` | Go/observability contributors; no execution authorization here |
-| [`benchmark/`](../benchmark) and [`evals/`](../evals) | Python component measurements and simulated execution evals | Root: `python -m benchmark --help`; `python -m pytest -q tests/test_benchmark_harness.py tests/test_evals.py` | Measurement/fixture contributors; evals are not hardware qualification |
 | [`docs/`](.) | Markdown/MDX guidance and evidence | Resolve links; verify commands against workflows | Good starting point for newcomers |
 
 Credential storage and OS keyring integration, including
@@ -47,7 +46,7 @@ Read component-local `AGENTS.md` instructions before editing desktop/client code
 
 **Evidence:** [runtime overview](../README.md),
 [approval](reference/permissions.mdx#approval),
-[pairing qualification](../legacy/qualification/2026-10-23-interactions-and-pairing.md),
+[current pairing scope](reference/host-pairing.mdx),
 [monitoring status](monitoring/README.md), [release limits](current-status.md).
 No MCU execution capability, complete sandbox or reliable voice is implied.
 

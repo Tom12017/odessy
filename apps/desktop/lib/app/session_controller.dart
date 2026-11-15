@@ -258,6 +258,17 @@ class DesktopSession extends ChangeNotifier {
 
   Future<bool> send(String text) =>
       command((sid) => api.send(sid, text.trim()), requireIdle: true);
+  Future<bool> sendAttachments(
+          String text, List<WorkspaceTextFile> attachments) =>
+      command((sid) async {
+        final transport = api;
+        if (transport is! WorkspaceAttachmentApi) {
+          throw StateError(
+              'This connection cannot admit reviewed file attachments.');
+        }
+        await (transport as WorkspaceAttachmentApi)
+            .sendWithAttachments(sid, text.trim(), attachments);
+      }, requireIdle: true);
   Future<void> stop() async {
     if (stopping || !connected || session == null) return;
     final transport = api;
@@ -453,7 +464,7 @@ class DesktopSession extends ChangeNotifier {
   }
 
   /// Select a live session without replay, creation or deletion.
-  Future<bool> resumeSession(String sid) async {
+  Future<bool> resumeSession(String sid, {bool takeOwnership = false}) async {
     if (_disposed ||
         busy ||
         stopping ||
@@ -461,7 +472,10 @@ class DesktopSession extends ChangeNotifier {
         session?.running == true) {
       return false;
     }
-    if (sid == session?.id) return true;
+    if (sid == session?.id) {
+      if (takeOwnership) _ownedSessions.add(sid);
+      return true;
+    }
     final transport = api, epoch = _epoch;
     busy = true;
     error = '';
@@ -486,6 +500,7 @@ class DesktopSession extends ChangeNotifier {
       await _subscription?.cancel();
       if (_disposed || !identical(transport, api)) return false;
       session = fresh;
+      if (takeOwnership) _ownedSessions.add(sid);
       profiles = available;
       connected = true;
       error = '';

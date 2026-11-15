@@ -4,7 +4,7 @@ The authoritative list of capability Odessy **declares** and does not **implemen
 Referenced by `odessy/execution/__init__.py` and `odessy/devices/__init__.py`.
 
 Baseline: the released **v0.3.0 private prerelease**. Unfinished capabilities and
-design decisions below move to the [v0.4.0 cycle](../../legacy/releases/v0.4.0.md), subject
+design decisions below move to the [current support and limits](../current-status.md), subject
 to their prerequisites; they are not promised implementations.
 
 ## Why this document exists

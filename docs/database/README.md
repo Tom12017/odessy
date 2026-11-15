@@ -14,7 +14,7 @@ Reviewed November 15, 2026; see the [source baseline](../current-status.md).
 | `develop` at `80f2580` | JSON session records and `.bak` files | Application session identity, queued/settled turn state and bounded client-visible history (`application/durable.py`) |
 | Merged PR #67 implementation (`b89361b`, merged to develop) | `conversations.sqlite3` | Durable projects, conversations, message/activity records, search, explicit memory and indexed documents |
 
-**PR #67 is merged into remote develop at `3a52fcc`; the local `80f2580` checkout predates it.** This documentation-only update does not synchronize source or enable features. Runtime-owned Harness history remains separate. Saved history alone does not establish that an engine can continue a conversation; the PR explicitly advertises Custom continuation and Harness history-only behavior.
+**PR #67 is integrated into develop.** The `80f2580` rows above identify the earlier storage baseline; current develop also contains the conversation SQLite implementation. Check the actual running service/profile before diagnosing history. Runtime-owned Harness history remains separate. Saved history alone does not establish that an engine can continue a conversation; the PR explicitly advertises Custom continuation and Harness history-only behavior.
 
 ## What SQL does
 

@@ -62,7 +62,7 @@ remain outstanding. Optional Go component inclusion and the Windows Flutter buil
 are verified; they do not establish final packaged acceptance. No per-host daemon
 is introduced.
 
-See [API and UI handoff](api.md) and [qualification evidence](../../legacy/monitoring/qualification.md).
+See [API and UI handoff](api.md) and [monitoring scope](README.md).
 
 ## Desktop panel
 

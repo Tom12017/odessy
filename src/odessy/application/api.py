@@ -109,8 +109,8 @@ def _factory_runtime_keyword(factory):
 
 
 def create_app(controller_factory, *, config=None, settings=None, jobs=None, token=None,
-               config_path=None, profiles=None, monitoring=None,
-               runtime_configuration=None, desktop_voice=None, usage_history=None):
+               config_path=None, profiles=None, monitoring=None, runtime_configuration=None, desktop_voice=None,
+               usage_history=None, agent_basics=None, conversations_enabled=False):
     """Build an app; the caller owns loopback-only binding and displaying its token."""
     try:
         from fastapi import FastAPI, Request, HTTPException
@@ -151,6 +151,8 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
             await monitoring.close()
         for controller in tuple(sessions.values()):
             await controller.close()
+        if conversations_enabled:
+            app.state.conversations.store.close()
         if jobs is not None:
             await jobs.close()
         zeroconf = getattr(app.state, 'zeroconf', None)
@@ -368,12 +370,33 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
         return sessions[sid]
 
     def snapshot(controller):
-        return controller.public_snapshot()
+        value = controller.public_snapshot()
+        if getattr(controller, '_conversation_id', None):
+            value['conversation_id'] = controller._conversation_id
+        return value
+
+    # Optional additive feature modules share existing authentication and live
+    # session ownership. No new route or capability is enabled by default.
+    if agent_basics is not None:
+        from .agent_basics import AgentBasics, BasicsDependencies
+        if not isinstance(agent_basics, AgentBasics):
+            raise TypeError('agent_basics must be AgentBasics')
+        app.state.agent_basics = agent_basics
+        agent_basics.mount(app, BasicsDependencies(app.state.service_instance_id, find))
+
+    # Optional persistent composition: the normal serve entry enables it, tests
+    # and embedders retain the historical transient default unless requested.
+    if conversations_enabled:
+        from .basics_integration import PersistentComposition
+        composition = PersistentComposition(app, find, controller_factory,
+                                            config_path=config_path)
+        app.state.basics_composition = composition
 
     async def make_controller(restore=None, runtime=None):
         nonlocal pending_admissions
         admission_open()
         pending_admissions += 1
+        controller = None
         try:
             try:
                 runtime_keyword = _factory_runtime_keyword(controller_factory)
@@ -396,7 +419,8 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
                 else:
                     controller = controller_factory()
                 if inspect.isawaitable(controller):
-                    controller = await controller
+                    pending_controller, controller = controller, None
+                    controller = await pending_controller
                 controller._workspace_inspector = workspace_inspector
                 if restore is not None:
                     # An explicit restore is answered now: either the runtime still has this
@@ -434,11 +458,36 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
                 if not isinstance(exc.__cause__, CloudModelConfigError):
                     raise
                 raise HTTPException(503, public(str(exc.__cause__))) from exc
+            admission_open()
             if monitoring is not None and hasattr(monitoring, 'attach'):
                 await monitoring.attach(controller)
+            admission_open()
             return controller
+        except BaseException:
+            if controller is not None:
+                await controller.close()
+            raise
         finally:
             pending_admissions -= 1
+
+    if conversations_enabled:
+        composition.resume_allowed = admission_open
+        composition.factory = make_controller
+
+        @app.post('/v1/conversations/{cid}/bind-workspace')
+        async def bind_saved_workspace(cid: str, request: Request):
+            from .conversations.store import StorageError
+            data = await body(request)
+            if set(data) != {'session_id', 'service_instance_id', 'expected_revision'}:
+                raise HTTPException(400, 'Exact session, service and revision fields are required')
+            if not isinstance(data['session_id'], str):
+                raise HTTPException(400, 'session_id must be a string')
+            try:
+                return composition.bind_workspace(cid, **data)
+            except StorageError as exc:
+                raise HTTPException(exc.status, {'code': exc.code, 'message': str(exc)}) from None
+            except InspectorError as exc:
+                raise HTTPException(exc.status, str(exc)) from None
 
     @app.get('/', response_class=HTMLResponse)
     async def diagnostic():
@@ -969,6 +1018,13 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
         finally:
             if restore is not None:
                 opening.discard(restore)
+        controller._workspace_inspector = workspace_inspector
+        if conversations_enabled:
+            try:
+                composition.attach(controller)
+            except BaseException:
+                await controller.close()
+                raise
         sessions[controller.id] = controller
         return snapshot(controller)
 
@@ -1021,6 +1077,47 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
     async def start_turn(sid: str, request: Request):
         controller = find(sid)
         data = await body(request)
+        attachments = data.get('attachments', [])
+        if not isinstance(attachments, list) or len(attachments) > 16:
+            raise HTTPException(400, 'At most 16 reviewed workspace attachments are allowed')
+        verified, parts, total = [], [], 0
+        attachment_binding = None
+        if attachments:
+            try:
+                attachment_binding = workspace_inspector.binding(sid)
+            except InspectorError as exc:
+                raise HTTPException(exc.status, str(exc)) from None
+        for attachment in attachments:
+            if (not isinstance(attachment, dict) or set(attachment) !=
+                    {'path', 'sha256', 'service_instance_id', 'workspace_id'}):
+                raise HTTPException(400, 'Exact reviewed attachment identity is required')
+            if not isinstance(attachment['path'], str):
+                raise HTTPException(400, 'Attachment path must be a string')
+            try:
+                fresh = await workspace_inspector.file(sid, attachment['path'])
+            except InspectorError as exc:
+                raise HTTPException(exc.status, str(exc)) from None
+            if any(attachment[key] != fresh[key] for key in attachment):
+                raise HTTPException(409, 'Attachment changed; reread and review before sending')
+            text = fresh['text']
+            part = (f"--- Workspace text: {fresh['path']} (sha256:{fresh['sha256']}) ---\n"
+                    f"{text}\n--- End workspace text ---")
+            total += len(part.encode('utf-8'))
+            if total > 32 * 1024:
+                raise HTTPException(413, 'Combined attachment context exceeds 32 KiB')
+            parts.append(part)
+            verified.append({'name': fresh['path'], 'size': len(text.encode('utf-8')),
+                             'media_type': 'text/plain'})
+        if parts:
+            try:
+                workspace_inspector.binding(sid, attachment_binding)
+            except InspectorError as exc:
+                raise HTTPException(exc.status, str(exc)) from None
+            if not isinstance(data.get('text'), str):
+                raise HTTPException(400, 'Nonempty text is required')
+            data['text'] += '\n\n' + '\n\n'.join(parts)
+        data['_verified_attachments'] = verified
+        data['_attachment_binding'] = attachment_binding
         if desktop_voice is not None and desktop_voice.owner==sid:
             if desktop_voice.wake is not None:await desktop_voice.typed(controller,True)
             else:await desktop_voice.cancel(controller)
@@ -1046,9 +1143,14 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
             # This turn's voice phases: the audio adapter marked capture and recognition;
             # the session marks the first engine text on the same object (prompt 13).
             settled = False
+            entered_controller = False
             controller.bind_turn_timing(timing)
             try:
-                result=await controller.run_turn(data['text'], participant=data.get('participant'), turn_id=turn_id, admitted_epoch=epoch)
+                if data.get('_verified_attachments'):
+                    workspace_inspector.binding(sid, data['_attachment_binding'])
+                extra = {'attachments': data['_verified_attachments']} if data.get('_verified_attachments') else {}
+                entered_controller = True
+                result=await controller.run_turn(data['text'], participant=data.get('participant'), turn_id=turn_id, admitted_epoch=epoch, **extra)
                 settled = True
                 if timing is not None:
                     # The committed answer is available now. Playback may take seconds;
@@ -1057,9 +1159,10 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
                 if spoken and desktop_voice is not None:
                     await desktop_voice.speak(controller,result.final_text)
                 return result.final_text
-            except (Exception, asyncio.CancelledError):
-                # Controller emits the public failure; retrieve the task exception.
-                pass
+            except (Exception, asyncio.CancelledError) as exc:
+                if not entered_controller:
+                    controller.emit('error', {'message': 'Turn admission authority changed', 'error_type': type(exc).__name__})
+                    controller._finish_turn(turn_id, 'failed')
             finally:
                 tasks.pop(sid, None)
                 if timing is not None:
