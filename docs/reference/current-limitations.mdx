@@ -8,13 +8,11 @@ content:
   type: "reference"
 ---
 
-**Potential risk — Linux installer payload builds:** The builder proposed in
-[PR #44](https://github.com/Trisoma/odessy/pull/44) tries the system `packaging`
-module and then pip's bundled copy to check setuptools. A debundled pip host
-without either importable parser may fail the build check; this environment has
-not been qualified. This is a build-host risk, not a confirmed failure of an
-installed application. As of November 4, 2026, PR #44 had not been merged into
-`develop`.
+**Developer Preview · v0.5.0-alpha**
+
+Use the [current support matrix](../current-status.md) for the maintained release baseline. The detailed isolation and egress constraints below remain applicable; historical test counts apply only to their dated snapshots.
+
+Windows checkpoint restore directory-handle race protection remains unresolved. Conditional local PTY availability is not workspace sandboxing. See [terminal and checkpoint limits](../ui/terminal-checkpoints.md).
 
 Configurable collaboration adds an authenticated loopback session API and coding jobs. It does not provide durable jobs, verified child-CLI confinement, mid-task model takeover, or hardware qualification. Coding-agent bills are outside the API budget. See [model collaboration](model-collaboration.mdx).
 
@@ -29,8 +27,7 @@ plugin loading or a consent exchange does not prove a child can execute safely.
 Unsupported Harness delegation must remain visibly refused. Existing supported legacy
 coordination is retained until its replacement is verified. This deferred scope does not
 block basic chat, streaming, reviewed tools or continued voice integration, and requires
-no user setup operation. Prompt 11's consultation slice is accepted; full coordination
-parity is not claimed. Prompt 12's application integration does not imply that parity.
+no user setup operation. Consultation and application integration do not imply full coordination parity.
 
 Keyboard input is available throughout an interactive voice session. The following
 October 22 verification figures are historical. Interactive voice commands share one controller and history with typed
@@ -46,7 +43,7 @@ independently reviewed as of October 22, 2026** on `feat/voice-user-interaction`
 through `3412025`; merged in `6d8b80b`. Real microphone echo
 behaviour and packaged-device acceptance remain unqualified. October 23 Jetson
 recorded-audio approval/clarification and live headset smoke checks passed; see
-[qualification](../qualification/2026-10-23-interactions-and-pairing.md).
+[qualification](../../legacy/qualification/2026-10-23-interactions-and-pairing.md).
 Spoken approval signals intent and does not authenticate identity. See
 [voice integration](voice-integration.mdx).
 
@@ -58,9 +55,7 @@ checks. See [cloud models](cloud-models.mdx).
 
 Odessy's authority boundary and isolation coverage depend on the host. Planned feature
 work is tracked in the
-[roadmap](../releases/v0.5.0.md): Flutter desktop, completed installer with
-optional model downloads/detection, Go multi-host monitoring and custom wake word
-are planned. LFM must not be a mandatory installer download; this requirement
+[roadmap](../ROADMAP.md). Flutter desktop, Windows setup and optional Go monitoring are implemented with scoped evidence; final candidate qualification and a custom wake word remain separate work. LFM must not be a mandatory installer download; this requirement
 does not describe the current prototype as fixed. MCU operations remain deferred,
 gate narrowing optional and optimization measurement-led. Wake listening, Auto,
 confirmation UX and batch follow-ups are included; recorded smoke tests
@@ -351,8 +346,7 @@ work:
    checks remains a policy-design question; write tools now exist.
 5. How confirmation is represented so the model cannot approve itself -- the model
    requests, an `EscalationApprover` decides, and a denied `danger-full-access` request
-   cannot fall back to a wider mode. In `feat/voice-user-interaction` development,
-   the shared controller combines ordinary confirmation with sandbox expansion.
+   cannot fall back to a wider mode. The shared controller combines ordinary confirmation with sandbox expansion.
    Medium-risk confirmation supports the exact spoken phrase; high-risk actions
    and all sandbox expansion require keyboard or authenticated UI. No spoken
    identity or replay-resistance assurance is claimed. Bounded clarification and

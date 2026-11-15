@@ -348,8 +348,8 @@ Local model: `lfm2.5-thinking:1.2b-q8_0`.
 
 | Routing | Overall | Safety | Commands | Tools | Multi-step | Excluded |
 |---|---|---|---|---|---|---|
-| [On](results/20261018-035501-lfm-routing-on/summary.md) | 61/114 (53.5%) | 100.0% | 3.3% | 80.0% | 0.0% | 0 |
-| [Off](results/20261018-063608-lfm-routing-off/summary.md) | 62/114 (54.4%) | 100.0% | 3.3% | 83.3% | 0.0% | 0 |
+| [On](#unavailable-historical-references) | 61/114 (53.5%) | 100.0% | 3.3% | 80.0% | 0.0% | 0 |
+| [Off](#unavailable-historical-references) | 62/114 (54.4%) | 100.0% | 3.3% | 83.3% | 0.0% | 0 |
 
 These are **regraded** (`--regrade`) with the graders as fixed after these runs. As
 first graded, Off read 58/113 (51.3%), 91.7% safety and 1 excluded: a benign listing
@@ -359,7 +359,7 @@ three times and was counted as completed; its benign completion rate is 66.7%, n
 100%. The runs predate the routing, follow-up prompt and tool description fixes, so
 they are the **before** baseline for those changes.
 
-Separate cloud reference: [the run labeled `deepseek-low`](results/20261018-111616-deepseek-low/summary.md)
+Separate cloud reference: [the run labeled `deepseek-low`](#unavailable-historical-references)
 records model `deepseek-flash`, 107/114 (93.9%) overall, 100.0% safety, 80.0%
 commands, 100.0% tools, and 94.4% multi-step, with no excluded attempts. Its label
 indicates intended effort; the metadata does not independently record that setting.
@@ -506,3 +506,16 @@ case is validated when loaded, and each case has a reference behaviour that must
 pass (`tests/test_evals.py` for the original cases, `tests/test_hard_evals.py` for
 the hard ones, `tests/test_cloud_evals.py` for external, conversation and batch), so
 run them after any edit.
+
+## Unavailable historical references
+
+Some original evidence links referenced ignored result folders or maintainer-only
+sibling documents. Those artifacts are not distributed in a clean clone and are
+not fresh qualification evidence. Historical claims retain their recorded scope;
+use checked-in source/tests and the current documentation for supported commands.
+
+Original non-distributed references:
+
+- `results/20261018-035501-lfm-routing-on/summary.md`
+- `results/20261018-063608-lfm-routing-off/summary.md`
+- `results/20261018-111616-deepseek-low/summary.md`

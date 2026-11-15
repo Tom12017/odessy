@@ -42,5 +42,5 @@ can still be a security issue; report it privately when unsure.
   most confinement backends are unavailable. Without Node.js, `terminal.run` is
   unconfined. Odessy is not a production network service.
 
-See [limitations](LIMITATION.md), [network setup](README.md#two-machine-setup-jetson--laptop)
+See [limitations](LIMITATION.md), [network setup](README.md)
 and [host pairing](docs/reference/host-pairing.mdx).

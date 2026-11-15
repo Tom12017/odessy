@@ -52,7 +52,7 @@ revision conflicts. It requires an explicit isolated test home and interpreter;
 it must never mutate a developer's real configuration.
 
 Provider-specific STT/TTS integration and execution verification belong to the
-teammate's separate task. This increment touches shared editor lifecycle, not
+separate provider/hardware acceptance work. This increment touches shared editor lifecycle, not
 provider adapters. No real provider, audio or model inference was performed.
 
 Follow-up implementation now supplies startup/saved comparison, field errors,

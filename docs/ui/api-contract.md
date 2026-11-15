@@ -273,3 +273,22 @@ Authentication references remain names of environment variables, never key value
 A section update cannot include another section's fields. Path checks do not execute
 providers. Portable role/platform restrictions and execution-host authority remain
 in force. A legacy or ambiguous installation is rejected rather than migrated.
+
+## Durable application modules
+
+The normal production service mounts these modules through `PersistentComposition`.
+They are distinct from process-local session discovery and usage telemetry.
+
+| Module | Route family / reference |
+| --- | --- |
+| Capability discovery | GET `/v1/agent-basics/capabilities` |
+| Projects and durable conversations | `/v1/projects`, `/v1/conversations`; [history semantics](conversation-history.md) |
+| Session access mode | GET/PUT `/v1/sessions/{sid}/access-mode`; [exact revision contract](access-modes.md) |
+| Prepared context | GET `/v1/conversations/{cid}/context`; [memory/retrieval ownership](context-memory-retrieval.md) |
+| Interactive local terminal | `/v1/sessions/{sid}/terminals`; [availability and approval](terminal-checkpoints.md) |
+| Checkpoints | `/v1/sessions/{sid}/checkpoints`, `/{id}/preview`, `/{id}/restore`; [restore limits](terminal-checkpoints.md) |
+
+Use the actual typed client and route schemas for each request. Service/session
+identity and revision conflicts must surface as errors, never optimistic authority
+or an automatic mutation retry. Unsupported engine/helper capabilities remain
+unavailable. Source declarations do not qualify an installed package.

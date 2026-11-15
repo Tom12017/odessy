@@ -1,7 +1,8 @@
 # Desktop ownership and contribution contract
 
-Release target: v0.5.0. Base UI work on `feat/flutter-desktop-preview` until the
-owner explicitly chooses integration into develop. Never merge/push automatically.
+Release target: v0.5.0-alpha (Developer Preview). Base new work on the current
+reviewed develop revision unless the owner assigns another integration branch.
+Do not revive the historical preview branch or merge/push automatically.
 
 ## Boundaries
 

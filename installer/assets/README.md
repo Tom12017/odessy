@@ -12,4 +12,3 @@ Rebuild the desktop and installer payload to distribute changed icons. This does
 not replace in-app Flutter branding. Linux launcher integration remains separate.
 `odessy-boat.ico` is the icon of the NSIS setup bootstrap built by
 `tool/windows_nsis.py`; the setup window itself is the Flutter application.
-

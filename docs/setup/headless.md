@@ -2,7 +2,7 @@
 
 This v0.5.0 feature configures **existing** components. It does not yet install
 Python/Node/Rust, download models, enroll peers, grant workspaces or install a
-background service. Flutter wizard/service/packaging integration is later work.
+background service. The separate Flutter setup wizard and installed-service lifecycle are documented in [installed setup](wizard.md); this CLI only plans and exports configuration.
 The command works without a model, microphone, display or optional voice libraries.
 
 ## Roles

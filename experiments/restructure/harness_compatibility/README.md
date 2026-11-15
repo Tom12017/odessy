@@ -1,3 +1,5 @@
+> **Historical record / implementation plan.** This records its original implementation scope, not current setup, runtime selection or release support. See [current status](../../../docs/current-status.md).
+
 # Harness compatibility spike (experiment)
 
 Non-production. Nothing in `src/odessy` imports this directory, no installer entry
@@ -125,5 +127,16 @@ $SPIKE\venv\Scripts\python.exe experiments\restructure\harness_compatibility\smo
   packaged yet; the production source of the bundle itself is the `odessy` package, and the
   production *client* for it lives in `src/odessy/runtime_backends/harness/bridge.py` (prompt 05),
   and both ends of the socket are bounded — see
-  [`../../../../restructure/doc/reports/05.md`](../../../../restructure/doc/reports/05.md).
+  [`../../../../restructure/doc/reports/05.md`](#unavailable-historical-references).
 | `smoke_p09.py` | The guarded tool pipeline on the pin: the model is offered Odessy's own MCP server and no built-in execution row, an allowed command really runs and its result names the confining provider, an unapproved write is refused and leaves no file, and a call that tries to choose its sandbox mode is refused |
+
+## Unavailable historical references
+
+Some original evidence links referenced ignored result folders or maintainer-only
+sibling documents. Those artifacts are not distributed in a clean clone and are
+not fresh qualification evidence. Historical claims retain their recorded scope;
+use checked-in source/tests and the current documentation for supported commands.
+
+Original non-distributed references:
+
+- `../../../../restructure/doc/reports/05.md`

@@ -62,11 +62,11 @@ remain outstanding. Optional Go component inclusion and the Windows Flutter buil
 are verified; they do not establish final packaged acceptance. No per-host daemon
 is introduced.
 
-See [API and UI handoff](api.md) and [qualification evidence](qualification.md).
+See [API and UI handoff](api.md) and [qualification evidence](../../legacy/monitoring/qualification.md).
 
 ## Desktop panel
 
-Open **Monitor** in the desktop sidebar. Connect through the cable button to the
+Open **Devices** and its monitoring view in the desktop. Connect through the cable button to the
 same authenticated Python service configured above. No additional token is needed
 for monitoring. Demo mode deliberately shows no fabricated telemetry.
 

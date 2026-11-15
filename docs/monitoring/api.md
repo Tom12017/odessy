@@ -1,8 +1,8 @@
-# Monitoring API / UI teammate handoff
+# Monitoring API
 
-Contract revision: `monitoring-v1`. Sources: `contracts/monitoring/`, outer
-`multihost-monitoring-codex-plan.md` section2, protected Dart
-`MonitoringClient` exported by `packages/odessy_client`.
+Contract revision: `monitoring-v1`. The checked-in schema lives in
+`contracts/monitoring/`; the typed Dart `MonitoringClient` is exported by
+`packages/odessy_client`. No external planning pack is required.
 
 | GET route | Result |
 | --- | --- |

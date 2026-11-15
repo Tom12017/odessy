@@ -78,15 +78,12 @@ unsaved-draft guarantee.
 
 ## Verification boundaries
 
-See the October 27 daily log and parent execution plan for final counts. Tests
-include source process A remaining A after B is saved, startup fingerprint rejection,
-authenticated restart admission, background-job refusal, stale observations, review
-merges, source writer kills before/after pointer activation and preservation of
-unowned locks. Common portable contracts are exercised with filesystem fixtures.
+Startup/saved fingerprints establish configuration identity, not model inference,
+audio readiness or credential validity. Contributor tests should cover stale
+observations, restart admission, active jobs, exact recovery reviews and preservation
+of unrelated locks/files. Filesystem fixtures do not establish native installer
+or hardware acceptance.
 
-Cloud credential entry remains **advanced preconfigured use**: the named environment
-variable must already be available to the desktop process. No GUI secret entry or
-durable OS vault is claimed. Real STT/TTS/provider integration remains the teammate's
-task; no paid inference or physical audio was run here. Native Computer Use was
-unavailable (pipe OS error 2). A Windows build and automated helper tests do not
-establish clean-machine packaged, Linux/macOS/ARM64 or physical-device acceptance.
+Provider secrets use the separate [credential flow](../setup/secure-model-credentials.md),
+including explicit session-only and approved OS-store choices. They are not stored
+in these configuration descriptors. See [current support](../current-status.md).

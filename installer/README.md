@@ -1,9 +1,11 @@
 # Odessy installation engine
 
-This package is the **shared Python installation engine** used by Odessy's shipping
-Windows installer. It is not a user-facing installer or window on its own.
+**Developer Preview · v0.5.0-alpha**
 
-The shipping installer is the Flutter desktop setup application, packaged as one native
+This package is the **shared Python installation engine** used by Odessy's implemented
+Windows setup path. It is not a user-facing installer or window on its own.
+
+The Windows setup application is the Flutter desktop setup application, packaged as one native
 setup executable:
 
 ```text
@@ -36,6 +38,9 @@ window in this package, and no PyInstaller build path. The former
 `installer/build/bootstrap.py` and `installer/windows.manifest` were removed once the
 Flutter path replaced them. `tool/audit_setup_artifact.py` refuses a payload that still
 carries them, so release packaging cannot silently select the removed wizard.
+
+A public artifact must be matched to its release manifest; implementation and prior
+installed receipts do not qualify the final merged source. See [release status](../docs/current-status.md).
 
 ## What this package installs
 

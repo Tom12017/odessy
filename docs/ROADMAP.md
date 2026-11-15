@@ -1,25 +1,24 @@
 # Contributor roadmap
 
-> DRAFT — status map for v0.5.0-unstable, not release commitments.
-> “Tested” means the scoped observations cited below, not all combinations.
+**Developer Preview · v0.5.0-alpha**
 
-| Works today (tested) | Experimental | Planned |
-|---|---|---|
-| Windows 11 x64 source-preview CLI and Flutter chat with configured local/cloud models [1] | Linux x86_64 source use; CI coverage is not native packaging acceptance [1] | Completed onboarding and role-aware installer/wizard [2] |
-| Policy-controlled tools with approve/reject, Stop and audit log on the recorded Windows path [1] | Jetson Orin Nano 4GB, headless/cloud recommended; local-model memory reliability unresolved [1,3] | Qualified cross-platform packages, signing and broader hardware measurements [2] |
-| `python -m odessy doctor` diagnostics [1] | Voice: fake-model audio smoke and recorded-WAV checks exist; physical echo and extended wake metrics remain incomplete [3,4] | Custom Odessy wake word and GitHub Pages documentation deployment [2] |
-| Historical Windows–Jetson mTLS file-read, wrong-grant/fingerprint refusal and session revocation smoke checks [4] | Split/LAN workflows as a whole; plaintext LAN executor only on trusted links [1] | Finished Go monitoring milestone, including durable-history and broader qualification work [2,5] |
-| Shared interaction regressions and scoped recorded-WAV approval/refusal checks [4] | Rust telemetry → Go → Python → Dart integration checkpoint; monitoring is not supported/shipped [2,5] | Measurements on additional GPUs before any new support claim [1] |
+This roadmap identifies useful next work, not promised release dates. Check the
+[support matrix](current-status.md) for implemented behavior and evidence limits.
 
-Sources:
+| Area | Implemented foundation | Next useful contribution |
+| --- | --- | --- |
+| Desktop | Production projects/recent sidebar, inspector, retained Activity & usage/Jobs/Handoffs, eight settings groups | Focused accessibility, narrow-layout and error-state improvements backed by tests |
+| History | SQLite projects/events/search/export and Custom restart continuation | Profile migration/restore and continuation regression coverage |
+| Permissions | Existing policy, explicit grants and revision-bound Custom access modes | Boundary tests; no broadening authority as a UI convenience |
+| Context | Explicit memory and opt-in lexical document retrieval | Source-validation, budget and citation regression coverage |
+| Terminal/checkpoints | Conditional local Windows PTY and Git text checkpoints | Resolve Windows restore path-race safety before widening use; qualify native closure |
+| Installation | Role-aware Windows setup and versioned maintenance | One coherent final-candidate acceptance run, clean-machine evidence and signing |
+| Monitoring | Optional Go history/aggregation, local/paired telemetry and read-only SSH | Direction-specific device evidence and honest freshness diagnostics |
+| Voice/providers | Existing adapters and scoped audio evidence | Reproducible provider/device compatibility and acoustic interruption tests |
+| Platforms | Windows primary; Linux source/CI | Native Linux package/GUI evidence; no unsupported parity claim |
 
-1. [Release notes](releases/v0.5.0-unstable-notes.md) and [README support matrix](../README.md).
-2. [v0.5.0 planning](releases/v0.5.0.md); historical plans are not completion claims.
-3. [Jetson qualification, October 23](qualification/2026-10-23-jetson.md).
-4. [Interactions/pairing qualification, October 23](qualification/2026-10-23-interactions-and-pairing.md).
-5. [Monitoring qualification ledger](monitoring/qualification.md).
-
-No minimum hardware specification is established. macOS is untested/unsupported;
-MCU control is not shipped. Voice assets need separate downloads and license review.
-Historical tests do not sign off the current release commit. See
-[starter drafts](contributor-issues.md) for proposed work, not opened GitHub issues.
+Contributors can start with [setup and checks](../CONTRIBUTING.md), inspect
+[open issues](https://github.com/Trisoma/odessy/issues), and propose one bounded
+improvement with an acceptance test. Security-sensitive restoration, grants and
+runtime dispatch need maintainer review. MCU support, a custom wake word,
+automatic updating and full Harness coordination parity are not current guarantees.

@@ -10,7 +10,7 @@ apps/desktop/                    Flutter app and native platform runners
   lib/app/                      composition, connection, session lifecycle
   lib/features/<feature>/
     controllers/                protected state and validated commands
-    presentation/               teammate-owned views
+    presentation/               feature views
   lib/widgets/                  reusable presentation primitives
   test/                         controller, widget, visual and architecture checks
 packages/odessy_client/          pure Dart HTTP/SSE contracts and credentials seam
@@ -29,10 +29,9 @@ No provider credentials, policy engine, model loop or trust registry moves to Da
 
 Architecture tests and CI are local/repository checks, not an authorization system.
 The owner must configure GitHub branch protection to require the desktop check and
-review before merging teammate PRs. Protected paths are listed in AGENTS.md;
+review before merging contributor PRs. Protected paths are listed in AGENTS.md;
 no fictional CODEOWNERS username or enforced branch rule is claimed.
 
-Teammate branches start from `origin/feat/flutter-desktop-preview`; PR base is
-`feat/flutter-desktop-preview` until the owner integrates v0.5.0. Submit small
+New contributor branches start from current reviewed `develop`; target `develop` through a focused pull request. Historical preview-branch instructions no longer apply. Submit small
 feature PRs with tests and screenshots. A missing API is a contract request, not
 permission to edit host files, call providers, or invent successful live responses.

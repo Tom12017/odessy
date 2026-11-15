@@ -225,6 +225,6 @@ those integration tests are explicitly skipped.
 
 Headless offline bootstrap, per-user service commands and conservative
 repair/rollback/uninstall are also available outside the GUI. See
-[native lifecycle](native-lifecycle.md). Windows is the only packaged platform in
+[native lifecycle](../../legacy/setup/native-lifecycle.md). Windows is the only packaged platform in
 this repository; Linux/macOS builds, OS service permission and real-device
 acceptance remain qualification gates.

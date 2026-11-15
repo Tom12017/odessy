@@ -178,7 +178,7 @@ ICMP. In the cable trial, Jetson's ARP entry was REACHABLE despite ping loss.
 
 For an approved request followed by a connection failure, check Python/Node firewall
 permissions and that sharing is still running. Do not copy tokens or disable
-authorization as a workaround. See [failure history](../../../docs/failures/failure-007-pairing-integration-and-discovery.md).
+authorization as a workaround. See [failure history](#unavailable-historical-references).
 
 ## Other coordinator and execution-host combinations
 
@@ -188,3 +188,14 @@ native Python/Node runtimes, addresses and workspace paths. That is a portabilit
 expectation, not recorded native acceptance for every OS or architecture. Windows
 and ARM64 preview builds, automated local integration, and the human observations
 above must not be presented as a completed cross-platform or clean-machine release.
+
+## Unavailable historical references
+
+Some original evidence links referenced ignored result folders or maintainer-only
+sibling documents. Those artifacts are not distributed in a clean clone and are
+not fresh qualification evidence. Historical claims retain their recorded scope;
+use checked-in source/tests and the current documentation for supported commands.
+
+Original non-distributed references:
+
+- `../../../docs/failures/failure-007-pairing-integration-and-discovery.md`

@@ -1,5 +1,9 @@
 # Contributing to Odessy
 
+**Developer Preview · v0.5.0-alpha**
+
+Start with [Getting started](docs/getting-started.md), the [support matrix](docs/current-status.md) and [document index](docs/README.md).
+
 > A short story of this project in [Story](Story.md)
 
 Welcome aboard! ⛵ Thank you for helping improve Odessy. Bug reports, focused fixes,
@@ -8,7 +12,7 @@ This guide explains where to start, how to set up your environment, and what to
 include when submitting a change.
 
 For an overview of the project, start with the [README](README.md). Architecture
-and component documentation live in [docs/](docs/).
+and component documentation start at the [documentation index](docs/README.md).
 
 ## Choose where to start
 

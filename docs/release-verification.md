@@ -1,0 +1,31 @@
+# Release verification
+
+**Developer Preview · v0.5.0-alpha**
+
+Prepare one coherent candidate; do not combine older binaries with newer source.
+
+1. Record commit, dirty paths/source hashes, platform, architecture, dependency
+   locks, package inventory and optional helper/native closure.
+2. Run affected Python, Dart/Flutter, Node, Rust and Go checks using the existing
+   workflows. Record failures/skips and whether a test is a fixture or native run.
+3. Build Python, desktop, helper and installer artifacts from that same source;
+   audit hashes, ABI, required resources and licenses with existing release tools.
+4. Use an isolated install root/profile for install/update/maintenance checks.
+   Preserve settings, history, user files and credential/grant references. Never
+   substitute fixture credentials for real secure-vault qualification.
+5. Verify authenticated production connection, required Custom continuation,
+   read-only Harness restart history, stale/revoked approvals and helper shutdown.
+6. Resolve safety findings or disable affected capabilities. Windows checkpoint
+   restore path-race protection remains an open gate in the recorded baseline.
+7. Record matching screenshots/native executable identity, then obtain human
+   visual acceptance. Signing, hosted CI, provider/hardware evidence and publication
+   are separately recorded, never implied by a local passing test.
+
+Existing entry points: `tool/build_setup_bundle.py`,
+`tool/audit_setup_artifact.py`, `tool/package_native_setup.py` and
+`tool/windows_nsis.py`. Read their `--help` and [installer guide](../installer/README.md)
+for exact build inputs; do not run a historical maintainer-specific command blindly.
+
+The [gallery manifest](view/verification/manifest.json) describes its recorded
+snapshot, not every later commit. Earlier installed receipts remain useful
+evidence but cannot certify a candidate rebuilt after merge/review fixes.

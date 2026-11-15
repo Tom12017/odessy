@@ -1,18 +1,20 @@
-# UI gallery capture
+# Screenshot provenance
 
-Production Flutter widget renderer, authenticated real local Python service and deterministic provider output. The production UI source is unchanged by this gallery update. Only its existing capture test was extended to visit all settings and navigation pages.
+The [screen gallery](../README.md) contains 30 recorded production renders:
+29 connected views with deterministic provider output and one native Windows
+settings window. The images cover conversation/history, navigation, workspace
+panels and all eight settings groups. No new images were captured by this cleanup.
 
-From `apps/desktop`, select an existing compatible Python and installed dependency site directory:
+`manifest.json` preserves the recorded image hashes, source/build identities and
+fixture/provider scope. Its capture snapshot predates subsequent merge/review
+fixes, so the gallery is a visual reference, not final package qualification.
 
-```powershell
-$env:ODESSY_PREFLIGHT_PYTHON = '<existing Windows Python executable>'
-$env:ODESSY_PREFLIGHT_SITE = '<existing compatible site-packages directory>'
-$env:ODESSY_07_CAPTURE_DIR = '<temporary capture output directory>'
-flutter test --no-pub --reporter expanded test/agent_basics_connected_preflight_test.dart
-```
+For new captures, use the production `main.dart` entry, an isolated profile and
+explicitly labeled deterministic provider output. Record source hashes, window
+dimensions, theme, native/widget capture method and any unavailable capabilities.
+Review/redact private data before replacing images and update the manifest only
+for an actually observed capture. A standalone design demo is not production evidence.
 
-`ODESSY_07_CAPTURE_DIR` is the existing internal capture variable, not a product version. The public gallery is organized by screen. No dependency installation is part of this workflow. Capture output is staged first, then selected images are named by page and verified by SHA256 before replacement.
-
-Latest connected capture: 1 test passed,42 seconds; `apps/desktop/build/developer-ui-gallery-capture.log`. Earlier full desktop:591 passed,13 skipped; analysis clean. Source, build and installed qualification evidence is preserved separately in manifest.json; a new screenshot does not constitute a new package qualification.
-
-Current set:30 images.29 connected production renders plus one independently captured native Windows settings window. All eight settings groups are represented. The native capture is reused only because its production source hashes still match. Source/artifact identities and fixture hashes are explicit in manifest.json.
+Do not recreate historical worker worktrees or use ignored maintainer-local scripts
+as external contributor prerequisites. See [release verification](../../release-verification.md)
+for separate source, native, installed and human acceptance gates.

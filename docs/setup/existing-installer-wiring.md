@@ -1,8 +1,8 @@
 # Flutter and existing installer lifecycle
 
-The desktop **Install Odessy** page reviews Windows x64 core component installation,
+The desktop **Settings → Installation** surface reviews Windows x64 core component installation,
 checkpoint inspection and explicit resume through `installer/flutter_bridge.py`.
-The **Runtime maintenance** page now routes repair, rollback and uninstall through
+The installation management surface now routes repair, rollback and uninstall through
 the installation's original engine, including `installer/operations`.
 
 ## Select and review the installation

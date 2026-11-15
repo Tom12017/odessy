@@ -124,7 +124,7 @@ decision, not a factual gap.
 OpenClaw and DeepSeek Harness adaptations are MIT; NemoClaw adaptations are
 Apache-2.0. Their original notices and license copies remain in
 [`THIRD-PARTY-NOTICES.md`](../../THIRD-PARTY-NOTICES.md) and
-[`THIRD-PARTY-LICENSES/`](../../THIRD-PARTY-LICENSES/). Existing attribution is
+[`THIRD-PARTY-LICENSES/`](../../THIRD-PARTY-LICENSES). Existing attribution is
 retained. Hermes remains an architecture-only reference in that notice.
 
 Before distributing a complete installer/binary bundle, inventory its resolved
@@ -133,7 +133,7 @@ include required license/NOTICE texts and fulfill any source obligations. A
 source inventory is not a declaration that every possible bundle is cleared.
 Future Flutter/Dart dependencies belong to the separate desktop branch's package
 inventory and must be included when v0.5.0 packaging is defined.
-The planned v0.5.0 Go monitoring service also needs a dependency/license inventory
+The optional Go monitoring service also needs a dependency/license inventory
 when modules and distributed collectors are chosen; it is not present in v0.4.0.
 
 ## Wake-word roadmap

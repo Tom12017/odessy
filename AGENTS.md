@@ -1,7 +1,7 @@
 # Installer and installed-application integration
 
 For feature changes, bug fixes, dependency changes and release builds, read
-[the installer and updates plan](docs/setup/installer-release-and-updates-plan.md).
+[the installer and updates plan](legacy/setup/installer-release-and-updates-plan.md).
 Follow more specific `AGENTS.md` files in their respective directories.
 
 - Consider the installed application as part of the feature. Include required

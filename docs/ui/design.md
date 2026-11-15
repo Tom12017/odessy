@@ -6,7 +6,7 @@ OdessyTokens provides spacing 4/8/12/16/24 and radii 10/14/20. The palette remai
 
 GlassSurface accepts an explicit reduceTransparency preference and automatically becomes opaque for high contrast or disabled animations. These signals do not detect every OS transparency preference; callers supply that preference where available. The opaque mode removes the filter entirely. Inspect both themes, large text, keyboard traversal and fallback modes in composed screens.
 
-The device sidebar and single main pane follow the desktop plan. OpenClaw and deepseek-harness provide structural reference points for separating presentation from orchestration and execution, not runtime dependencies or copied code. Flutter widgets consume typed client/controller state; Python, Rust and TypeScript retain authority. Shared widgets live in lib/widgets and tokens in lib/app/theme.dart.
+The production layout uses an outer navigation rail, a compact project/recent-chat sidebar and a conversation pane with an optional inspector. Tools and installation live in Settings. See [the screen gallery](../view/README.md). OpenClaw and deepseek-harness provide structural reference points for separating presentation from orchestration and execution, not runtime dependencies or copied code. Flutter widgets consume typed client/controller state; Python, Rust and TypeScript retain authority. Shared widgets live in lib/widgets and tokens in lib/app/theme.dart.
 
 References: [Apple materials](https://developer.apple.com/design/human-interface-guidelines/materials), [Adopting Liquid Glass](https://developer.apple.com/documentation/technologyoverviews/adopting-liquid-glass). These are portable visual interpretations, not native API equivalence claims.
 

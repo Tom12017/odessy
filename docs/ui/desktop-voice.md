@@ -1,78 +1,40 @@
-# Desktop push-to-talk — implementation and acceptance boundaries
+# Desktop voice
 
-October 27, 2026. This is a tested software increment, not full voice/product release
-acceptance. It uses the existing session, broker, provider factories and HybridAudioAdapter.
+**Developer Preview · v0.5.0-alpha**
 
-## Usage and contract
+Voice uses the existing session/controller, model selection and approval broker.
+It is an optional input/output path, not a separate authority or conversation engine.
 
-Enable existing voice components in Settings and explicitly restart the owned
-coordinator. No microphone opens on application startup. The desktop's microphone
-control records on the **coordinator computer**, whose hostname is displayed; it
-does not upload laptop audio to a remote Jetson. Finish submits the transcript
-once; Cancel submits nothing. Typed requests cancel obsolete capture, preserve the
-same session/history/model selection and retain normal policy/budget checks.
+## Configure and use
 
-- Authenticated `GET /v1/sessions/{sid}/voice` reports supported/state/capture ID,
-  recorder host and a safe message. Older/unconfigured services remain unavailable.
-- Authenticated `POST` accepts `start_capture`, `finish_capture`, `cancel_capture`,
-  `stop_playback`, `test_input`, `test_output`. Post-start capture operations require
-  the backend-assigned capture ID. Pending interaction capture additionally binds
-  the exact expected question/approval ID at start.
-- SSE `voice_state`, `voice_transcript`, `voice_test_result`, `audio_error` accompany
-  existing session/turn/interaction events. Transcripts pass through session redaction.
-- Test input uses capture/finish without a model turn. Test output speaks a fixed
-  sample only after explicit selection. Tests use the configured provider; no silent
-  provider fallback or automatic model/tool retry is introduced.
+Enable compatible voice components in Settings and restart the owning coordinator
+when saved configuration requires it. Opening Settings, listing devices or starting
+the application does not authorize microphone capture. The microphone control
+records on the coordinator computer identified by the UI; it does not implicitly
+upload local audio to a remote computer.
 
-One service-wide audio lease prevents concurrent sessions opening the same device.
-PCM is bounded to at most 30 seconds and 16 kHz mono 16-bit. Recorder startup,
-recognition and synthesis run off the event loop; providers remain cached. Capture
-settles before a fresh recorder opens; listening is not admitted during playback.
-Cancellation invalidates generation and retains the lease until owned work drains.
-Stalled capture is not reused while its reader is still draining. A global banner
-keeps active audio visible and cancellable when navigating away from Conversation.
+Finish submits the transcript once; Cancel submits nothing. Typed input and voice
+share the session, history and next-turn model selection. Stop requests cancellation
+and does not roll back completed actions. Spoken approval expresses intent, not
+authenticated identity, and cannot replace required exact high-risk authorization.
 
-Spoken interaction answers use the existing broker. Positive permission remains
-exactly `approve this action`; bare yes is rejected. Natural negative/stop phrases
-reuse existing parsing. High-risk/expanded-sandbox requests require the stronger
-channel. Expired/resolved/superseded questions cannot be answered by old recordings.
-No model output is interpreted as permission.
+## Settings and diagnostics
 
-## Workspace and device changes
+Speech to text, Text to speech and Voice remain separate settings groups. Native
+device selection, explicit provider probes and opt-in wake controls use the
+existing controllers. Diagnostic capture or playback requires consent. Test success
+does not prove that every microphone, audio driver, model or wake configuration works.
 
-Workspaces now distinguishes observed running folder from saved host configuration.
-Live Devices overview reads monitoring inventory keyed by opaque host ID, displays
-trust/connectivity/telemetry separately, and links to existing performance inspection.
-Monitoring-only or online hosts do not gain execution permission. Existing native
-pairing remains a separate explicit route; this is not a new pairing protocol or a
-complete polished enrollment wizard.
+Provider dependencies and assets are optional and retain their own licenses.
+No model or microphone access is required for the [text-only contributor start](../getting-started.md).
+See [voice components](../setup/voice-components.md),
+[provider reference](../reference/speech-providers.md) and
+[voice integration](../reference/voice-integration.mdx).
 
-## October 27 scope snapshot (superseded by the October 28 software checkpoint)
+## Acceptance boundaries
 
-- Actual recorder/microphone/device permission and provider qualification on each
-  supported OS. The default recorder/player remain existing arecord/aplay-compatible
-  commands; this does not establish a native Windows/macOS microphone backend.
-- Echo/pre-cue behavior on actual hardware, reconnect/physical unplug and complete
-  packaged voice/tool/approval/clarification acceptance.
-- Voice tests in independent Settings without an active coordinator, richer recorder
-  and output-device selection, provider capability/status UX, and desktop wake mode.
-- Full readiness matrix/model-test evidence, activity presentation and complete
-  pairing/revocation/device-management journeys from the overarching plan.
-- Clean-machine final portable/installer artifacts, native platform/service behavior,
-  assistive-technology validation and testing by unfamiliar external users.
-
-Fake audio/API coverage establishes software boundaries, not those native gates.
-The original UX plan remains open. No production-ready or all-platform claim follows
-from a Windows build or the passing suites alone.
-
-## October 28 software checkpoint
-
-Independent Settings probes, native audio/device selection, opt-in desktop wake,
-pairing/revocation presentation and provider-test metadata are now implemented.
-Native audio uses the optional sounddevice/PortAudio backend; Linux command audio
-remains supported. No microphone opens merely by opening Settings or listing
-devices. Diagnostic tests require consent and operate without a coordinator.
-See [the closeout evidence](backend-acceptance-2026-10-28.md) and
-[the additive contract](desktop-ux-contract.md#october-28-parallel-implementation-contract).
-The historical omissions above are not current software omissions; physical and
-native release acceptance remains distinct from these automated checks.
+Software regressions and previous scoped device tests do not establish final
+installed-package acceptance, acoustic echo/interrupt behavior, assistive-technology
+acceptance or all-platform support. Keep errors and unavailable capabilities visible;
+never substitute fake audio or claim successful hardware capture from a widget test.
+See [current support](../current-status.md).

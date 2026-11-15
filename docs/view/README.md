@@ -1,12 +1,14 @@
 # Odessy desktop UI
 
-A visual guide to the current production Flutter interface for developers. Click any screenshot to view it at full size. The gallery covers the main page, navigation, workspaces, history, agent tools and **all eight settings groups**. File and folder names describe screens rather than internal implementation tasks.
+**Developer Preview · v0.5.0-alpha**
+
+A visual guide to the recorded production Flutter interface for developers. Click any screenshot to view it at full size. The gallery covers the main page, navigation, workspaces, history, agent tools and **all eight settings groups**. File and folder names describe screens rather than internal implementation tasks.
 
 [Conversation](#conversation-and-history) · [Other pages](#navigation-pages) · [Settings](#settings) · [Workspace panels](#workspace-and-agent-panels) · [Verification](#capture-and-verification)
 
 ## Main page
 
-![Odessy main conversation in dark mode](conversation/main-dark.png)
+[Odessy main conversation in dark mode](conversation/main-dark.png)
 
 ## Conversation and history
 
@@ -51,4 +53,4 @@ These are actual rendered production screens, not generated mockups. Connected c
 
 The main entry point is `apps/desktop/lib/main.dart` / `OdessyApp`. The standalone UI demo is not used. Tools/installation are in Settings; Activity & usage remains a navigation page, while detailed activity diagnostics belong in inspector Output.
 
-See [the source/artifact/screenshot manifest](verification/manifest.json) and [capture instructions](verification/README.md). The latest gallery capture regression passed. This folder keeps only this current screen-organized set.
+See [the source/artifact/screenshot manifest](verification/manifest.json) and [capture instructions](verification/README.md). The recorded gallery capture regression passed on its captured snapshot. The manifest predates later merge/review fixes; these images are a design reference, not proof of final merged-source or package qualification. This folder keeps the screen-organized set.

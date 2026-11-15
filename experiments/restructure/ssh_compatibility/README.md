@@ -1,3 +1,5 @@
+> **Historical record / implementation plan.** This records its original implementation scope, not current setup, runtime selection or release support. See [current status](../../../docs/current-status.md).
+
 # SSH compatibility spike (prompt 17)
 
 A bounded probe of one **Connect computer using SSH** journey, not a production transport.

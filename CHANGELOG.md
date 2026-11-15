@@ -2,7 +2,13 @@
 
 User-visible changes are recorded here, starting with the next release.
 
-## Unreleased
+## Unreleased — v0.5.0-alpha (Developer Preview)
+
+- Consolidate the production desktop with project/recent navigation, preserved Activity & usage, Jobs/Handoffs, inspector panels and local appearance preferences.
+- Add durable conversation/project history, search/export and bounded Custom restart continuation; Harness restart history remains read-only.
+- Add service-owned Custom access modes, explicit project memory and opt-in lexical document retrieval.
+- Add conditional local Windows PTY integration and Git text checkpoints; Windows restore path-race protection remains an unresolved safety limitation.
+- Refresh user/developer documentation and distinguish current capabilities from historical release/qualification evidence.
 
 - Add trusted SSH targets with read-only monitoring; SSH execution and workspace capabilities remain disabled.
 

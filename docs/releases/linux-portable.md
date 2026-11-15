@@ -42,7 +42,7 @@ Moving the extracted folder does not change model selection. Only credential
 environment-variable references are saved; actual keys must be supplied separately.
 Voice models/dependencies are not included by default.
 
-The **Monitor** page uses the existing API. Monitoring is opt-in: before launching,
+The **Devices** monitoring view uses the existing API. Monitoring is opt-in: before launching,
 set `ODESSY_MONITORING=on` and `ODESSY_MONITOR_LOCAL=on` for local collection.
 Initialize identity and enroll/grant remote telemetry through existing reviewed
 pairing procedures; the launcher never creates trust or executes an inference

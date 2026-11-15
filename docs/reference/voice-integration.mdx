@@ -22,14 +22,10 @@ openWakeWord code is Apache-2.0. Kokoro/Whisper and the GPL phonemizer dependenc
 are detailed in the [third-party license inventory](third-party-licenses.md).
 Custom Odessy wake-word support is not available; the integrated wake loop uses Hey Jarvis.
 
-The `feat/voice-user-interaction` worktree extends the shared session controller.
-Both wake sessions and one-shot voice support human clarification and one-use
-approval. **Offline implementation and independent review are complete as of
-October 22, 2026**; the feature merged into `develop` via PR #24 (`6d8b80b`) and
-is available. Independent review reran **72 relevant tests, all passed**.
-DeepSeek reported **1,449 passed, 5 skipped** for the full suite; that full count
-was not independently repeated. Real microphone, Jetson and packaged-device
-qualification remain pending, separate opt-in checks.
+The shared session controller supports human clarification and one-use approval.
+Spoken intent does not authenticate identity or override high-risk authorization.
+
+### Historical device evidence
 
 October 23 follow-up: real Jetson/JBL wake and spoken-reply smoke tests completed.
 Five recorded WAVs through actual Whisper and the session/broker verified exact
@@ -39,7 +35,7 @@ integration checks: **155 passed**. Physical playback echo/pre-cue admission,
 the deferred one-hour false-activation run and packaged-device acceptance remain
 unqualified. Echo/pre-cue checks test Odessy's capture/admission integration,
 not the TTS/STT provider in isolation. See the
-[qualification results](../qualification/2026-10-23-interactions-and-pairing.md).
+[qualification results](../../legacy/qualification/2026-10-23-interactions-and-pairing.md).
 
 Deployment acceptance decision (October 23): defer the physical echo/pre-cue
 trials until the complete software is deployed. Software timing/isolation
@@ -373,7 +369,7 @@ implemented; wake-up activation is implemented in software and awaiting hardware
 qualification. Risk-aware voice approval and clarification are complete offline
 and merged; hardware acceptance remains pending. Further
 voice/local-model optimization remains measurement-led follow-up in the
-[v0.5.0 roadmap](../releases/v0.5.0.md), not a promised speedup.
+[v0.5.0 roadmap](../../legacy/releases/v0.5.0.md), not a promised speedup.
 
 Voice mode is staged and turn-based unless `--listen` is used.
 Local and non-streaming replies are synthesised in full before playback.
@@ -385,4 +381,4 @@ The ordinary automated tests use fake audio/STT/TTS components.
 A real Bluetooth headset test must still be run on the Jetson environment before claiming the physical voice loop is complete.
 
 
-See [Speech providers](./speech-providers.md) for configurable STT/TTS factories and custom adapters.
+See [Speech providers](speech-providers.md) for configurable STT/TTS factories and custom adapters.

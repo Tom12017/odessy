@@ -1,7 +1,6 @@
 # Odessy architecture: a newcomer map
 
-> DRAFT — proposed contributor routing, not a list of assigned owners.
-> Status: unstable developer preview. The model proposes; Odessy decides.
+> Developer Preview · v0.5.0-alpha. Component responsibilities, not individual contributor assignments. The model proposes; Odessy decides.
 
 New here? Read [the story](../Story.md) for the intended end-to-end experience and
 how it differs from what is qualified today, then use the
@@ -30,24 +29,34 @@ Commands below are component entry points after
 
 | Component / directory | Language and responsibility | Build / check alone | Suggested contributors |
 |---|---|---|---|
-| [`src/odessy/runtime/`](../src/odessy/runtime/) and [`models/`](../src/odessy/models/) | Python loop, sessions, model adapters | Root: `python -m pip install -e ".[test,ui]"`; `python -m pytest -q` | Runtime/model contributors; dispatch security needs maintainer review |
-| [`src/odessy/authority/`](../src/odessy/authority/), [`execution/`](../src/odessy/execution/) | Python policy, workspace authority, sandbox | Root: `python -m pytest -q tests/test_authority_boundary.py tests/test_permission_hardening.py` | **maintainer review required**; not starter work |
-| [`src/odessy/voice/`](../src/odessy/voice/) | Python capture, STT/TTS adapters and voice sessions | Root: `python -m pytest -q tests/test_speech_providers.py` | Provider examples/tests; approval changes need maintainer review |
-| [`tools/`](../tools/) | TypeScript/Node MCP tools and host checks | In directory: `npm ci --no-audit --no-fund`, `npm run typecheck`, `npm test` | Tool contributors; guards and sandbox: **maintainer review required** |
-| [`native/odessy-link/`](../native/odessy-link/) | Rust identity, enrollment, mTLS relay, telemetry | In directory: `cargo build --locked`, `cargo test --locked` | Rust contributors; enrollment, grants and keys: **maintainer review required** |
-| [`apps/desktop/`](../apps/desktop/) | Dart/Flutter conversation, settings, interactions | In directory: `flutter pub get`, `flutter analyze`, `flutter test`; Windows build: `flutter build windows` | UI/accessibility contributors; UI is not execution authority |
-| [`packages/odessy_client/`](../packages/odessy_client/) | Dart backend client and models | In directory: `dart pub get`, `dart analyze`, `dart test` | Client/API contributors; authentication needs maintainer review |
-| [`services/monitoring/`](../services/monitoring/) | Go aggregation/internal API; optional, opt-in | In directory: `go build ./cmd/odessy-monitor`, `go test ./...` | Go/observability contributors; no execution authorization here |
-| [`benchmark/`](../benchmark/) and [`evals/`](../evals/) | Python component measurements and simulated execution evals | Root: `python -m benchmark --help`; `python -m pytest -q tests/test_benchmark_harness.py tests/test_evals.py` | Measurement/fixture contributors; evals are not hardware qualification |
-| [`docs/`](./) | Markdown/MDX guidance and evidence | Resolve links; verify commands against workflows | Good starting point for newcomers |
+| [`src/odessy/runtime/`](../src/odessy/runtime) and [`models/`](../src/odessy/models) | Python loop, sessions, model adapters | Root: `python -m pip install -e ".[test,ui]"`; `python -m pytest -q` | Runtime/model contributors; dispatch security needs maintainer review |
+| [`src/odessy/authority/`](../src/odessy/authority), [`execution/`](../src/odessy/execution) | Python policy, workspace authority, sandbox | Root: `python -m pytest -q tests/test_authority_boundary.py tests/test_permission_hardening.py` | **maintainer review required**; not starter work |
+| [`src/odessy/voice/`](../src/odessy/voice) | Python capture, STT/TTS adapters and voice sessions | Root: `python -m pytest -q tests/test_speech_providers.py` | Provider examples/tests; approval changes need maintainer review |
+| [`tools/`](../tools) | TypeScript/Node MCP tools and host checks | In directory: `npm ci --no-audit --no-fund`, `npm run typecheck`, `npm test` | Tool contributors; guards and sandbox: **maintainer review required** |
+| [`native/odessy-link/`](../native/odessy-link) | Rust identity, enrollment, mTLS relay, telemetry | In directory: `cargo build --locked`, `cargo test --locked` | Rust contributors; enrollment, grants and keys: **maintainer review required** |
+| [`apps/desktop/`](../apps/desktop) | Dart/Flutter conversation, settings, interactions | In directory: `flutter pub get`, `flutter analyze`, `flutter test`; Windows build: `flutter build windows` | UI/accessibility contributors; UI is not execution authority |
+| [`packages/odessy_client/`](../packages/odessy_client) | Dart backend client and models | In directory: `dart pub get`, `dart analyze`, `dart test` | Client/API contributors; authentication needs maintainer review |
+| [`services/monitoring/`](../services/monitoring) | Go aggregation/internal API; optional, opt-in | In directory: `go build ./cmd/odessy-monitor`, `go test ./...` | Go/observability contributors; no execution authorization here |
+| [`benchmark/`](../benchmark) and [`evals/`](../evals) | Python component measurements and simulated execution evals | Root: `python -m benchmark --help`; `python -m pytest -q tests/test_benchmark_harness.py tests/test_evals.py` | Measurement/fixture contributors; evals are not hardware qualification |
+| [`docs/`](.) | Markdown/MDX guidance and evidence | Resolve links; verify commands against workflows | Good starting point for newcomers |
 
 Credential storage and OS keyring integration, including
 [`src/odessy/credentials.py`](../src/odessy/credentials.py) and the
 [credential setup boundary](setup/secure-model-credentials.md): **maintainer review required**.
 Read component-local `AGENTS.md` instructions before editing desktop/client code.
 
-**Evidence:** [runtime overview](../README.md#how-it-works),
+**Evidence:** [runtime overview](../README.md),
 [approval](reference/permissions.mdx#approval),
-[pairing qualification](qualification/2026-10-23-interactions-and-pairing.md),
-[monitoring status](releases/v0.5.0.md), [release limits](releases/v0.5.0-unstable-notes.md).
+[pairing qualification](../legacy/qualification/2026-10-23-interactions-and-pairing.md),
+[monitoring status](monitoring/README.md), [release limits](current-status.md).
 No MCU execution capability, complete sandbox or reliable voice is implied.
+
+## Durable application services
+
+The production application composition owns conversation SQLite lifecycle, Custom
+continuation, access modes and trusted live workspace/session resolution. Context,
+memory and retrieval extend that store without becoming authorization sources.
+Terminal handles are ephemeral; checkpoints own Git refs and metadata, not user
+branches or arbitrary files. Harness remains selectable without automatic fallback.
+See [history](ui/conversation-history.md), [database ownership](database/README.md)
+and [the current support matrix](current-status.md).
