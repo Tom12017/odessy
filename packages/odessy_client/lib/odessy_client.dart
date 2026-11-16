@@ -337,6 +337,7 @@ class LocalApi
         ModelProfileLimitsApi,
         RuntimeConfigurationApi,
         DesktopVoiceApi,
+        LiveVoiceConfigurationApi,
         ExecutionHostsApi,
         SshConnectionApi {
   LocalApi(this.base, String token) : _token = token {
@@ -442,6 +443,29 @@ class LocalApi
       rethrow;
     }
     if (response.statusCode >= 300) {
+      if (path.endsWith('/voice') || path == '/v1/voice/configuration') {
+        final bytes = <int>[];
+        await for (final chunk
+            in response.timeout(const Duration(seconds: 12))) {
+          if (bytes.length + chunk.length > 8192) {
+            throw VoiceActionFailure(response.statusCode,
+                'Audio request failed (HTTP ${response.statusCode}).');
+          }
+          bytes.addAll(chunk);
+        }
+        String? detail;
+        try {
+          final decoded = jsonDecode(utf8.decode(bytes));
+          if (decoded is Map && decoded['detail'] is String) {
+            detail = decoded['detail'] as String;
+          }
+        } catch (_) {}
+        throw VoiceActionFailure(
+            response.statusCode,
+            detail != null && detail.isNotEmpty && detail.length <= 512
+                ? detail
+                : 'Audio request failed (HTTP ${response.statusCode}).');
+      }
       await response.drain<void>().timeout(const Duration(seconds: 12));
       throw ApiFailure(response.statusCode);
     }
@@ -743,6 +767,9 @@ class LocalApi
   @override
   Future<VoiceSnapshot> voiceState(String sid) async =>
       VoiceSnapshot.fromJson(await _json('${_session(sid)}/voice'));
+  @override
+  Future<Json> applyVoiceConfiguration(String fingerprint) =>
+      _json('/v1/voice/configuration', 'POST', {'fingerprint': fingerprint});
   @override
   Future<VoiceSnapshot> voiceCommand(
     String sid,

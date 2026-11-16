@@ -711,6 +711,23 @@ class _OdessyAppState extends State<OdessyApp> {
     componentSettings = ComponentSettingsController(
       setup.backend,
       root: widget.installed?['root'] as String? ?? '',
+      applyVoice: (fingerprint) async {
+        final api = controller.api;
+        if (api is! LiveVoiceConfigurationApi) {
+          return 'Saved. Restart the coordinator to apply audio settings.';
+        }
+        final reply = await (api as LiveVoiceConfigurationApi)
+            .applyVoiceConfiguration(fingerprint);
+        if (!identical(api, controller.api)) {
+          throw StateError('Connection changed while applying audio settings.');
+        }
+        await readiness.bind(api);
+        await voice.refresh();
+        if (reply['status'] != 'applied' && reply['status'] != 'deferred') {
+          throw StateError('Invalid audio configuration acknowledgment.');
+        }
+        return reply['message'] as String;
+      },
     );
     maintenance = MaintenanceController(LocalSetupBackend());
     installerEngine = MaintenanceController(LocalSetupBackend());

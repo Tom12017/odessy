@@ -34,6 +34,8 @@ class InstalledManageController extends ChangeNotifier {
   Timer? _progressPoll;
   bool _polling = false;
   bool _watchingUninstall = false;
+  bool _watchingRepair = false;
+  Json _repairProgress = const {};
 
   /// The last bounded registration counters, when the service reports them.
   Json registrationProgress = const {};
@@ -52,6 +54,12 @@ class InstalledManageController extends ChangeNotifier {
   }
 
   String get progressLabel {
+    if (_watchingRepair && _repairProgress.isNotEmpty) {
+      final stage = _repairProgress['stage'] ?? 'preparing';
+      final ms = status['elapsed_ms'];
+      final seconds = ms is num ? (ms / 1000).floor() : 0;
+      return 'Updating: $stage · ${seconds}s elapsed. No reliable time estimate is available.';
+    }
     if (_visibleProgress['status'] != 'running') return '';
     final done = _visibleProgress['files_done'];
     final total = _visibleProgress['files_total'];
@@ -121,6 +129,7 @@ class InstalledManageController extends ChangeNotifier {
     _reviewParameters = const {};
     review = const {};
     _uninstallProgress = const {};
+    _repairProgress = const {};
     registrationProgress = const {};
     busy = true;
     notifyListeners();
@@ -133,9 +142,10 @@ class InstalledManageController extends ChangeNotifier {
     notifyListeners();
   }
 
-  void _startProgress({bool uninstall = false}) {
+  void _startProgress({bool uninstall = false, bool repair = false}) {
     _stopProgress();
     _watchingUninstall = uninstall;
+    _watchingRepair = repair;
     if (identical(progressBackend, backend)) return;
     registrationProgress = const {};
     _progressPoll = Timer.periodic(
@@ -159,6 +169,13 @@ class InstalledManageController extends ChangeNotifier {
           parameters: {'action': 'package-status', 'root': root}));
       if (_disposed) return;
       final operation = reply.ok ? reply.result['operation'] : null;
+      if (_watchingRepair &&
+          operation is Map<String, dynamic> &&
+          operation['status'] == 'preparing') {
+        status = reply.result;
+        _repairProgress = operation;
+        notifyListeners();
+      }
       if (_watchingUninstall &&
           operation is Map<String, dynamic> &&
           operation['operation'] == 'uninstall') {
@@ -348,6 +365,7 @@ class InstalledManageController extends ChangeNotifier {
     final epoch = ++_epoch;
     _begin();
     if (mutating == 'package-uninstall') _startProgress(uninstall: true);
+    if (mutating == 'package-repair') _startProgress(repair: true);
     try {
       final value = await _execute(mutating, {
         ...parameters,

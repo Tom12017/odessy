@@ -110,7 +110,7 @@ def _factory_runtime_keyword(factory):
 
 def create_app(controller_factory, *, config=None, settings=None, jobs=None, token=None,
                config_path=None, profiles=None, monitoring=None, runtime_configuration=None, desktop_voice=None,
-               usage_history=None, agent_basics=None, conversations_enabled=False):
+               usage_history=None, agent_basics=None, conversations_enabled=False, voice_configuration=None):
     """Build an app; the caller owns loopback-only binding and displaying its token."""
     try:
         from fastapi import FastAPI, Request, HTTPException
@@ -145,7 +145,14 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
                 await monitoring.start()
             except Exception:
                 pass  # Optional monitoring failure must not disable agent sessions.
-        yield
+        voice_watch = asyncio.create_task(voice_configuration.watch(app)) if voice_configuration is not None else None
+        try:
+            yield
+        finally:
+            if voice_watch is not None:
+                voice_watch.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await voice_watch
         if desktop_voice is not None:await desktop_voice.close()
         if monitoring is not None and hasattr(monitoring, 'close'):
             await monitoring.close()
@@ -1177,8 +1184,21 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
     @app.get('/v1/sessions/{sid}/voice')
     async def voice_snapshot(sid: str):
         controller=find(sid)
+        if voice_configuration is not None:
+            try:await voice_configuration.refresh(app)
+            except (ValueError, OSError):pass
         return desktop_voice.snapshot(controller) if desktop_voice is not None else {
             'supported':False,'state':'unavailable','message':'Enable existing voice components and restart the coordinator. Recording occurs on that computer.'}
+
+    @app.post('/v1/voice/configuration')
+    async def apply_voice_configuration(request: Request):
+        data=await body(request)
+        if set(data)!={'fingerprint'} or not isinstance(data['fingerprint'],str):
+            raise HTTPException(400,'Exact saved configuration fingerprint is required')
+        if voice_configuration is None:raise HTTPException(501,'Live audio configuration is unavailable; restart the coordinator.')
+        try:return await voice_configuration.refresh(app,data['fingerprint'])
+        except ValueError as exc:raise HTTPException(409,str(exc)) from None
+        except Exception:raise HTTPException(503,'Saved audio settings could not be applied; active settings were not acknowledged.') from None
 
     @app.post('/v1/sessions/{sid}/voice')
     async def voice_action(sid: str,request: Request):
@@ -1189,6 +1209,7 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
         try:
             action=data.get('action')
             if action=='enable_wake':
+                if voice_configuration is not None:await voice_configuration.refresh(app)
                 admission_open()
                 async def submit_wake(text,stop_event,context):
                     c=controller
@@ -1214,6 +1235,7 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
                 if desktop_voice.wake is None:return desktop_voice.snapshot(controller)
                 return await desktop_voice.cancel(controller)
             if action in ('start_capture','test_input'):
+                if voice_configuration is not None:await voice_configuration.refresh(app)
                 admission_open()
                 if sid in tasks and not data.get('expected_interaction_id'):raise VoiceError('Current task is busy')
                 return await desktop_voice.start(controller,data.get('expected_interaction_id'),preview=action=='test_input')
@@ -1226,6 +1248,7 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
                 if action=='stop_playback':return await desktop_voice.stop_playback(controller)
                 return await desktop_voice.cancel(controller,data.get('capture_id'))
             if action=='test_output':
+                if voice_configuration is not None:await voice_configuration.refresh(app)
                 admission_open()
                 await desktop_voice.speak(controller,'Odessy audio output test.')
                 return desktop_voice.snapshot(controller)

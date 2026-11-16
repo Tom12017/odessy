@@ -1,5 +1,9 @@
 # Voice components in setup
 
+For changes to configured voice providers/devices, see
+[applying voice settings](../ui/live-voice-settings.md). Updated coordinators apply
+saved voice changes when audio is idle; active recording/listening is preserved.
+
 Setup offers speech components as an explicit opt-in. Leaving the opt-in off
 keeps the previous offline flow unchanged: nothing is downloaded and nothing
 contacts the network.

@@ -68,9 +68,7 @@ def sample_audio(audio,config,owner):
 
 
 def voice_config(selection):
-    values=asdict(selection.voice)
-    values.pop('enabled')
-    return VoiceConfig(**values)
+    return VoiceConfig.from_selection(selection.voice)
 
 
 def observe(selection,section):
