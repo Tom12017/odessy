@@ -56,3 +56,7 @@ Receipts: `gui-user-before.json`, `gui-user-update-result.json`, `user-installed
 ### User voice check
 
 Open the main composer's **Voice options** → **Test speech output**, then **Test speech input · no model call** and speak. Enable wake listening separately and say the configured wake phrase (Hey Jarvis for the saved bundled model). Stop wake listening before changing audio devices. Save a voice setting and confirm applied/deferred acknowledgment without restarting; deferred changes apply once audio is idle. Human spoken checks are still required even though the installed audio smoke check passed.
+
+## Subsequent TTS optimization
+
+The November 16 source optimization is described in [speech playback latency](../ui/voice-performance.md). It is newer than the installed GUI receipt above. Do not reuse the earlier installer hashes to claim delivery of that optimization. A new coherent update candidate and installed check remain necessary.

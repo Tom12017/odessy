@@ -1157,14 +1157,18 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
                     workspace_inspector.binding(sid, data['_attachment_binding'])
                 extra = {'attachments': data['_verified_attachments']} if data.get('_verified_attachments') else {}
                 entered_controller = True
-                result=await controller.run_turn(data['text'], participant=data.get('participant'), turn_id=turn_id, admitted_epoch=epoch, **extra)
-                settled = True
-                if timing is not None:
-                    # The committed answer is available now. Playback may take seconds;
-                    # it must not be included in first-text/model latency.
-                    controller.emit('voice_timing', timing.settle(settled=True))
+                async def run_turn():
+                    nonlocal settled
+                    result=await controller.run_turn(data['text'], participant=data.get('participant'), turn_id=turn_id, admitted_epoch=epoch, **extra)
+                    settled = True
+                    if timing is not None:
+                        # Settle model time before waiting for outstanding speech.
+                        controller.emit('voice_timing', timing.settle(settled=True))
+                    return result
                 if spoken and desktop_voice is not None:
-                    await desktop_voice.speak(controller,result.final_text)
+                    result=await desktop_voice.run_spoken(controller,run_turn)
+                else:
+                    result=await run_turn()
                 return result.final_text
             except (Exception, asyncio.CancelledError) as exc:
                 if not entered_controller:

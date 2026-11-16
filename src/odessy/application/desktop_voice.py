@@ -184,8 +184,88 @@ class DesktopVoice:
     async def stop_playback(self,c):
         if self.owner is not None and self.owner!=c.id:raise VoiceError('Another session owns audio')
         if self.wake is not None:self.wake.stop_speaking()
-        elif self._speaking:await self._cancel_audio()
+        elif self._speaking:
+            self._epoch+=1
+            await self._cancel_audio()
         self._emit(c);return self.snapshot(c)
+
+    async def run_spoken(self,c,run_turn):
+        """Speak genuine model sentences under one audio lease; never replay work.
+
+        Queue overflow stops streaming and leaves the unspoken final suffix for
+        playback after generation. Only eight phrases may wait for the speaker.
+        """
+        from odessy.runtime.speech import SpeechStream, speech_scope, speech_phrases
+        self._available()
+        if self.busy:raise VoiceError('Finish capture before playback')
+        self.owner=c.id;self.state='speaking';self._speaking=True
+        self._epoch+=1;epoch=self._epoch;self._emit(c)
+        loop=asyncio.get_running_loop()
+        queue=asyncio.Queue(maxsize=8)
+        overflow=False;failed=False;accepting=True
+        heard=SpeechStream(lambda text:None)
+
+        def deliver(text):
+            nonlocal overflow
+            if not accepting or epoch!=self._epoch or overflow:return
+            try:queue.put_nowait(text)
+            except asyncio.QueueFull:overflow=True
+
+        def emit(text):
+            for phrase in speech_phrases(text):
+                with contextlib.suppress(RuntimeError):loop.call_soon_threadsafe(deliver,phrase)
+
+        async def say(text):
+            nonlocal failed
+            if failed or epoch!=self._epoch:return
+            try:
+                await self.audio.speak(text)
+                heard.begin();heard.feed(text);heard.end()
+            except Exception:
+                failed=True
+                self.error='Audio output unavailable. The text answer was not retried.'
+                c.emit('audio_error',{'message':self.error})
+
+        async def speaker():
+            while True:
+                text=await queue.get()
+                if text is None:return
+                await say(text)
+
+        async def operation():
+            nonlocal accepting,failed
+            try:
+                if self.audio is None:self.audio=self.factory()
+                self._bind_timing(c)
+            except Exception:
+                failed=True
+                self.error='Audio output unavailable. Typed output remains available.'
+                c.emit('audio_error',{'message':self.error})
+            stream=SpeechStream(emit)
+            task=asyncio.create_task(speaker())
+            try:
+                with speech_scope(stream):result=await run_turn()
+                # Thread-safe deliveries queued by the completed turn precede this fence.
+                await asyncio.sleep(0)
+                accepting=False
+                await queue.put(None)
+                await task
+                remainder=heard.unspoken(result.final_text)
+                if remainder:await say(remainder)
+                return result
+            finally:
+                accepting=False
+                if not task.done():
+                    task.cancel()
+                    await self._cancel_audio()
+                    await asyncio.gather(task,return_exceptions=True)
+
+        try:return await self._owned(c,operation())
+        finally:
+            self._speaking=False
+            if self._draining is None:self.owner=None;self.state='idle'
+            self._emit(c)
+
     async def speak(self,c,text):
         self._available()
         if self.busy:raise VoiceError('Finish capture before playback')

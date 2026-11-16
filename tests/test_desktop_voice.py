@@ -12,6 +12,70 @@ class Audio:
 
 def controller():return SessionController(model_factory=lambda _:object(),agent_factory=lambda *a,**k:object(),profiles={'local':{}})
 
+
+def test_spoken_turn_plays_genuine_stream_before_completion_without_duplicate_final():
+    from types import SimpleNamespace
+    from odessy.application.desktop_voice import DesktopVoice
+    from odessy.runtime.speech import current_speech
+    async def run():
+        heard=[]; first=asyncio.Event()
+        class Speaker(Audio):
+            async def speak(self,text):heard.append(text);first.set()
+        c=controller();v=DesktopVoice(Speaker,host='local')
+        async def turn():
+            stream=current_speech();assert stream is not None
+            stream.begin();stream.feed('First sentence. ')
+            await asyncio.wait_for(first.wait(),1)
+            stream.feed('Second sentence.');stream.end()
+            return SimpleNamespace(final_text='First sentence. Second sentence.')
+        result=await v.run_spoken(c,turn)
+        assert result.final_text=='First sentence. Second sentence.'
+        assert heard==['First sentence.','Second sentence.']
+        assert not v.busy
+        await v.close();await c.close()
+    asyncio.run(run())
+
+
+def test_spoken_turn_stop_discards_queued_speech_but_keeps_text_result():
+    from types import SimpleNamespace
+    from odessy.application.desktop_voice import DesktopVoice
+    from odessy.runtime.speech import current_speech
+    async def run():
+        heard=[];first=asyncio.Event()
+        class Speaker(Audio):
+            async def speak(self,text):heard.append(text);first.set()
+        c=controller();v=DesktopVoice(Speaker,host='local')
+        async def turn():
+            stream=current_speech();stream.begin();stream.feed('First. ')
+            await asyncio.wait_for(first.wait(),1)
+            await v.stop_playback(c)
+            stream.feed('Second.');stream.end()
+            return SimpleNamespace(final_text='First. Second.')
+        result=await v.run_spoken(c,turn)
+        assert result.final_text=='First. Second.' and heard==['First.']
+        await v.close();await c.close()
+    asyncio.run(run())
+
+
+def test_spoken_turn_queue_overflow_speaks_final_suffix_once():
+    from types import SimpleNamespace
+    from odessy.application.desktop_voice import DesktopVoice
+    from odessy.runtime.speech import current_speech
+    async def run():
+        heard=[]
+        class Speaker(Audio):
+            async def speak(self,text):heard.append(text);await asyncio.sleep(.001)
+        c=controller();v=DesktopVoice(Speaker,host='local')
+        text=' '.join(f'Sentence {i}.' for i in range(30))
+        async def turn():
+            stream=current_speech();stream.begin();stream.feed(text);stream.end()
+            return SimpleNamespace(final_text=text)
+        await v.run_spoken(c,turn)
+        assert ' '.join(heard)==text
+        assert len(heard)<=9
+        await v.close();await c.close()
+    asyncio.run(run())
+
 def test_wake_owns_one_microphone_and_uses_the_same_broker_until_explicit_stop():
     from odessy.application.desktop_voice import DesktopVoice, VoiceError
     class Wake:
