@@ -28,7 +28,9 @@ from odessy.tools.tool_contracts import (
     validate_tool_arguments,
 )
 
-OLLAMA_BASE_URL = os.environ.get("ODESSY_OLLAMA_URL", "http://127.0.0.1:11434")
+from . import DEFAULT_FAST_MODEL, DEFAULT_LOCAL_ENDPOINT
+
+OLLAMA_BASE_URL = os.environ.get("ODESSY_OLLAMA_URL", DEFAULT_LOCAL_ENDPOINT)
 
 
 #: Maximum seconds of silence allowed between streamed chunks from Ollama.
@@ -96,7 +98,7 @@ def _default_call_timeout() -> float:
 def generation_options(temperature: float, num_predict: int, num_ctx: int) -> dict[str, Any]:
     """Ollama ``options`` for one call: sampling plus the limits that bound it.
 
-    Shared with ``lfm_model`` so both local backends are bounded by the same numbers.
+    Shared with ``ollama_chat`` so both local backends are bounded by the same numbers.
     """
 
     return {
@@ -215,9 +217,9 @@ class ModelOutputError:
 
 @dataclass(frozen=True)
 class OllamaModel:
-    """Minimal Gemma/Ollama adapter for Odessy's existing ModelAdapter protocol."""
+    """Ollama structured-output adapter for Odessy's existing ModelAdapter protocol."""
 
-    model: str = "gemma3:1b"
+    model: str = DEFAULT_FAST_MODEL
     #: Seconds of allowed silence between streamed chunks. Not a total budget.
     timeout: int = field(default_factory=_default_progress_timeout)
     temperature: float = 0.0
@@ -284,7 +286,7 @@ class OllamaModel:
             repair_prompt = _repair_prompt(user_text, model_error)
             _debug_model_repair(
                 [
-                    ("first Gemma proposal", "native tool call rejected"),
+                    ("first model proposal", "native tool call rejected"),
                     ("validation failure", model_error.validation_error),
                     ("repair prompt", repair_prompt),
                 ]
@@ -302,7 +304,7 @@ class OllamaModel:
                 raise ValueError(
                     f"Model repair failed after one retry: {retry_error}"
                 ) from retry_error
-            _debug_model_repair([("second Gemma proposal", "repaired native tool call")])
+            _debug_model_repair([("second model proposal", "repaired native tool call")])
         _debug_parsed_action(action)
         return action
 
@@ -347,49 +349,7 @@ class OllamaModel:
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        from odessy.models.generation_control import before_generation
-        before_generation()
-        if self.conversation_context:
-            split = 1 if messages and messages[0].get("role") == "system" else 0
-            messages = [*messages[:split], *self.conversation_context, *messages[split:]]
-        payload: dict[str, Any] = {
-            "model": self.model,
-            "messages": messages,
-            "stream": True,
-            "options": generation_options(self.temperature, self.num_predict, self.num_ctx),
-        }
-        if self.keep_alive is not None:
-            payload["keep_alive"] = self.keep_alive
-        if tools:
-            payload["tools"] = tools
-        request = urllib.request.Request(
-            f"{self.endpoint.rstrip('/')}/api/chat",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                return _accumulate_stream(response, self.call_timeout)
-        except urllib.error.HTTPError as error:
-            body = _read_error_body(error)
-            if "does not support tools" in body:
-                raise _OllamaToolsUnsupported(body) from error
-            raise RuntimeError(
-                f"Ollama API call failed ({error.code}): {body or error.reason}"
-            ) from error
-        except TimeoutError as error:
-            raise _OllamaStreamTimeout(
-                f"no chunk received within {self.timeout}s "
-                f"({PROGRESS_TIMEOUT_ENV})"
-            ) from error
-        except urllib.error.URLError as error:
-            if isinstance(error.reason, TimeoutError):
-                raise _OllamaStreamTimeout(
-                    f"no chunk received within {self.timeout}s "
-                    f"({PROGRESS_TIMEOUT_ENV})"
-                ) from error
-            raise RuntimeError(f"Ollama API call failed: {error}") from error
+        return _request_ollama_chat(self, messages, tools)
 
     def finalize_observations(self, observations) -> None:
         for observation in observations:
@@ -425,6 +385,55 @@ class OllamaModel:
 
 _THINK_BLOCK = re.compile(r"<think>.*?</think>", re.DOTALL | re.IGNORECASE)
 _THINK_OPEN = re.compile(r"<think>.*", re.DOTALL | re.IGNORECASE)
+
+
+def _request_ollama_chat(model, messages, tools=None):
+    """Send one bounded streaming request for either local adapter."""
+    from odessy.models.generation_control import before_generation
+    before_generation()
+    if model.conversation_context:
+        split = 1 if messages and messages[0].get("role") == "system" else 0
+        messages = [*messages[:split], *model.conversation_context, *messages[split:]]
+    payload: dict[str, Any] = {
+        "model": model.model,
+        "messages": messages,
+        "stream": True,
+        "options": generation_options(model.temperature, model.num_predict, model.num_ctx),
+    }
+    if getattr(model, "think", None) is not None:
+        payload["think"] = model.think
+    if model.keep_alive is not None:
+        payload["keep_alive"] = model.keep_alive
+    if tools:
+        payload["tools"] = tools
+    request = urllib.request.Request(
+        f"{model.endpoint.rstrip('/')}/api/chat",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=model.timeout) as response:
+            return _accumulate_stream(response, model.call_timeout)
+    except urllib.error.HTTPError as error:
+        body = _read_error_body(error)
+        if "does not support tools" in body:
+            raise _OllamaToolsUnsupported(body) from error
+        raise RuntimeError(
+            f"Ollama API call failed ({error.code}): {body or error.reason}"
+        ) from error
+    except TimeoutError as error:
+        raise _OllamaStreamTimeout(
+            f"no chunk received within {model.timeout}s "
+            f"({PROGRESS_TIMEOUT_ENV})"
+        ) from error
+    except urllib.error.URLError as error:
+        if isinstance(error.reason, TimeoutError):
+            raise _OllamaStreamTimeout(
+                f"no chunk received within {model.timeout}s "
+                f"({PROGRESS_TIMEOUT_ENV})"
+            ) from error
+        raise RuntimeError(f"Ollama API call failed: {error}") from error
 
 
 def _strip_thinking(text: str) -> str:

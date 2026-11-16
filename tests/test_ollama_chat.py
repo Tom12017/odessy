@@ -5,13 +5,13 @@ import os
 import pytest
 
 from odessy.cli import _build_model
-from odessy.models.lfm_model import LlamaCppLFMModel, normalize_ollama_chat_response
+from odessy.models.ollama_chat import OllamaChatModel, normalize_ollama_chat_response
 from odessy.models.ollama_model import _OllamaToolsUnsupported, _looks_like_generic_final_response
 from odessy.tools.tool_contracts import TOOL_REQUEST_SCHEMAS, build_openai_tools
 from odessy.runtime.types import FinalResponse, ToolObservation, ToolRequest
 
 
-class QueuedLFM(LlamaCppLFMModel):
+class QueuedLFM(OllamaChatModel):
     """Deterministic LFM fake that bypasses the HTTP layer."""
 
     def __init__(self, outputs: list[dict]) -> None:
@@ -41,7 +41,7 @@ def _tool(content: str) -> dict:
 
 # 1. backend initialization
 def test_lfm_backend_initializes_with_explicit_endpoint() -> None:
-    model = LlamaCppLFMModel(model="lfm2.5-thinking:1.2b-q8_0", endpoint="http://127.0.0.1:9000")
+    model = OllamaChatModel(model="lfm2.5-thinking:1.2b-q8_0", endpoint="http://127.0.0.1:9000")
 
     assert model.model == "lfm2.5-thinking:1.2b-q8_0"
     assert model.endpoint == "http://127.0.0.1:9000"
@@ -56,7 +56,7 @@ def test_lfm_endpoint_configuration_from_env(monkeypatch) -> None:
 
     model = _build_model(use_fake_model=False)
 
-    assert isinstance(model, LlamaCppLFMModel)
+    assert isinstance(model, OllamaChatModel)
     assert model.endpoint == "http://127.0.0.1:11434"
     assert model.model == "lfm2.5-thinking:1.2b-q8_0"
 
@@ -64,7 +64,7 @@ def test_lfm_endpoint_configuration_from_env(monkeypatch) -> None:
 def test_backend_flag_selects_lfm() -> None:
     model = _build_model(use_fake_model=False, backend="llama_cpp")
 
-    assert isinstance(model, LlamaCppLFMModel)
+    assert isinstance(model, OllamaChatModel)
 
 
 # 3/4/5. successful request, parsing, and conversion into ToolRequest
@@ -510,10 +510,10 @@ def test_lfm_think_setting_is_omitted_by_default_and_sent_when_explicit(monkeypa
         return Response()
 
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
-    LlamaCppLFMModel(endpoint="http://localhost:11434")._chat(
+    OllamaChatModel(endpoint="http://localhost:11434")._chat(
         [{"role": "user", "content": "hi"}]
     )
-    LlamaCppLFMModel(endpoint="http://localhost:11434", think=False)._chat(
+    OllamaChatModel(endpoint="http://localhost:11434", think=False)._chat(
         [{"role": "user", "content": "hi"}]
     )
 
@@ -635,7 +635,7 @@ def test_lfm_observation_falls_back_to_summary_on_blank() -> None:
     reason="requires a running Ollama LFM2.5 backend (set ODESSY_RUN_LFM_INTEGRATION=1)",
 )
 def test_lfm_live_integration_smoke() -> None:
-    model = LlamaCppLFMModel()
+    model = OllamaChatModel()
     action = model.propose("run pwd")
     assert isinstance(action, (ToolRequest, FinalResponse))
 

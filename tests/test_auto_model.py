@@ -234,16 +234,16 @@ async def test_batch_stays_on_capable_and_diagnostics_survive(tmp_path):
 
 
 def test_transport_repairs_share_budget_and_no_cloud_after_exhaustion(monkeypatch):
-    from odessy.models.lfm_model import LlamaCppLFMModel
+    from odessy.models.ollama_chat import OllamaChatModel
     from odessy.models.generation_control import before_generation
     calls = []
     def chat(self, messages, tools=None):
         before_generation()
         calls.append(1)
         return {"message": {"content": "", "tool_calls": [{"function": {"name": "missing", "arguments": {}}}]}}
-    monkeypatch.setattr(LlamaCppLFMModel, "_chat", chat)
+    monkeypatch.setattr(OllamaChatModel, "_chat", chat)
     cloud = Scripted(FinalResponse("bad"))
-    model = make_router(Scripted(ValueError("fast failed")), LlamaCppLFMModel(), cloud)
+    model = make_router(Scripted(ValueError("fast failed")), OllamaChatModel(), cloud)
     model.begin_turn(max_model_calls=2)
     assert "budget" in model.propose("hi").text.lower()
     assert len(calls) == 1 and cloud.calls == 0
@@ -269,14 +269,14 @@ def test_keep_alive_only_changes_explicitly_configured_payload(monkeypatch):
 
 
 def test_context_reaches_capable_and_its_followups(monkeypatch):
-    from odessy.models.lfm_model import LlamaCppLFMModel
+    from odessy.models.ollama_chat import OllamaChatModel
     seen = []
     def chat(self, messages, tools=None):
         split = 1 if messages and messages[0].get("role") == "system" else 0
         seen.append([*messages[:split], *self.conversation_context, *messages[split:]])
         return {"message": {"content": "done"}}
-    monkeypatch.setattr(LlamaCppLFMModel, "_chat", chat)
-    model = make_router(Scripted(), LlamaCppLFMModel())
+    monkeypatch.setattr(OllamaChatModel, "_chat", chat)
+    model = make_router(Scripted(), OllamaChatModel())
     context = ({"role": "user", "content": "previous"}, {"role": "assistant", "content": "answer"})
     model.begin_turn(conversation_context=context)
     model.propose("hello")
@@ -310,7 +310,7 @@ def test_stop_between_begin_and_propose_is_preserved():
 
 
 def test_load_time_and_tokens_aggregate_across_escalations(monkeypatch):
-    from odessy.models.lfm_model import LlamaCppLFMModel
+    from odessy.models.ollama_chat import OllamaChatModel
     import urllib.request
     class Response:
         def __init__(self, output): self.output = output
@@ -322,7 +322,7 @@ def test_load_time_and_tokens_aggregate_across_escalations(monkeypatch):
         {"message": {"content": "done"}, "done": True, "load_duration": 4000000, "prompt_eval_count": 4, "eval_count": 5},
     ])
     monkeypatch.setattr(urllib.request, "urlopen", lambda *a, **kw: Response(next(outputs)))
-    model = make_router(OllamaModel(text_only=True), LlamaCppLFMModel())
+    model = make_router(OllamaModel(text_only=True), OllamaChatModel())
     assert model.propose("hi").text == "done"
     diagnostic = model.last_turn_diagnostics
     assert diagnostic.prompt_tokens == 7 and diagnostic.completion_tokens == 7

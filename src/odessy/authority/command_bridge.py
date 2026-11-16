@@ -467,19 +467,6 @@ def _looks_like_secret_env_name(name: str) -> bool:
 _TAIL_SHARE = 0.6
 
 
-def _truncate_text(text: str, max_chars: int) -> tuple[str, bool]:
-    """Legacy head-only truncation.
-
-    Retained so pre-spill callers and tests keep their exact behaviour. New code
-    should use `CommandBridge._prepare_output`, which retains both ends and
-    spills the remainder instead of discarding it.
-    """
-
-    if len(text) <= max_chars:
-        return text, False
-    return text[:max_chars] + "\n[odessy: output truncated]\n", True
-
-
 def _creation_flags() -> int:
     if os.name != "nt":
         return 0

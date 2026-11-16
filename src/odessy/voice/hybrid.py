@@ -42,7 +42,7 @@ from odessy.voice.capture import (
 from odessy.voice.config import VoiceConfig
 from odessy.voice.frames import WAKE_FRAME_BYTES
 from odessy.voice.interaction import schedule_stop
-from odessy.voice.memory import ConversationMemory
+from odessy.runtime.memory import ConversationMemory
 from odessy.voice.segmentation import SegmenterConfig, UtteranceSegmenter
 from odessy.voice.session import (
     SessionOptions,

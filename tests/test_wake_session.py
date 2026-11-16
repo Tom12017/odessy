@@ -27,7 +27,7 @@ from odessy.voice.frames import (
     FrameBuffer,
     FrameQueue,
 )
-from odessy.voice.memory import ConversationMemory
+from odessy.runtime.memory import ConversationMemory
 from odessy.voice.segmentation import SegmenterConfig, UtteranceSegmenter
 from odessy.voice.session import (
     CANCEL_PHRASES,

@@ -45,7 +45,7 @@ from odessy.voice.frames import (
     FrameQueue,
     AudioFrame,
 )
-from odessy.voice.memory import ConversationMemory
+from odessy.runtime.memory import ConversationMemory
 from odessy.voice.segmentation import SegmenterConfig, UtteranceSegmenter
 from odessy.voice.vad import SpeechDetector
 from odessy.voice.wake import WakeDetector, WakeGate
@@ -871,14 +871,3 @@ def write_cue_wav(path: "Path", *, milliseconds: int = 150, frequency: int = 880
         handle.setsampwidth(2)
         handle.setframerate(16_000)
         handle.writeframes(bytes(frames))
-
-
-async def iter_frames(stream: AsyncIterator[bytes], size: int = WAKE_FRAME_BYTES) -> AsyncIterator[bytes]:
-    """Re-cut an async byte stream into fixed frames. Used by the CLI adapter."""
-
-    pending = bytearray()
-    async for chunk in stream:
-        pending.extend(chunk)
-        while len(pending) >= size:
-            yield bytes(pending[:size])
-            del pending[:size]

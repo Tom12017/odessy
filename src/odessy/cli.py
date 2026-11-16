@@ -39,7 +39,9 @@ from odessy.execution.posture import host_posture, limitations_when_asked, resol
 from odessy.execution.registry import ProviderRegistry, host_registry
 from odessy.execution.escalation import ApprovalRequest, EscalationDeniedError, EscalationOutcome
 from odessy.models.fake_model import FakeModel
-from odessy.models.lfm_model import LlamaCppLFMModel
+from odessy.models import DEFAULT_LOCAL_ENDPOINT, DEFAULT_CHAT_MODEL, DEFAULT_FAST_MODEL
+from odessy.models import build_local_model
+from odessy.models.ollama_chat import OllamaChatModel
 from odessy.tools.mcp_server import build_odessy_mcp_server
 from odessy.tools.external_tools import (
     MAX_EXTERNAL_TOOLS_CLOUD,
@@ -67,7 +69,7 @@ from odessy.voice.capture import CommandAudioStream, CommandPlayer
 from odessy.voice.config import VoiceConfig
 from odessy.voice.frames import WAKE_FRAME_BYTES
 from odessy.voice.loop import VoiceLoop
-from odessy.voice.memory import ConversationMemory
+from odessy.runtime.memory import ConversationMemory
 from odessy.voice.segmentation import SegmenterConfig, UtteranceSegmenter
 from odessy.voice.session import (
     SessionOptions,
@@ -83,12 +85,10 @@ from odessy.voice.vad import SileroSpeechDetector
 from odessy.voice.wake import OpenWakeWordDetector, WakeGate
 from odessy.application.bootstrap import ControllerAgent, controller_runtime
 
-DEFAULT_LFM_ENDPOINT = "http://127.0.0.1:11434"
-DEFAULT_LFM_MODEL = "lfm2.5-thinking:1.2b-q8_0"
 LOCAL_BACKENDS = ("lfm", "ollama", "llama_cpp")
 MODEL_BACKENDS = (*LOCAL_BACKENDS, "auto", *CLOUD_PROVIDERS)
 
-Model = FakeModel | OllamaModel | LlamaCppLFMModel | CloudModel | FailoverModel | RoutedModel
+Model = FakeModel | OllamaModel | OllamaChatModel | CloudModel | FailoverModel | RoutedModel
 
 
 def _build_model(
@@ -121,16 +121,16 @@ def _build_model(
             model_name
             or ollama_model
             or os.environ.get("ODESSY_MODEL_NAME")
-            or os.environ.get("ODESSY_OLLAMA_MODEL", "gemma3:1b")
+            or os.environ.get("ODESSY_OLLAMA_MODEL", DEFAULT_FAST_MODEL)
         )
-        return OllamaModel(model=name)
+        return build_local_model("ollama", model=name)
     if backend == "llama_cpp":
         backend = "lfm"
     if backend != "lfm":
         raise ValueError(f"Unknown model backend: {backend}")
-    name = model_name or os.environ.get("ODESSY_MODEL_NAME", DEFAULT_LFM_MODEL)
-    endpoint = os.environ.get("ODESSY_MODEL_ENDPOINT", DEFAULT_LFM_ENDPOINT)
-    return LlamaCppLFMModel(model=name, endpoint=endpoint)
+    name = model_name or os.environ.get("ODESSY_MODEL_NAME", DEFAULT_CHAT_MODEL)
+    endpoint = os.environ.get("ODESSY_MODEL_ENDPOINT", DEFAULT_LOCAL_ENDPOINT)
+    return build_local_model(backend, model=name, endpoint=endpoint)
 
 
 def _build_policy(workspace_root: Path, hooks) -> OdessyPolicy:
@@ -691,7 +691,7 @@ def _announce_model(model: object) -> None:
     elif not isinstance(model, RoutedModel):
         backend = (
             model.provider if isinstance(model, CloudModel)
-            else "lfm" if isinstance(model, LlamaCppLFMModel)
+            else "lfm" if isinstance(model, OllamaChatModel)
             else "ollama" if isinstance(model, OllamaModel)
             else "fake" if isinstance(model, FakeModel)
             else type(model).__name__
@@ -1048,7 +1048,7 @@ def main(argv: list[str] | None = None) -> None:
         parser.add_argument(
             "--fake-model",
             action="store_true",
-            help="Use the deterministic fake model instead of Ollama/Gemma.",
+            help="Use the deterministic fake model instead of the configured model.",
         )
         parser.add_argument(
             "--listen",

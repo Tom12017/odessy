@@ -21,7 +21,7 @@ from odessy.models.ollama_model import (
     _accumulate_stream,
     _default_progress_timeout,
 )
-from odessy.models.lfm_model import LlamaCppLFMModel
+from odessy.models.ollama_chat import OllamaChatModel
 
 
 def stream(*chunks: dict[str, Any]) -> list[bytes]:
@@ -182,7 +182,7 @@ def test_adapter_picks_up_configured_progress_timeout(
 
     monkeypatch.setenv(PROGRESS_TIMEOUT_ENV, "77")
 
-    model = LlamaCppLFMModel()
+    model = OllamaChatModel()
 
     assert model.timeout == 77
 
@@ -192,6 +192,6 @@ def test_explicit_timeout_still_wins(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setenv(PROGRESS_TIMEOUT_ENV, "77")
 
-    model = LlamaCppLFMModel(timeout=15)
+    model = OllamaChatModel(timeout=15)
 
     assert model.timeout == 15

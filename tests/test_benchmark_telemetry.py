@@ -69,7 +69,7 @@ def test_real_voice_turn_components_are_wired(tmp_path: Path) -> None:
 
     components = build_real_components(config, tmp_path)
 
-    assert components["model"].__class__.__name__ == "LlamaCppLFMModel"
+    assert components["model"].__class__.__name__ == "OllamaChatModel"
     assert components["stt"].__class__.__name__ == "WhisperCppSTT"
     assert components["tts"].__class__.__name__ == "KokoroTTS"
     assert components["audio_io"].__class__.__name__ == "CommandAudioIO"

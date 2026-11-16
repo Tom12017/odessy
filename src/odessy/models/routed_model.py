@@ -13,8 +13,9 @@ from typing import Any, Callable, Mapping
 from odessy.models.generation_control import generation_guard
 from odessy.runtime.types import FinalResponse, ModelTurnDiagnostics
 
+from . import DEFAULT_CHAT_MODEL as DEFAULT_CAPABLE_MODEL, DEFAULT_FAST_MODEL
+
 POLICY_VERSION = "conservative-v1"
-DEFAULT_CAPABLE_MODEL = "lfm2.5-thinking:1.2b-q8_0"
 
 
 @dataclass(frozen=True)
@@ -35,7 +36,7 @@ def select_route(text: str, conversation_context=()) -> RouteDecision:
 
 @dataclass(frozen=True)
 class RoutingConfig:
-    fast_model: str = "gemma3:1b"
+    fast_model: str = DEFAULT_FAST_MODEL
     capable_backend: str = "lfm"
     capable_model: str = DEFAULT_CAPABLE_MODEL
     cloud_fallback: bool = False
@@ -56,7 +57,7 @@ class RoutingConfig:
         flag = env.get("ODESSY_AUTO_CLOUD_FALLBACK", "off").lower()
         if flag not in {"on", "off"}:
             raise ValueError("ODESSY_AUTO_CLOUD_FALLBACK must be on or off")
-        return cls(env.get("ODESSY_AUTO_FAST_MODEL", "gemma3:1b"),
+        return cls(env.get("ODESSY_AUTO_FAST_MODEL", DEFAULT_FAST_MODEL),
                    env.get("ODESSY_AUTO_CAPABLE_BACKEND", "lfm"),
                    env.get("ODESSY_AUTO_CAPABLE_MODEL", DEFAULT_CAPABLE_MODEL),
                    flag == "on", env.get("ODESSY_AUTO_CLOUD_BACKEND") or None)
@@ -143,15 +144,19 @@ class RoutedModel:
                 from odessy.models.failover import build_cloud_model_with_failover
                 child = build_cloud_model_with_failover(self.config.cloud_backend)
             else:
-                from odessy.models.ollama_model import OllamaModel
-                from odessy.models.lfm_model import LlamaCppLFMModel, DEFAULT_LFM_ENDPOINT
-                endpoint = os.environ.get("ODESSY_MODEL_ENDPOINT", DEFAULT_LFM_ENDPOINT)
+                from . import DEFAULT_LOCAL_ENDPOINT
+                from . import build_local_model
+                endpoint = os.environ.get("ODESSY_MODEL_ENDPOINT", DEFAULT_LOCAL_ENDPOINT)
                 if role == "fast":
-                    child = OllamaModel(model=self.config.fast_model, text_only=True, num_predict=256, keep_alive=0, endpoint=endpoint)
-                elif self.config.capable_backend == "ollama":
-                    child = OllamaModel(model=self.config.capable_model, keep_alive=0, endpoint=endpoint)
+                    child = build_local_model(
+                        "ollama", model=self.config.fast_model, text_only=True,
+                        num_predict=256, keep_alive=0, endpoint=endpoint,
+                    )
                 else:
-                    child = LlamaCppLFMModel(model=self.config.capable_model, keep_alive=0, endpoint=endpoint)
+                    child = build_local_model(
+                        self.config.capable_backend, model=self.config.capable_model,
+                        keep_alive=0, endpoint=endpoint,
+                    )
             self._children[role] = child
         return self._children[role]
 

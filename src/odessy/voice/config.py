@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from odessy.config.config_file import load_config_env
+from odessy.models import DEFAULT_FAST_MODEL
 from odessy.voice.assets import DEFAULT_WAKE_MODEL, asset_dir
 
 #: Seconds a follow-up window stays open in conversation mode.
@@ -23,7 +24,7 @@ class VoiceConfig:
     whisper_model: str
     kokoro_model: str
     kokoro_voices: str
-    ollama_model: str = "gemma3:1b"
+    ollama_model: str = DEFAULT_FAST_MODEL
     onnx_provider: str = "auto"
     onnx_cache_dir: Path | None = None
     audio_recorder: str = "arecord"
@@ -86,7 +87,7 @@ class VoiceConfig:
             whisper_model=os.environ.get("ODESSY_WHISPER_MODEL", "models/ggml-tiny.en.bin"),
             kokoro_model=os.environ.get("ODESSY_KOKORO_MODEL", "kokoro-v1.0.int8.onnx"),
             kokoro_voices=os.environ.get("ODESSY_KOKORO_VOICES", "voices-v1.0.bin"),
-            ollama_model=os.environ.get("ODESSY_OLLAMA_MODEL", "gemma3:1b"),
+            ollama_model=os.environ.get("ODESSY_OLLAMA_MODEL", DEFAULT_FAST_MODEL),
             onnx_provider=os.environ.get("ODESSY_ONNX_PROVIDER", "auto"),
             onnx_cache_dir=_env_path("ODESSY_ONNX_CACHE_DIR"),
             audio_recorder=os.environ.get("ODESSY_AUDIO_RECORDER", "arecord"),

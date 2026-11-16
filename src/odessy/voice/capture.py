@@ -18,31 +18,12 @@ import sys
 from dataclasses import dataclass, field
 from threading import Lock
 from pathlib import Path
-from typing import Protocol
 
 from odessy.voice.frames import SAMPLE_RATE
 
 
 class AudioStreamError(RuntimeError):
     """The capture process could not start, or stopped unexpectedly."""
-
-
-class AudioStream(Protocol):
-    """A pull-based source of raw PCM bytes: 16 kHz, mono, signed 16-bit."""
-
-    def read(self, size: int) -> bytes:
-        """Block until ``size`` bytes are available, or return fewer at end of stream."""
-
-    def close(self) -> None:
-        ...
-
-
-class AudioPlayer(Protocol):
-    def play(self, audio_path: Path) -> None:
-        ...
-
-    def stop(self) -> None:
-        ...
 
 
 @dataclass

@@ -147,22 +147,6 @@ def authorize(policy: OdessyPolicy, name: str, arguments: Mapping[str, Any]):
     return review(policy, name, arguments)[1]
 
 
-def build_server(*, workspace: Path, policy: OdessyPolicy, session: SessionPolicy,
-                 consent=None, on_spawn=None):
-    """The reviewed Odessy tool surface, guarded and confined for one session."""
-
-    return build_odessy_mcp_server(
-        workspace_root=workspace,
-        registry=host_registry(),
-        policy=None,
-        include_terminal=True,
-        session_policy=session,
-        authorize=lambda name, arguments: authorize(policy, name, arguments),
-        consent=consent,
-        on_spawn=on_spawn,
-    )
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="odessy.tools.stdio_server")
     parser.add_argument("--workspace", required=True)

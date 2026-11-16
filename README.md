@@ -2,6 +2,14 @@
 
 **Developer Preview · v0.5.0-alpha**
 
+> **Unstable developer preview.** Odessy is experimental software. Expect bugs,
+> breaking changes and rough edges. No stable release exists yet. See
+> [support and limits](docs/current-status.md) for platform coverage and known limitations.
+
+Hi, this is Odessy, not Odyssey! ⛵
+
+> Curious how this started? [Read the story behind Odessy](Story.md).
+
 Odessy is a single-user AI agent application with a Flutter desktop interface,
 local or cloud model connections, policy-controlled tools and optional voice.
 The model proposes actions; Odessy's service validates authority and obtains
@@ -66,12 +74,30 @@ per-command workspace sandbox. Legacy plaintext LAN execution is unsuitable for
 untrusted networks. Prefer the documented authenticated transport paths.
 Report vulnerabilities privately through [SECURITY.md](SECURITY.md).
 
-## Build with us
+## Build Odessy with us
 
-We welcome focused bug fixes, accessibility work, provider compatibility tests,
-documentation and reproducible platform reports. Start with
-[Contributing](CONTRIBUTING.md), [architecture](docs/ARCHITECTURE.md) and
-[open issues](https://github.com/Trisoma/odessy/issues). Discuss larger changes first.
+We're a small team of two regular contributors, with three others helping out
+on a short-term basis, and we'd love some company. Whether you'd like to fix a
+bug, improve a component or work with us on a larger part of Odessy, you're welcome.
+
+Some areas we'd love help with:
+
+- **AI agents:** orchestration, tool calling, model integration and memory.
+- **Hardware exploration:** Jetson, Raspberry Pi, BLE and MCU communication.
+  These are areas of interest, not claims of current device support.
+- **Systems:** Rust, networking, mTLS and secure execution.
+- **Desktop:** Flutter, Dart, accessibility and UI/UX.
+- **Infrastructure:** Go, monitoring, telemetry and multi-host management.
+- **Voice:** STT, TTS, wake-word detection and audio processing.
+
+Documentation, compatibility tests and reproducible bug reports are welcome too.
+Odessy is an independent, volunteer-driven project. Contributions are unpaid,
+and there's no fixed time commitment: help when you can.
+
+Start with [Contributing](CONTRIBUTING.md), explore the
+[architecture](docs/ARCHITECTURE.md), browse
+[open issues](https://github.com/Trisoma/odessy/issues), or suggest an idea.
+For larger changes, discuss the approach with us before starting.
 AI-assisted contributions are welcome; contributors remain responsible for review,
 testing and attribution.
 

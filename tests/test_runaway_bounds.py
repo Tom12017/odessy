@@ -21,7 +21,7 @@ from typing import Any
 
 import pytest
 from odessy.models.cloud_model import DEFAULT_OPENAI_MAX_TOKENS, CloudModel
-from odessy.models.lfm_model import LlamaCppLFMModel
+from odessy.models.ollama_chat import OllamaChatModel
 from odessy.models.ollama_model import (
     CALL_TIMEOUT_ENV,
     DEFAULT_NUM_CTX,
@@ -94,7 +94,7 @@ def test_ollama_requests_carry_a_generation_ceiling(monkeypatch: pytest.MonkeyPa
 def test_lfm_requests_carry_a_generation_ceiling(monkeypatch: pytest.MonkeyPatch) -> None:
     captured = _capture(monkeypatch, _one_answer())
 
-    LlamaCppLFMModel()._chat([{"role": "user", "content": "hi"}])
+    OllamaChatModel()._chat([{"role": "user", "content": "hi"}])
 
     assert captured["payload"]["options"]["num_predict"] == DEFAULT_NUM_PREDICT
     assert captured["payload"]["options"]["num_ctx"] == DEFAULT_NUM_CTX
@@ -112,7 +112,7 @@ def test_lfm_temperature_is_inside_options_where_ollama_reads_it(
 
     captured = _capture(monkeypatch, _one_answer())
 
-    LlamaCppLFMModel(temperature=0.0)._chat([{"role": "user", "content": "hi"}])
+    OllamaChatModel(temperature=0.0)._chat([{"role": "user", "content": "hi"}])
 
     payload = captured["payload"]
     assert "temperature" not in payload
@@ -126,7 +126,7 @@ def test_the_limits_are_configurable_through_the_environment(
     monkeypatch.setenv(NUM_CTX_ENV, "2048")
     monkeypatch.setenv(CALL_TIMEOUT_ENV, "45")
 
-    model = LlamaCppLFMModel()
+    model = OllamaChatModel()
 
     assert (model.num_predict, model.num_ctx, model.call_timeout) == (256, 2048, 45.0)
 
@@ -148,7 +148,7 @@ def test_a_generation_that_never_ends_is_stopped_by_the_total_budget(
 
     # num_predict is the first line of defence; this proves the second, for a server
     # that ignores it or a stream that ignores the model's stop token.
-    model = LlamaCppLFMModel(num_predict=0, call_timeout=5.0)
+    model = OllamaChatModel(num_predict=0, call_timeout=5.0)
 
     with pytest.raises(_OllamaCallTimeout) as raised:
         model._chat([{"role": "user", "content": "hi"}])

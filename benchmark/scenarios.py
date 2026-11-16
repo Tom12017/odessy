@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from odessy.runtime.agent_loop import OdessyAgent
-from odessy.models.lfm_model import LlamaCppLFMModel, normalize_ollama_chat_response
+from odessy.models.ollama_chat import OllamaChatModel, normalize_ollama_chat_response
 from odessy.authority.policy import OdessyPolicy
 from odessy.runtime.types import FinalResponse, ToolObservation, ToolRequest
 from odessy.voice.audio_io import CommandAudioIO
@@ -74,7 +74,7 @@ class BenchmarkPyTorchTTS:
 
 
 @dataclass(frozen=True)
-class BenchmarkPartialGpuLFMModel(LlamaCppLFMModel):
+class BenchmarkPartialGpuLFMModel(OllamaChatModel):
     """Benchmark-only LFM adapter that asks Ollama for partial GPU offload."""
 
     num_gpu: int | None = None
@@ -625,7 +625,7 @@ def build_real_components(
     tts_device: str = "auto",
 ) -> dict[str, Any]:
     if ollama_num_gpu is None:
-        model = LlamaCppLFMModel(model=config.ollama_model)
+        model = OllamaChatModel(model=config.ollama_model)
     else:
         model = BenchmarkPartialGpuLFMModel(model=config.ollama_model, num_gpu=ollama_num_gpu)
     stt = WhisperCppSTT(whisper_bin=config.whisper_bin, model_path=config.whisper_model)
@@ -660,7 +660,7 @@ def build_lfm_compare_model(
     *,
     endpoint: str | None = None,
     ollama_num_gpu: int | None = None,
-) -> LlamaCppLFMModel:
+) -> OllamaChatModel:
     kwargs: dict[str, Any] = {
         "model": variant.model,
         "think": variant.think,
@@ -668,7 +668,7 @@ def build_lfm_compare_model(
     if endpoint is not None:
         kwargs["endpoint"] = endpoint
     if ollama_num_gpu is None:
-        return LlamaCppLFMModel(**kwargs)
+        return OllamaChatModel(**kwargs)
     return BenchmarkPartialGpuLFMModel(num_gpu=ollama_num_gpu, **kwargs)
 
 

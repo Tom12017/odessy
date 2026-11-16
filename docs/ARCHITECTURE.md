@@ -52,6 +52,15 @@ No MCU execution capability, complete sandbox or reliable voice is implied.
 
 ## Durable application services
 
+Model adapters live in `src/odessy/models/`. Shared provider metadata in
+`src/odessy/model_providers.py` also serves the minimal setup bootstrap. Local callers
+use `models.build_local_model`, with shared presets in `models/__init__.py`. The Ollama
+chat adapter accepts configured model names, including models outside the preset
+families. Both local adapters share the bounded HTTP transport in `ollama_model.py`.
+The canonical chat implementation is `models/ollama_chat.py`. Historical flat
+imports such as `odessy.agent_loop` have been retired. Use domain imports such as
+`odessy.runtime.agent_loop`.
+
 The production application composition owns conversation SQLite lifecycle, Custom
 continuation, access modes and trusted live workspace/session resolution. Context,
 memory and retrieval extend that store without becoming authorization sources.
@@ -59,3 +68,26 @@ Terminal handles are ephemeral; checkpoints own Git refs and metadata, not user
 branches or arbitrary files. Harness remains selectable without automatic fallback.
 See [history](ui/conversation-history.md), [database ownership](database/README.md)
 and [the current support matrix](current-status.md).
+
+## Python source organization
+
+`src/odessy` is the installable Python package. Keep code within its owning domain.
+
+| Directory | Responsibility |
+| --- | --- |
+| `application/` | API routes, session lifecycle and durable application services |
+| `runtime/` | Agent loop, scheduling, hooks and bounded conversation history |
+| `runtime_backends/` | Runtime engine contracts and Custom/Harness adapters |
+| `models/` | Model adapters, local construction, routing and usage |
+| `authority/` | Policy, approvals, redaction and audit boundaries |
+| `execution/` | Host isolation, resource limits and execution providers |
+| `tools/` | MCP clients, servers and guarded tool transport |
+| `voice/` | Audio capture, playback, speech providers and voice interaction |
+| `collaboration/` | Participants, jobs and handoffs |
+| `config/` | Configuration loading, validation and diagnostics |
+| `setup/` | Installation, maintenance and component configuration |
+| `monitoring/`, `ssh/`, `devices/` | Host monitoring, SSH identity and device declarations |
+
+Routes compose existing service owners. Model adapters produce proposals through
+shared runtime types. Authority and execution enforce grants at dispatch. Keep
+channel-independent conversation logic in `runtime/` and audio logic in `voice/`.

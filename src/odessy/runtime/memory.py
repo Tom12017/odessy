@@ -1,6 +1,6 @@
-"""In-memory conversation history for a voice session.
+"""Bounded in-memory conversation history shared by text and voice sessions.
 
-A voice session asks follow-up questions ("what about the other one?"), which needs
+A session can ask follow-up questions ("what about the other one?"), which needs
 the previous exchanges in the request. That is a *new* thing to send to a model, so it
 is bounded, redacted, and never persisted:
 
@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from odessy.redaction import redact_text
+from odessy.authority.redaction import redact_text
 from odessy.runtime.types import ConversationContext, ConversationTurn
 
 DEFAULT_MAX_EXCHANGES = 6

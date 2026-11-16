@@ -33,7 +33,7 @@ from odessy.runtime_backends import (
     resolve_and_build,
 )
 from odessy.runtime_backends.contracts import RuntimeEngineLocked, StopOutcome
-from odessy.voice.memory import ConversationMemory
+from odessy.runtime.memory import ConversationMemory
 from odessy.collaboration.context import collaboration_scope
 from odessy.interaction.broker import InteractionBroker
 from odessy.interaction.context import interaction_scope

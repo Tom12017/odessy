@@ -1,26 +1,23 @@
-"""LFM2.5-1.2B-Thinking model adapter over Ollama's HTTP API.
+"""Ollama chat adapter with native tools, thinking and generation diagnostics.
 
-This adapter is intentionally thin. It reuses Odessy's shared proposal parsing,
-validation, repair, and observation helpers from ``ollama_model`` so that the
-model-specific code is limited to backend selection. LFM2.5 is a separate
-backend, not a fork of the authority, policy, or validation logic.
+Accepts any Ollama model name and falls back to structured text when the server
+reports that tools are unsupported. Shared parsing and authority contracts live
+in ollama_model and the runtime.
 """
 
 from __future__ import annotations
 
-import json
 import os
 import time
-import urllib.error
-import urllib.request
 from dataclasses import dataclass, field
 from typing import Any
 
 from odessy.tools.tool_contracts import build_openai_tools
 from odessy.models.ollama_model import (
-    _OllamaStreamTimeout,
     _OllamaToolsUnsupported,
-    _accumulate_stream,
+    _elapsed_ms,
+    _add_diagnostic_ms,
+    _add_tokens,
     _corrected_tool_request,
     _debug_model_repair,
     _debug_parsed_action,
@@ -34,7 +31,6 @@ from odessy.models.ollama_model import (
     _history_messages,
     _observation_messages,
     _remember_observation,
-    _start_turn,
     _start_turn_with_context,
     _strip_thinking,
     _looks_like_generic_final_response,
@@ -42,20 +38,13 @@ from odessy.models.ollama_model import (
     _repair_prompt,
     _system_prompt,
     _text_system_prompt,
-    PROGRESS_TIMEOUT_ENV,
-    generation_options,
+    _request_ollama_chat,
 )
 from odessy.runtime.types import FinalResponse, ModelAction, ModelTurnDiagnostics, ToolObservation
 
-DEFAULT_LFM_ENDPOINT = os.environ.get("ODESSY_MODEL_ENDPOINT", "http://127.0.0.1:11434")
-DEFAULT_LFM_MODEL = "lfm2.5-thinking:1.2b-q8_0"
+from . import DEFAULT_CHAT_MODEL, DEFAULT_LOCAL_ENDPOINT
 
-
-def _read_error_body(error: urllib.error.HTTPError) -> str:
-    try:
-        return error.read().decode("utf-8", "replace")
-    except Exception:
-        return ""
+DEFAULT_CHAT_ENDPOINT = os.environ.get("ODESSY_MODEL_ENDPOINT", DEFAULT_LOCAL_ENDPOINT)
 
 
 def normalize_ollama_chat_response(data: dict[str, Any]) -> dict[str, Any]:
@@ -87,16 +76,11 @@ def normalize_ollama_chat_response(data: dict[str, Any]) -> dict[str, Any]:
 
 
 @dataclass(frozen=True)
-class LlamaCppLFMModel:
-    """LFM2.5 adapter over Ollama's ``/api/chat``.
+class OllamaChatModel:
+    """Configurable Ollama chat model using the shared ModelAdapter protocol."""
 
-    The model proposes structured output and Odessy performs the same parsing,
-    validation, repair, and authority checks as for Gemma. The model never
-    becomes the authority layer.
-    """
-
-    model: str = DEFAULT_LFM_MODEL
-    endpoint: str = DEFAULT_LFM_ENDPOINT
+    model: str = DEFAULT_CHAT_MODEL
+    endpoint: str = DEFAULT_CHAT_ENDPOINT
     #: Seconds of allowed silence between streamed chunks. Not a total budget.
     timeout: int = field(default_factory=_default_progress_timeout)
     temperature: float = 0.0
@@ -131,7 +115,7 @@ class LlamaCppLFMModel:
             repair_prompt = _repair_prompt(user_text, model_error)
             _debug_model_repair(
                 [
-                    ("first LFM proposal", "invalid structured output"),
+                    ("first model proposal", "invalid structured output"),
                     ("validation failure", model_error.validation_error),
                     ("repair prompt", repair_prompt),
                 ]
@@ -147,7 +131,7 @@ class LlamaCppLFMModel:
                 raise ValueError(
                     f"Model repair failed after one retry: {retry_error}"
                 ) from retry_error
-            _debug_model_repair([("second LFM proposal", "repaired structured output")])
+            _debug_model_repair([("second model proposal", "repaired structured output")])
         _debug_parsed_action(action)
         return action
 
@@ -199,7 +183,7 @@ class LlamaCppLFMModel:
             )
         parse_started = time.perf_counter()
         try:
-            return _extract_lfm_native_action_from_chat(response, user_text)
+            return _extract_native_action_from_chat(response, user_text)
         finally:
             _add_diagnostic_ms(
                 diagnostics,
@@ -212,56 +196,9 @@ class LlamaCppLFMModel:
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
-        from odessy.models.generation_control import before_generation
-        before_generation()
-        if self.conversation_context:
-            split = 1 if messages and messages[0].get("role") == "system" else 0
-            messages = [*messages[:split], *self.conversation_context, *messages[split:]]
-        payload: dict[str, Any] = {
-            "model": self.model,
-            "messages": messages,
-            "stream": True,
-            # Inside ``options``, which is where Ollama reads it. A top-level
-            # ``temperature`` is ignored, so this used to sample at Ollama's
-            # default instead of at the intended 0.0.
-            "options": generation_options(self.temperature, self.num_predict, self.num_ctx),
-        }
-        if self.think is not None:
-            payload["think"] = self.think
-        if self.keep_alive is not None:
-            payload["keep_alive"] = self.keep_alive
-        if tools:
-            payload["tools"] = tools
-        request = urllib.request.Request(
-            f"{self.endpoint.rstrip('/')}/api/chat",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
+        return normalize_ollama_chat_response(
+            _request_ollama_chat(self, messages, tools)
         )
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                return normalize_ollama_chat_response(
-                    _accumulate_stream(response, self.call_timeout)
-                )
-        except urllib.error.HTTPError as error:
-            body = _read_error_body(error)
-            if "does not support tools" in body:
-                raise _OllamaToolsUnsupported(body) from error
-            raise RuntimeError(
-                f"Ollama LFM API call failed ({error.code}): {body or error.reason}"
-            ) from error
-        except TimeoutError as error:
-            raise _OllamaStreamTimeout(
-                f"no chunk received within {self.timeout}s "
-                f"({PROGRESS_TIMEOUT_ENV})"
-            ) from error
-        except urllib.error.URLError as error:
-            if isinstance(error.reason, TimeoutError):
-                raise _OllamaStreamTimeout(
-                    f"no chunk received within {self.timeout}s "
-                    f"({PROGRESS_TIMEOUT_ENV})"
-                ) from error
-            raise RuntimeError(f"Ollama LFM API call failed: {error}") from error
 
     def finalize_observations(self, observations) -> None:
         for observation in observations:
@@ -296,7 +233,7 @@ class LlamaCppLFMModel:
         return FinalResponse(text=_fallback_observation_response(observation))
 
 
-def _extract_lfm_native_action_from_chat(response: dict[str, Any], user_text: str) -> ModelAction:
+def _extract_native_action_from_chat(response: dict[str, Any], user_text: str) -> ModelAction:
     message = response.get("message") or {}
     if message.get("tool_calls"):
         return _extract_model_action_from_chat(response, user_text)
@@ -308,19 +245,6 @@ def _extract_lfm_native_action_from_chat(response: dict[str, Any], user_text: st
     if content.startswith("{") or content.startswith("```"):
         return _extract_model_action_from_chat(response, user_text)
     return FinalResponse(text=content)
-
-
-def _elapsed_ms(started: float) -> float:
-    return (time.perf_counter() - started) * 1000.0
-
-
-def _add_diagnostic_ms(
-    diagnostics: ModelTurnDiagnostics,
-    field_name: str,
-    value: float,
-) -> None:
-    current = getattr(diagnostics, field_name)
-    setattr(diagnostics, field_name, value if current is None else current + value)
 
 
 def _record_model_call_attempt(diagnostics: ModelTurnDiagnostics) -> None:
@@ -380,14 +304,3 @@ def _add_duration_ms(
         field_name,
         value_ms if current is None else current + value_ms,
     )
-
-
-def _add_tokens(
-    diagnostics: ModelTurnDiagnostics,
-    field_name: str,
-    value: Any,
-) -> None:
-    if not isinstance(value, int):
-        return
-    current = getattr(diagnostics, field_name)
-    setattr(diagnostics, field_name, value if current is None else current + value)

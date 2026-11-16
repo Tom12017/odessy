@@ -25,7 +25,7 @@ from odessy.voice.capture import AudioStreamError
 from odessy.voice.config import VoiceConfig
 from odessy.voice.frames import VAD_FRAME_BYTES, WAKE_FRAME_BYTES
 from odessy.voice.hybrid import AudioUnavailable, HybridAudioAdapter
-from odessy.voice.memory import ConversationMemory
+from odessy.runtime.memory import ConversationMemory
 from odessy.voice.stt import STTResult
 from odessy.voice.tts import TTSResult
 from odessy.voice.wake import WakeGate

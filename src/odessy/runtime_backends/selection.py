@@ -158,10 +158,3 @@ def resolve_and_build(session: Any, value: Any = None, *,
     """Validate engine selection and construct exactly that engine."""
     selection = require_available(resolve_selection(value, environ=environ))
     return selection, _BACKENDS[selection.engine](session)
-
-
-def _reset_registry_for_tests() -> None:  # pragma: no cover - test helper
-    """Restore the built-in registry (used by tests that register a fake engine)."""
-    _BACKENDS.clear()
-    _BACKENDS["legacy"] = _legacy_builder
-    _BACKENDS["harness"] = _harness_builder

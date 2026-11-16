@@ -11,21 +11,4 @@ does not publish a release or create a Git tag.
 
 __version__ = "0.5.0.dev0"
 
-__all__ = [
-    "agent_loop",
-    "command_bridge",
-    "fake_model",
-    "lfm_model",
-    "mcp_server",
-    "ollama_model",
-    "policy",
-    "types",
-    "voice",
-]
-
-# Resolve historical imports from aliases kept outside the implementation folders.
-# Each alias returns the canonical module, preserving class identity and patches.
-from os.path import dirname as _dirname, join as _join
-
-__path__.append(_join(_dirname(__file__), "_compat"))
-__all__ += ["runtime", "models", "tools", "authority", "config"]
+__all__ = ["runtime", "models", "tools", "authority", "config", "voice"]

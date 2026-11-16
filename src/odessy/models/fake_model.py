@@ -4,7 +4,7 @@ from odessy.runtime.types import FinalResponse, ModelAction, ToolObservation, To
 
 
 class FakeModel:
-    """Deterministic stand-in for Gemma during runtime development."""
+    """Deterministic model adapter for runtime development."""
 
     def propose(self, user_text: str, *, context: Any = None) -> ModelAction:
         normalized = user_text.strip().lower()

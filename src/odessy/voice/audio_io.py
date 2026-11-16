@@ -82,21 +82,3 @@ class CommandAudioIO:
             argv.extend(["-D", self.output_device])
         argv.append(str(audio_path))
         self._run(argv, timeout=120, action="play")
-
-def _run_audio_command(argv: list[str], *, timeout: int, action: str) -> None:
-    try:
-        result = subprocess.run(
-            argv,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            check=False,
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise AudioIOError(f"Audio {action} failed: {exc}") from exc
-    if result.returncode != 0:
-        stderr = (result.stderr or result.stdout or "").strip()
-        raise AudioIOError(f"Audio {action} failed with exit code {result.returncode}: {stderr}")

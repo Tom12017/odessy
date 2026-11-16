@@ -128,16 +128,12 @@ class CollaborationService:
         if profile.adapter == 'cloud':
             return _cloud_model(profile)
         if profile.adapter in ('ollama', 'lfm'):
-            if profile.adapter == 'ollama':
-                from odessy.models.ollama_model import OllamaModel as Model
-            else:
-                from odessy.models.lfm_model import LlamaCppLFMModel as Model
-            kwargs = {'timeout': profile.timeout, 'num_predict': profile.max_tokens}
-            if profile.model:
-                kwargs['model'] = profile.model
-            if profile.endpoint:
-                kwargs['endpoint'] = profile.endpoint
-            return Model(**kwargs)
+            from odessy.models import build_local_model
+            return build_local_model(
+                profile.adapter, model=profile.model or None,
+                endpoint=profile.endpoint or None,
+                timeout=profile.timeout, num_predict=profile.max_tokens,
+            )
         if profile.adapter == 'auto':
             from odessy.models.routed_model import RoutedModel, RoutingConfig
             return RoutedModel(RoutingConfig.from_env())

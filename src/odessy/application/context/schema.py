@@ -1,9 +1,9 @@
-"""Wave 2 extension schema owned by prompt 04 (context, memory, retrieval).
+"""Versioned extension schema for context, memory and retrieval.
 
 All tables are prefixed ``context_``/``memory_``/``retrieval_`` and versioned in the
 core ``schema_extensions`` table. The core ``PRAGMA user_version`` stays owned by
-prompt 01 and is never touched here. Migrations are idempotent and run inside one
-serialized transaction after core setup.
+the conversation store and is never touched here. Migrations are idempotent and
+run inside one serialized transaction after core setup.
 """
 from __future__ import annotations
 
@@ -14,9 +14,9 @@ TABLES = ('context', 'memory', 'retrieval')
 
 
 def migrate_extensions(connection: sqlite3.Connection) -> None:
-    """Create/upgrade this worker's extension tables exactly once per version.
+    """Create/upgrade extension tables exactly once per version.
 
-    07 calls this after core store setup with the store's serialized connection.
+    Application composition calls this with the store's serialized connection.
     Re-running it against the same database is a no-op; a future version is not
     silently downgraded (the version row is only advanced here).
     """
@@ -90,7 +90,3 @@ def migrate_extensions(connection: sqlite3.Connection) -> None:
             'INSERT OR IGNORE INTO schema_extensions(name, version) VALUES (?, ?)',
             (name, EXTENSION_VERSION))
     connection.commit()
-
-
-def foreign_keys_on(connection: sqlite3.Connection) -> bool:
-    return bool(connection.execute('PRAGMA foreign_keys').fetchone()[0])

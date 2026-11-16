@@ -3,8 +3,8 @@
 Why this file exists
 --------------------
 
-Every other LFM adapter test subclasses ``LlamaCppLFMModel`` and overrides
-``_chat`` (see ``QueuedLFM`` in ``test_lfm_model.py``). That bypasses three
+Every other LFM adapter test subclasses ``OllamaChatModel`` and overrides
+``_chat`` (see ``QueuedLFM`` in ``test_ollama_chat.py``). That bypasses three
 things at once:
 
 ```text
@@ -36,7 +36,7 @@ from pathlib import Path
 import pytest
 
 from odessy.runtime.agent_loop import ExecutionTarget, OdessyAgent
-from odessy.models.lfm_model import LlamaCppLFMModel
+from odessy.models.ollama_chat import OllamaChatModel
 from odessy.tools.mcp_server import build_odessy_mcp_server
 from odessy.authority.policy import OdessyPolicy
 from odessy.runtime.types import FinalResponse, ToolObservation, ToolRequest
@@ -131,9 +131,9 @@ class FakeOllama:
         return _StreamResponse(self._streams.pop(0))
 
 
-def _model(monkeypatch: pytest.MonkeyPatch, fake: FakeOllama) -> LlamaCppLFMModel:
+def _model(monkeypatch: pytest.MonkeyPatch, fake: FakeOllama) -> OllamaChatModel:
     monkeypatch.setattr("urllib.request.urlopen", fake)
-    return LlamaCppLFMModel(endpoint="http://127.0.0.1:11434")
+    return OllamaChatModel(endpoint="http://127.0.0.1:11434")
 
 
 # --------------------------------------------------------------------------

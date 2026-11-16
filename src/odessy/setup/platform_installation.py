@@ -39,11 +39,6 @@ def _require(operation):
     return module
 
 
-def display_version():
-    module=implementation()
-    return getattr(module,'DISPLAY_VERSION','0.5.0.dev0') if module is not None else '0.5.0.dev0'
-
-
 def launch(root,mode='app',launch_id=None):
     """Start the recorded desktop for a mode and return the child process."""
     return _require('launching the desktop').launch(root,mode,launch_id=launch_id)

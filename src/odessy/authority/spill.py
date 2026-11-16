@@ -189,9 +189,3 @@ class SpillStore:
         if not resolved.resolved.is_file():
             raise FileNotFoundError(locator.path)
         return resolved.resolved.read_text(encoding="utf-8", errors="replace")
-
-
-def spill_store_for(workspace_root: Path | str) -> SpillStore:
-    """Build a store bound to a workspace root."""
-
-    return SpillStore(workspace_root=Path(workspace_root))

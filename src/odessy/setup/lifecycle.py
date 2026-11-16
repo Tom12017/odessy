@@ -27,10 +27,6 @@ def _token(action,root,details,parameters):
     return fingerprint({'operation':action,'root':str(root),'details':stable(details),'arguments':{k:v for k,v in parameters.items() if k not in ('confirm','action')}})
 
 
-def _without_confirm(parameters):
-    return {key:value for key,value in parameters.items() if key not in ('action','confirm')}
-
-
 def dispatch(parameters,*,cancelled=lambda:False):
     data=fields(parameters,{'action','root','bundle','config','role','confirm','version','workspace','port','node_link','node_server','listen','executable','allow_inference','allow_model_downloads'},'lifecycle')
     if not isinstance(data.get('root'),str) or not data['root'].strip():raise ValueError('explicit installation root required')

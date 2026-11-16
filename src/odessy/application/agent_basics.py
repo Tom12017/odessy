@@ -1,8 +1,4 @@
-"""Optional agent-basics composition seam; no feature is enabled by default.
-
-Workers implement independent route registrars. Only the application integrator
-wires them into create_app; existing live-session semantics stay unchanged.
-"""
+"""Typed contracts for application services and their route registration."""
 from __future__ import annotations
 
 from dataclasses import dataclass

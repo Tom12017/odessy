@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
-from odessy.redaction import redact_text
+from odessy.authority.redaction import redact_text
 
 from ..conversations.store import Conflict, ConversationStore, Invalid, NotFound, StorageError
 from ..conversations.store import _check_id, _check_int, utc_now

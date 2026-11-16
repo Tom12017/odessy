@@ -12,7 +12,7 @@ from __future__ import annotations
 import re
 import sqlite3
 import uuid
-from odessy.redaction import redact_text
+from odessy.authority.redaction import redact_text
 from pathlib import PurePosixPath
 
 from ..conversations.store import (Conflict, ConversationStore, Invalid, NotFound,

@@ -18,7 +18,7 @@ from evals.graders import grade
 from evals.harness import Attempt, DecliningApprover, run_attempt
 from evals.report import regrade, summarize, write_summary
 from odessy.execution.escalation import ApprovalRequest, EscalationDeniedError
-from odessy.models.lfm_model import LlamaCppLFMModel
+from odessy.models.ollama_chat import OllamaChatModel
 from odessy.models.ollama_model import (
     _is_laptop_command_intent,
     _observation_messages,
@@ -86,7 +86,7 @@ def test_follow_up_prompt_truncates_large_results() -> None:
     assert "(truncated)" in messages[1]["content"]
 
 
-class _ScriptedLFM(LlamaCppLFMModel):
+class _ScriptedLFM(OllamaChatModel):
     def __init__(self, responses: list[dict[str, Any]]) -> None:
         super().__init__(model="fake")
         object.__setattr__(self, "responses", list(responses))

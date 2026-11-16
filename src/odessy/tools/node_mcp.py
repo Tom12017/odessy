@@ -15,7 +15,6 @@ from types import TracebackType
 from typing import IO, Any
 
 
-# TODO: Potentially a dead code: this class and the following function code:
 class NodeToolServerTransport(AbstractAsyncContextManager):
     """MCP stdio transport for Odessy's laptop-side Node tool server."""
 
@@ -48,8 +47,6 @@ class NodeToolServerTransport(AbstractAsyncContextManager):
     ) -> bool | None:
         return await self._context.__aexit__(exc_type, exc, traceback)
 
-def build_node_tool_server_params(workspace_root: Path | str) -> NodeToolServerTransport:
-    return NodeToolServerTransport(workspace_root)
 
 class NodeToolServerHttp(AbstractAsyncContextManager):
     """Lifecycle helper for Odessy's Streamable HTTP Node MCP server."""

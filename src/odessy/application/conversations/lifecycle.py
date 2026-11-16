@@ -27,7 +27,7 @@ import hashlib
 import uuid
 from typing import Any, Mapping
 
-from odessy.redaction import redact_text
+from odessy.authority.redaction import redact_text
 
 from .service import ConversationService
 from .store import ConversationStore, StorageError, utc_now

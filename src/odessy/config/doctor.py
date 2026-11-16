@@ -33,9 +33,11 @@ from odessy.config.deployment import (
 
 Status = Literal["ok", "warn", "fail"]
 
-DEFAULT_OLLAMA_ENDPOINT = "http://127.0.0.1:11434"
-DEFAULT_LFM_MODEL = "lfm2.5-thinking:1.2b-q8_0"
-DEFAULT_GEMMA_MODEL = "gemma3:1b"
+from odessy.models import (
+    DEFAULT_LOCAL_ENDPOINT as DEFAULT_OLLAMA_ENDPOINT,
+    DEFAULT_CHAT_MODEL as DEFAULT_LFM_MODEL,
+    DEFAULT_FAST_MODEL as DEFAULT_GEMMA_MODEL,
+)
 #: The Node tool server's test suite needs 22 (its test glob); the server itself runs
 #: on 20, which is past end-of-life.
 MIN_NODE_MAJOR = 20

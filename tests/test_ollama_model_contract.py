@@ -304,9 +304,9 @@ def test_ollama_repair_debug_output_is_optional(monkeypatch, capsys) -> None:
     model.propose("run pwd")
     noisy = capsys.readouterr()
 
-    assert "first Gemma proposal" in noisy.out
+    assert "first model proposal" in noisy.out
     assert "validation failure" in noisy.out
-    assert "second Gemma proposal" in noisy.out
+    assert "second model proposal" in noisy.out
 
 
 @pytest.mark.anyio
