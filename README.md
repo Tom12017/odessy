@@ -42,10 +42,10 @@ do not contain the complete current preview. Do not mix them with current source
 | Devices | Opt-in read-only monitoring through existing paired or SSH connections. SSH authentication does not grant execution or workspace access. |
 | Voice and settings | Existing voice and model configuration, eight settings groups and local appearance preferences. Physical audio and provider behavior need separate validation. |
 
-Checkpoint previews and approved text-file restoration are implemented, but
-**Windows restore path-race protection remains an unresolved safety limitation**.
-Do not use restore where untrusted processes can concurrently alter workspace
-directories. See [terminal and checkpoint limits](docs/ui/terminal-checkpoints.md).
+Checkpoint creation, listing and preview remain available on Windows, but
+**checkpoint restoration is disabled on Windows** until directory-handle safety
+is implemented. The backend refuses direct restore requests; the desktop explains
+the restriction. Supported non-Windows restoration still requires exact approval. See [terminal and checkpoint limits](docs/ui/terminal-checkpoints.md).
 
 ## Platform scope
 

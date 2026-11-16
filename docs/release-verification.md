@@ -15,8 +15,10 @@ Prepare one coherent candidate; do not combine older binaries with newer source.
    substitute fixture credentials for real secure-vault qualification.
 5. Verify authenticated production connection, required Custom continuation,
    read-only Harness restart history, stale/revoked approvals and helper shutdown.
-6. Resolve safety findings or disable affected capabilities. Windows checkpoint
-   restore path-race protection remains an open gate in the recorded baseline.
+6. Verify that Windows restoration returns HTTP 501 without approval or file writes,
+   while creation/list/preview remain available. The source disables restoration;
+   the actual candidate must include that restriction. Handle-based restoration
+   protection remains deferred; resolve or disable other safety findings.
 7. Record matching screenshots/native executable identity, then obtain human
    visual acceptance. Signing, hosted CI, provider/hardware evidence and publication
    are separately recorded, never implied by a local passing test.

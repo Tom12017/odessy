@@ -291,4 +291,8 @@ They are distinct from process-local session discovery and usage telemetry.
 Use the actual typed client and route schemas for each request. Service/session
 identity and revision conflicts must surface as errors, never optimistic authority
 or an automatic mutation retry. Unsupported engine/helper capabilities remain
-unavailable. Source declarations do not qualify an installed package.
+unavailable. Checkpoint preview adds optional `restore_available` (boolean) and
+`restore_unavailable_reason` (null when available, otherwise a nonempty string).
+New clients refuse restore when availability is absent or false. Windows service
+restore returns HTTP 501 `unsupported` regardless of UI or access mode; checkpoint
+creation/list/preview remain supported. Source declarations do not qualify an installed package.

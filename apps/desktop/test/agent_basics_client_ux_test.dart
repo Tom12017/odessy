@@ -41,6 +41,7 @@ class WireFixture {
   String instance = 'service-1', engine = 'legacy';
   bool advanced = false, failMode = false, failDelete = false;
   bool wrongProjectMemory = false;
+  bool restoreAvailable = true;
   Json fact = {
     'version': 1,
     'id': tid,
@@ -250,6 +251,10 @@ class WireFixture {
         'checkpoint_id': tid,
         'expected_revision': 1,
         'preview_hash': 'f' * 64,
+        'restore_available': restoreAvailable,
+        'restore_unavailable_reason': restoreAvailable
+            ? null
+            : 'Checkpoint restoration is disabled on Windows. Creation and preview remain available.',
         'changes': [
           {'path': 'readme.md'}
         ],
@@ -287,6 +292,43 @@ Future<void> ready(BasicsController c) async {
 }
 
 void main() {
+  testWidgets('disabled restore remains readable and sends no restore request',
+      (tester) async {
+    tester.view.physicalSize = const Size(1200, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final f = setup(advanced: true);
+    f.wire.restoreAvailable = false;
+    await tester.runAsync(() async {
+      await ready(f.controller);
+      await f.controller.loadCheckpoints();
+      await f.controller.previewCheckpoint(f.controller.checkpoints.single);
+    });
+    expect(f.controller.preview, isNotNull);
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: BasicsPage(
+                controller: f.controller,
+                initialTab: 'Checkpoints',
+                onResume: () async {}))));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('disabled on Windows'), findsOneWidget);
+    final confirm = find.widgetWithText(OutlinedButton, 'Confirm restore');
+    expect(confirm, findsOneWidget);
+    expect(tester.widget<OutlinedButton>(confirm).onPressed, isNull);
+    expect(find.text('Create checkpoint'), findsOneWidget);
+    expect(find.text('Preview'), findsOneWidget);
+    await tester
+        .runAsync(() => f.controller.restoreCheckpoint(f.controller.preview!));
+    expect(f.controller.error, contains('disabled on Windows'));
+    expect(f.wire.requests.where((r) => r.path.endsWith('/restore')), isEmpty);
+    expect(f.controller.notice, isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+    f.controller.dispose();
+    f.session.dispose();
+  });
+
   test('history browse/search/pagination cannot create or resume runtime',
       () async {
     final f = setup();

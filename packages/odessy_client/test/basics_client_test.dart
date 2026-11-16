@@ -6,6 +6,15 @@ import 'package:test/test.dart';
 const cid = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     pid = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
 const date = '2026-11-14T09:00:00Z';
+
+Json checkpointPreview() => {
+      'version': 1,
+      'checkpoint_id': cid,
+      'expected_revision': 1,
+      'preview_hash': 'f' * 64,
+      'changes': [],
+      'unsupported': []
+    };
 Json row() => {
       'version': 1,
       'id': cid,
@@ -45,6 +54,49 @@ Json mode() => {
       'effective': true
     };
 void main() {
+  test(
+      'restore availability is explicit, typed and fails closed for old services',
+      () async {
+    final base = checkpointPreview();
+    final old = CheckpointPreview.fromJson(base);
+    expect(old.restoreAvailable, false);
+    expect(old.restoreUnavailableReason, contains('unknown'));
+    final blocked = CheckpointPreview.fromJson({
+      ...base,
+      'restore_available': false,
+      'restore_unavailable_reason': 'Disabled on Windows'
+    });
+    expect(blocked.restoreAvailable, false);
+    expect(blocked.restoreUnavailableReason, 'Disabled on Windows');
+    final supported = CheckpointPreview.fromJson({
+      ...base,
+      'restore_available': true,
+      'restore_unavailable_reason': null
+    });
+    expect(supported.restoreAvailable, true);
+    for (final fields in <Json>[
+      {'restore_available': 'false'},
+      {'restore_available': false},
+      {'restore_available': false, 'restore_unavailable_reason': ''},
+      {
+        'restore_available': true,
+        'restore_unavailable_reason': 'contradiction'
+      },
+      {'restore_unavailable_reason': 'No availability'}
+    ]) {
+      expect(() => CheckpointPreview.fromJson({...base, ...fields}),
+          throwsFormatException);
+    }
+    final requests = <String>[];
+    final client = AgentBasicsClient((path, method, body) async {
+      requests.add(path);
+      throw StateError('Disabled preview must never send a request');
+    });
+    await expectLater(client.restore('s1', old), throwsStateError);
+    await expectLater(client.restore('s1', blocked), throwsStateError);
+    expect(requests, isEmpty);
+  });
+
   test('strict rows reject malformed authority and cannot mutate cached values',
       () {
     for (final v in [

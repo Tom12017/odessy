@@ -729,13 +729,20 @@ class _BasicsPageState extends State<BasicsPage> {
           ExpansionTile(
               title: const Text('Exact restore receipt'),
               children: [_json(c.preview!.data)]),
-          _button('Confirm restore', () async {
-            final exact = c.preview!;
-            if (await _confirm('Restore this exact checkpoint?',
-                'Restore ${exact.data['checkpoint_id']} using the displayed content-bound preview?\nA separate service authorization may still be required. External actions are not undone.')) {
-              await c.restoreCheckpoint(exact);
-            }
-          }, icon: Icons.restore)
+          if (!c.preview!.restoreAvailable)
+            Text(c.preview!.restoreUnavailableReason),
+          _button(
+              'Confirm restore',
+              c.preview!.restoreAvailable
+                  ? () async {
+                      final exact = c.preview!;
+                      if (await _confirm('Restore this exact checkpoint?',
+                          'Restore ${exact.data['checkpoint_id']} using the displayed content-bound preview?\nA separate service authorization may still be required. External actions are not undone.')) {
+                        await c.restoreCheckpoint(exact);
+                      }
+                    }
+                  : null,
+              icon: Icons.restore)
         ],
       ];
 }

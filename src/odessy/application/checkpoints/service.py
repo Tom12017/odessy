@@ -33,6 +33,10 @@ MAX_LABEL = 120
 RETENTION = 20
 GIT_TIMEOUT = 60
 REF_PREFIX = 'refs/odessy/checkpoints/'
+WINDOWS_RESTORE_REASON = (
+    'Checkpoint restoration is disabled on Windows until directory-handle '
+    'protection against path replacement is implemented. Creation and preview remain available.'
+)
 _GRANT_LOOP = contextvars.ContextVar('checkpoint_grant_loop', default=None)
 
 _ID = re.compile(r'^ckpt_[0-9a-f]{32}$')
@@ -82,6 +86,10 @@ def _canonical(value: Any) -> str:
 
 def _now() -> str:
     return time.strftime('%Y-%m-%dT%H:%M:%S', time.gmtime()) + 'Z'
+
+
+def _restore_unavailable_reason() -> str | None:
+    return WINDOWS_RESTORE_REASON if os.name == 'nt' else None
 
 
 def _validate_label(label: Any) -> str:
@@ -489,7 +497,10 @@ class CheckpointService:
 
     def preview(self, sid: str, checkpoint_id: str) -> dict[str, Any]:
         binding = self._binding(sid)
-        return self._plan(binding, self._entry(binding, checkpoint_id))
+        plan = self._plan(binding, self._entry(binding, checkpoint_id))
+        reason = _restore_unavailable_reason()
+        return {**plan, 'restore_available': reason is None,
+                'restore_unavailable_reason': reason}
 
     # ------------------------------------------------------------------ mutate
     def create(self, sid: str, label: Any, *, kind: str = 'manual') -> dict[str, Any]:
@@ -569,6 +580,11 @@ class CheckpointService:
             raise CheckpointError(409, 'Checkpoint revision changed; preview again')
         if plan['preview_hash'] != preview_hash:
             raise CheckpointError(409, 'Workspace changed since the preview; review again')
+        reason = _restore_unavailable_reason()
+        if reason is not None:
+            # Enforce before approval, safety capture or any workspace mutation.
+            # Direct HTTP calls and internal callers share this barrier.
+            raise CheckpointError(501, reason)
         self._authorize(sid, 'checkpoint.restore', {
             'checkpoint_id': entry['checkpoint']['id'],
             'preview_hash': preview_hash,
@@ -595,6 +611,9 @@ class CheckpointService:
                 'safety_checkpoint_id': safety.id, 'status': 'restored'}
 
     def _apply(self, binding, entry, *, current=None) -> None:
+        reason = _restore_unavailable_reason()
+        if reason is not None:
+            raise CheckpointError(501, reason)
         root = Path(binding.root_path)
         ref = f'{REF_PREFIX}{entry["checkpoint"]["id"]}'
         restored = 0

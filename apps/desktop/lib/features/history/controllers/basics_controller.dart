@@ -649,6 +649,9 @@ class BasicsController extends ChangeNotifier {
         if (!identical(preview, exact)) {
           throw StateError('Preview changed. Review it again.');
         }
+        if (!exact.restoreAvailable) {
+          throw StateError(exact.restoreUnavailableReason);
+        }
         await _identity(c, e);
         await c.restore(_sid!, exact);
         _check(e);

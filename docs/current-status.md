@@ -30,7 +30,7 @@ has been published. The older `v0.5.0-unstable` release remains a separate snaps
 | Access modes | Custom ask/auto/full with service acknowledgments and revisions | Existing policy, hard denials, sensitive paths and independent grants remain effective. |
 | Context/memory/retrieval | Explicit project facts, opt-in bounded lexical indexing and Custom context/citations | Source validation and current live workspace authority remain required. No automatic cloud indexing. |
 | Interactive terminal | Local Windows PTY with verified packaged Node/native helper and explicit grant | Runs with user OS permissions; no remote PTY, restored handles or replayed input. Missing closure means unavailable. |
-| Checkpoints | Git-backed bounded text snapshots, preview, exact approval and safety snapshot | Windows directory replacement race defense remains unresolved. Binary/sensitive/unsupported files are excluded. |
+| Checkpoints | Git-backed bounded text snapshots and preview; supported non-Windows restoration uses exact approval and a safety snapshot | Windows restoration is disabled in the service and UI pending handle-based safety. Creation/list/preview remain available; binary/sensitive/unsupported files are excluded. |
 | Monitoring | Optional Go aggregation with local/paired telemetry and read-only SSH target support | Connectivity, permission and freshness are separate; SSH execution/workspace capabilities remain false. |
 | Voice | Existing provider/controller lifecycle and scoped prior audio evidence | Microphone, echo, model assets and device/provider compatibility require their own checks. |
 | Setup | Windows Flutter setup, private runtime closure and versioned maintenance | Final merged source has not been qualified as one new coherent installed release candidate. |
@@ -49,8 +49,8 @@ parity, MCU support or general remote execution over SSH is claimed.
 
 ## Gates before a beta claim
 
-1. Resolve safety/data-loss findings, including Windows checkpoint path races, or
-   explicitly make the affected capability unavailable in the release candidate.
+1. Keep Windows checkpoint restoration disabled in the release candidate until
+   handle-based protection is verified. Resolve or disable any other safety/data-loss findings.
 2. Build and audit one coherent candidate from the final source snapshot with
    pinned runtime/helper closure, licenses and artifact hashes.
 3. Verify isolated install/update/uninstall and profile/history/settings preservation

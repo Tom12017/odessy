@@ -1,5 +1,6 @@
 """Combined production mounts, real broker and deterministic provider acceptance."""
 import asyncio
+import os
 import subprocess
 from types import SimpleNamespace
 
@@ -162,12 +163,22 @@ def test_direct_shell_grant_respects_required_isolation_and_exact_broker(tmp_pat
                 (tmp_path / 'boat.txt').write_text('edited boat', encoding='utf-8')
                 (tmp_path / 'unrelated.txt').write_text('keep dirty work', encoding='utf-8')
                 preview = (await client.get(f"/v1/sessions/{sid}/checkpoints/{checkpoint['id']}/preview")).json()
-                restored = await approve_post(f"/v1/sessions/{sid}/checkpoints/{checkpoint['id']}/restore",
-                    {'preview_hash': preview['preview_hash'], 'expected_revision': preview['expected_revision']})
-                assert restored.status_code == 200, restored.text
-                assert (tmp_path / 'boat.txt').read_text() == 'original boat'
+                restore_path = f"/v1/sessions/{sid}/checkpoints/{checkpoint['id']}/restore"
+                restore_body = {'preview_hash': preview['preview_hash'],
+                                'expected_revision': preview['expected_revision']}
+                if os.name == 'nt':
+                    assert preview['restore_available'] is False
+                    restored = await client.post(restore_path, json=restore_body)
+                    assert restored.status_code == 501, restored.text
+                    assert not app.state.sessions[sid].interactions.pending
+                    assert (tmp_path / 'boat.txt').read_text() == 'edited boat'
+                else:
+                    assert preview['restore_available'] is True
+                    restored = await approve_post(restore_path, restore_body)
+                    assert restored.status_code == 200, restored.text
+                    assert (tmp_path / 'boat.txt').read_text() == 'original boat'
+                    assert restored.json()['safety_checkpoint_id']
                 assert (tmp_path / 'unrelated.txt').read_text() == 'keep dirty work'
-                assert restored.json()['safety_checkpoint_id']
                 if composition.terminals is not None:
                     created = await approve_post(f'/v1/sessions/{sid}/terminals', {'columns': 80, 'rows': 24})
                     assert created.status_code == 201, created.text

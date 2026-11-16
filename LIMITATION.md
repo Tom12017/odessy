@@ -8,10 +8,11 @@ and release baseline. This page summarizes constraints that affect adoption.
 - **Release qualification:** CI and earlier installed receipts do not qualify a
   new final merged installer. Signing, clean-machine behavior and broader hardware
   acceptance remain separate gates.
-- **Checkpoint safety:** Windows restore directory-handle race defense remains
-  unresolved. Do not use restoration in a workspace whose directories can be
-  concurrently changed by untrusted processes. Text-only snapshots are not a full
-  backup and cannot undo executed commands or external effects.
+- **Checkpoint safety:** restoration is disabled on Windows at the service and
+  write boundary until directory-handle race protection is implemented. Creation,
+  listing and preview remain available. Direct restore requests return unsupported;
+  an older running service must be updated to gain this restriction. Text-only
+  snapshots are not a full backup and cannot undo commands or external effects.
 - **Engine differences:** Custom supports bounded restart continuation. Harness
   history remains readable but cannot resume after restart through this adapter.
   Custom access modes and context injection are not silently emulated on Harness.

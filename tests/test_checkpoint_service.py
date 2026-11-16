@@ -23,6 +23,8 @@ def shutil_git() -> bool:
 
 
 needs_git = pytest.mark.skipif(not shutil_git(), reason='git is not installed')
+needs_restore = pytest.mark.skipif(
+    os.name == 'nt', reason='Checkpoint restoration is intentionally disabled on Windows')
 
 
 @pytest.mark.parametrize('payload', [None, b'', b'exact reviewed blob\r\n'])
@@ -140,6 +142,7 @@ def test_create_uses_owned_refs_and_never_touches_user_git_state(tmp_path):
 
 
 @needs_git
+@needs_restore
 def test_preview_and_restore_recover_files_and_take_a_safety_snapshot(tmp_path):
     root, binding = workspace(tmp_path)
     api = service(tmp_path, binding)
@@ -189,6 +192,7 @@ def test_restore_refuses_drift_after_the_preview_and_stale_revisions(tmp_path):
 
 
 @needs_git
+@needs_restore
 def test_restore_preserves_unrelated_untracked_work_and_sensitive_files(tmp_path):
     root, binding = workspace(tmp_path)
     (root / '.env').write_text('TOKEN=secret\n', encoding='utf-8')
@@ -414,9 +418,16 @@ def test_binary_and_runtime_database_are_excluded_and_preserved(tmp_path):
     (root / 'binary.dat').write_bytes(b'\x00\xffkeep newer')
     (root / 'readme.txt').write_text('edited', encoding='utf-8')
     preview = api.preview('s1', created['id'])
-    api.restore('s1', created['id'], preview_hash=preview['preview_hash'],
-                expected_revision=preview['expected_revision'])
-    assert (root / 'readme.txt').read_text(encoding='utf-8') == 'Before\n'
+    if os.name == 'nt':
+        with pytest.raises(CheckpointError, match='disabled on Windows') as disabled:
+            api.restore('s1', created['id'], preview_hash=preview['preview_hash'],
+                        expected_revision=preview['expected_revision'])
+        assert disabled.value.status == 501
+        assert (root / 'readme.txt').read_text(encoding='utf-8') == 'edited'
+    else:
+        api.restore('s1', created['id'], preview_hash=preview['preview_hash'],
+                    expected_revision=preview['expected_revision'])
+        assert (root / 'readme.txt').read_text(encoding='utf-8') == 'Before\n'
     assert (root / 'binary.dat').read_bytes() == b'\x00\xffkeep newer'
 
 
@@ -441,6 +452,7 @@ def test_checkpoint_without_user_git_identity_preserves_configuration(tmp_path, 
 
 
 @needs_git
+@needs_restore
 def test_restore_refuses_binary_destination_without_losing_bytes(tmp_path):
     root, binding = workspace(tmp_path)
     api = service(tmp_path, binding)
@@ -452,3 +464,42 @@ def test_restore_refuses_binary_destination_without_losing_bytes(tmp_path):
         api.restore('s1', saved['id'], preview_hash=preview['preview_hash'],
                     expected_revision=preview['expected_revision'])
     assert (root / 'readme.txt').read_bytes() == raw
+
+
+def test_restore_availability_matches_host_platform():
+    reason = checkpoint_module._restore_unavailable_reason()
+    assert reason == (checkpoint_module.WINDOWS_RESTORE_REASON if os.name == 'nt' else None)
+
+
+@needs_git
+def test_windows_restore_is_blocked_before_grant_snapshot_or_write(tmp_path, monkeypatch):
+    root, binding = workspace(tmp_path)
+    grants = Grants()
+    api = service(tmp_path, binding, grants)
+    saved = api.create('s1', 'baseline')
+    (root / 'readme.txt').write_text('Keep edits\n', encoding='utf-8')
+    (root / 'unrelated.txt').write_text('Keep unrelated\n', encoding='utf-8')
+    monkeypatch.setattr(checkpoint_module, '_restore_unavailable_reason',
+                        lambda: checkpoint_module.WINDOWS_RESTORE_REASON)
+    preview = api.preview('s1', saved['id'])
+    assert preview['restore_available'] is False
+    assert preview['restore_unavailable_reason'] == checkpoint_module.WINDOWS_RESTORE_REASON
+    calls = list(grants.calls)
+    before = api.list('s1')
+
+    def unexpected(*args, **kwargs):
+        pytest.fail('Disabled restore reached snapshot or filesystem mutation')
+
+    monkeypatch.setattr(api, '_snapshot', unexpected)
+    monkeypatch.setattr(api, '_apply', unexpected)
+    with pytest.raises(CheckpointError, match='disabled on Windows') as error:
+        api.restore('s1', saved['id'], preview_hash=preview['preview_hash'],
+                    expected_revision=preview['expected_revision'])
+    assert error.value.status == 501
+    assert grants.calls == calls
+    assert api.list('s1') == before
+    assert (root / 'readme.txt').read_text(encoding='utf-8') == 'Keep edits\n'
+    assert (root / 'unrelated.txt').read_text(encoding='utf-8') == 'Keep unrelated\n'
+    # The final write owner also refuses if invoked directly.
+    with pytest.raises(CheckpointError, match='disabled on Windows'):
+        CheckpointService._apply(api, binding, {})

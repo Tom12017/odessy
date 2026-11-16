@@ -22,7 +22,7 @@ not panel visibility, decides which operations are available.
   Available terminal controls create, submit exact input, refresh bounded output,
   resize, interrupt and close; no terminal-emulator or remote-PTY parity is claimed.
 - Checkpoints require reviewed preview hashes/revisions and an actual service
-  acknowledgment. See the unresolved [Windows restore safety limit](terminal-checkpoints.md).
+  acknowledgment. Windows restore is disabled and its reason is shown; see [checkpoint availability](terminal-checkpoints.md).
 
 `AgentBasicsClient` owns typed versioned parsing over `LocalApi`; `BasicsController`
 owns state/revisions/capability and epoch guards; `BasicsPage` owns presentation.

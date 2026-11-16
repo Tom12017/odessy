@@ -44,15 +44,24 @@ Restoration takes a safety checkpoint first and writes only supported captured
 paths, atomically per file. It is not a multi-file atomic transaction and cannot
 undo network calls, executed commands or other external effects.
 
-## Unresolved Windows safety limit
+## Windows restore restriction
 
-**Directory-handle protection against concurrent path replacement remains an open
-review finding on Windows.** Existing containment/reparse checks do not eliminate
-the race between validation and replacement. Do not use restore where untrusted
-processes can mutate workspace directory structure concurrently. A beta candidate
-must fix this finding or make affected restoration unavailable; an alpha label is
-not a security mitigation. POSIX no-follow directory-descriptor defenses do not
-establish Windows parity.
+**Checkpoint restoration is disabled on Windows.** Directory-handle protection
+against concurrent path replacement is not yet implemented, so current path checks
+are insufficient to enable it safely. Creation, listing and read-only preview remain
+available. The service and final write owner refuse restoration with HTTP 501
+`unsupported` before approval, safety capture or workspace mutation. There is no
+environment/configuration flag or access mode that enables Windows restoration.
+
+Preview replies include `restore_available` and `restore_unavailable_reason`.
+The desktop disables Confirm restore and shows the service's explanation; clients
+also refuse previews from older services without explicit availability. The connected
+service's operating system decides availability, not the client computer's OS.
+
+Re-enabling Windows restoration requires a reviewed implementation and tests for
+handle-based directory/path replacement protection. POSIX no-follow descriptor
+defenses do not establish Windows parity. Existing binaries/packages must be rebuilt
+from this source to contain the restriction; earlier installed receipts do not prove it.
 
 ## Ownership and verification
 

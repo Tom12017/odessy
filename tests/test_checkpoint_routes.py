@@ -2,12 +2,14 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import subprocess
 from pathlib import Path
 
 import pytest
 
 from odessy.application.agent_basics import AgentBasics
+from odessy.application.checkpoints import service as checkpoint_module
 from odessy.application.checkpoints.routes import register
 from odessy.application.checkpoints.service import CheckpointService
 from odessy.authority.policy import OdessyPolicy
@@ -138,9 +140,16 @@ def test_checkpoint_routes_require_auth_and_report_shapes(tmp_path):
                     f'/v1/sessions/s1/checkpoints/{checkpoint["id"]}/restore',
                     body={'preview_hash': drifted.json()['preview_hash'],
                           'expected_revision': 1})
-    assert restored.status_code == 200
-    assert restored.json()['status'] == 'restored'
-    assert (root / 'readme.txt').read_text(encoding='utf-8') == 'Before\n'
+    if os.name == 'nt':
+        assert drifted.json()['restore_available'] is False
+        assert restored.status_code == 501
+        assert restored.json()['detail']['code'] == 'unsupported'
+        assert (root / 'readme.txt').read_text(encoding='utf-8') == 'After\n'
+    else:
+        assert drifted.json()['restore_available'] is True
+        assert restored.status_code == 200
+        assert restored.json()['status'] == 'restored'
+        assert (root / 'readme.txt').read_text(encoding='utf-8') == 'Before\n'
 
 
 @needs_git
@@ -165,3 +174,36 @@ def test_route_errors_are_typed_and_do_not_mutate(tmp_path):
     refused = call(app, httpx, 'GET', base + '/preview').json()
     assert refused['changes'][0]['status'] == 'unchanged'
     assert (root / 'readme.txt').read_text(encoding='utf-8') == 'Before\n'
+
+
+@needs_git
+def test_direct_windows_restore_http_is_refused_without_side_effects(tmp_path, monkeypatch):
+    app, root, holder, httpx = harness(tmp_path)
+    monkeypatch.setattr(checkpoint_module, '_restore_unavailable_reason',
+                        lambda: checkpoint_module.WINDOWS_RESTORE_REASON)
+    base = '/v1/sessions/s1/checkpoints'
+    created = call(app, httpx, 'POST', base, body={'label': 'still supported'})
+    assert created.status_code == 201
+    listing = call(app, httpx, 'GET', base).json()
+    path = f'{base}/{created.json()["id"]}'
+    (root / 'readme.txt').write_text('Keep changed content\n', encoding='utf-8')
+    (root / 'dirty.txt').write_text('Keep unrelated file\n', encoding='utf-8')
+    preview = call(app, httpx, 'GET', path + '/preview')
+    assert preview.status_code == 200
+    assert preview.json()['restore_available'] is False
+    assert 'disabled on Windows' in preview.json()['restore_unavailable_reason']
+
+    def unexpected(*args, **kwargs):
+        pytest.fail('Disabled HTTP restore requested approval or wrote a snapshot')
+
+    holder['service']._grant = unexpected
+    monkeypatch.setattr(holder['service'], '_snapshot', unexpected)
+    body = {key: preview.json()[key] for key in ('preview_hash', 'expected_revision')}
+    assert call(app, httpx, 'POST', path + '/restore', token=None, body=body).status_code == 401
+    response = call(app, httpx, 'POST', path + '/restore', body=body)
+    assert response.status_code == 501
+    assert response.json()['detail'] == {
+        'code': 'unsupported', 'message': checkpoint_module.WINDOWS_RESTORE_REASON}
+    assert call(app, httpx, 'GET', base).json() == listing
+    assert (root / 'readme.txt').read_text(encoding='utf-8') == 'Keep changed content\n'
+    assert (root / 'dirty.txt').read_text(encoding='utf-8') == 'Keep unrelated file\n'

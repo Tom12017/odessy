@@ -492,8 +492,23 @@ class CheckpointPreview {
       'expected_revision',
       'preview_hash',
       'changes',
-      'unsupported'
+      'unsupported',
+      if (data.containsKey('restore_available')) 'restore_available',
+      if (data.containsKey('restore_unavailable_reason'))
+        'restore_unavailable_reason'
     });
+    if (data.containsKey('restore_available')) {
+      final available = _boolean(data, 'restore_available');
+      if (available) {
+        if (data['restore_unavailable_reason'] != null) {
+          _invalid('restore availability');
+        }
+      } else {
+        _text(data, 'restore_unavailable_reason');
+      }
+    } else if (data.containsKey('restore_unavailable_reason')) {
+      _invalid('restore availability');
+    }
     _checkpointId(data, 'checkpoint_id');
     _integer(data, 'expected_revision');
     if (!RegExp(r'^[a-f0-9]{64}$')
@@ -504,6 +519,11 @@ class CheckpointPreview {
     }
   }
   final Json data;
+  // Older services without explicit availability do not establish safe restore.
+  bool get restoreAvailable => data['restore_available'] == true;
+  String get restoreUnavailableReason =>
+      data['restore_unavailable_reason'] as String? ??
+      'Restore availability is unknown. Update the connected service before restoring.';
 }
 
 class AgentBasicsClient {
@@ -686,6 +706,9 @@ class AgentBasicsClient {
       CheckpointPreview.fromJson(
           await _get('${_session(sid)}/checkpoints/${_p(id)}/preview'));
   Future<Json> restore(String sid, CheckpointPreview preview) async {
+    if (!preview.restoreAvailable) {
+      throw StateError(preview.restoreUnavailableReason);
+    }
     final v = await _request(
         '${_session(sid)}/checkpoints/${_p(preview.data['checkpoint_id'] as String)}/restore',
         'POST', {
