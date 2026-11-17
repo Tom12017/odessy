@@ -1,8 +1,9 @@
 # SSH execution preview — 2026-11-17
 
-Branch: `fix/ssh-history-inspector`. Uncommitted implementation over `d502bff`;
-existing voice and monitoring changes preserved. This is a source preview, not an
-installer or installed-app qualification.
+Historical source-preview receipt on `fix/ssh-history-inspector`, recorded over
+`d502bff` before its feature commits. Existing voice and monitoring changes were
+preserved. The later [installed update receipt](ssh-voice-installed-update-2026-11-18.md)
+records the committed build, upgrade and current verification boundaries.
 
 ## Implemented loop
 
@@ -101,7 +102,8 @@ inspector. SSH commands run with the account's privileges without a sandbox.
 Stop closes the local SSH channel; detached remote descendants may survive and
 completed effects are not rolled back. Monitoring is a separate capability and
 may remain unavailable independently of command execution. LAN is experimental.
-No installer rebuild, installed-app update, commit, push or merge performed.
+At this source-preview checkpoint no installer rebuild, installed-app update,
+commit, push or merge had been performed; see the installed follow-up above.
 
 Artifact and changed-source hashes are in the local ignored receipt
 `.qualification/ssh-execution-20261117/manifest.json`. The build also contains the
