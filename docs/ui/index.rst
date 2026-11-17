@@ -13,6 +13,7 @@ Flutter desktop client architecture, contracts, and UX decisions.
    desktop-ux-contract
    desktop-voice
    running-configuration
+   usage-history
    settings-extension
    settings-draft-lifecycle
    handoff
