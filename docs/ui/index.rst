@@ -7,21 +7,16 @@ Flutter desktop client architecture, contracts, and UX decisions.
    :maxdepth: 2
 
    README
+   access-modes
    architecture
    design
    api-contract
-   desktop-ux-contract
+   client-integration
+   context-memory-retrieval
+   conversation-history
    desktop-voice
    running-configuration
    usage-history
    settings-extension
    settings-draft-lifecycle
-   handoff
-
-.. toctree::
-   :maxdepth: 1
-   :hidden:
-
-   backend-acceptance-2026-10-28
-   desktop-accessibility-fixes-2026-10-28
-   desktop-accessibility-gui-audit-2026-10-28
+   terminal-checkpoints

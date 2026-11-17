@@ -7,6 +7,5 @@ components.
 .. toctree::
    :maxdepth: 2
 
-   api
-   qualification
    README
+   api

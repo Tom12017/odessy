@@ -37,8 +37,6 @@ transports them. The model is never the authority.
     security/credential-handling
     security/filesystem-controls
     security/process-controls
-    security/codeql-alert-triage
-    security/dependency-and-loopback-fixes
 
 .. toctree::
     :maxdepth: 2
@@ -60,12 +58,6 @@ transports them. The model is never the authority.
 
 .. toctree::
     :maxdepth: 2
-    :caption: Qualification
-
-    qualification/index
-
-.. toctree::
-    :maxdepth: 2
     :caption: Project
 
     project/index
@@ -74,4 +66,4 @@ transports them. The model is never the authority.
     :hidden:
     :caption: Project Links
 
-    GitHub <https://github.com/odessy/odessy>
+    GitHub <https://github.com/Trisoma/odessy>
