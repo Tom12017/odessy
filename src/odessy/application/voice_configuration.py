@@ -14,6 +14,7 @@ class LiveVoiceConfiguration:
         self.load = load
         self.lock = asyncio.Lock()
         self.error = ''
+        self._refresh_pending = False
         self.voice.enabled = selection.voice.enabled
 
     async def refresh(self, app, expected=None):
@@ -22,7 +23,11 @@ class LiveVoiceConfiguration:
             descriptor = configuration_descriptor(saved, self.workspace, owner=self.owner)
             if expected is not None and descriptor['fingerprint'] != expected:
                 raise ValueError('Saved settings changed. Reload before applying audio.')
-            if saved.voice != self.selection.voice:
+            # Save is also an explicit recovery request when the selected names
+            # are unchanged but Windows reconnected/replaced a device.
+            if expected is not None:
+                self._refresh_pending = True
+            if saved.voice != self.selection.voice or self._refresh_pending:
                 if self.voice.busy:
                     return {'status': 'deferred', 'message': 'Saved. Audio settings will apply when recording, wake listening and playback are stopped.'}
                 from odessy.voice.config import VoiceConfig
@@ -30,6 +35,12 @@ class LiveVoiceConfiguration:
                 config = VoiceConfig.from_selection(saved.voice)
                 self.voice.reconfiguring = True
                 try:
+                    if saved.voice.enabled:
+                        from odessy.voice.native_audio import refresh_devices, AudioBackendBusy
+                        try:
+                            await asyncio.to_thread(refresh_devices, config.audio_backend)
+                        except AudioBackendBusy:
+                            return {'status': 'deferred', 'message': 'Saved. Native audio is still draining; settings will apply when idle.'}
                     await self.voice.close()
                     self.voice.factory = lambda: DesktopAudio(config)
                     self.voice.audio = None
@@ -39,6 +50,7 @@ class LiveVoiceConfiguration:
                     self.voice.error = ''
                     self.voice.enabled = saved.voice.enabled
                     self.selection = replace(self.selection, voice=saved.voice)
+                    self._refresh_pending = False
                 finally:
                     self.voice.reconfiguring = False
                 app.state.runtime_configuration = configuration_descriptor(

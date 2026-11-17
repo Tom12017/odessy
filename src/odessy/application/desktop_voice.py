@@ -16,7 +16,9 @@ class DesktopVoice:
         self.wake=None;self._wake_controller=None;self._previous_handler=None;self._wake_handler=None
         self.enabled=True;self.reconfiguring=False
     @property
-    def busy(self):return self.reconfiguring or self.owner is not None or self._playback is not None
+    def busy(self):
+        return (self.reconfiguring or self.owner is not None or self._playback is not None
+                or self._preparing or self._decoding or self._speaking or self._draining is not None)
     def _available(self):
         if not self.enabled:raise VoiceError('Voice is disabled in saved settings.',503)
         if self.reconfiguring:raise VoiceError('Audio settings are being applied; retry when idle.',409)

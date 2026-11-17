@@ -4,6 +4,7 @@ Importing this module never opens hardware. Queue bounds detect overflow; device
 names include the host API and ambiguous or unplugged selections fail explicitly.
 """
 import importlib
+from contextlib import contextmanager
 import queue
 import shutil
 import subprocess
@@ -17,6 +18,57 @@ from .capture import CommandAudioStream, CommandPlayer
 #: keep `arecord -L` / `aplay -L` from becoming an open-ended enumeration.
 ALSA_PROBE_TIMEOUT = 2.0
 MAX_LISTED_DEVICES = 256
+
+# PortAudio caches device enumeration in each process. Reinitialization is only
+# safe between native streams, including starts or stops still draining.
+_backend_lock = threading.RLock()
+_backend_users = set()
+
+
+class AudioBackendBusy(RuntimeError):
+    pass
+
+
+def _reserve_backend():
+    token = object()
+    with _backend_lock:
+        _backend_users.add(token)
+    return token
+
+
+def _release_backend(token):
+    with _backend_lock:
+        _backend_users.discard(token)
+
+
+@contextmanager
+def _using_backend():
+    token = _reserve_backend()
+    try:
+        yield
+    finally:
+        _release_backend(token)
+
+
+def refresh_devices(backend='auto'):
+    """Refresh an already loaded native backend without opening any device.
+
+    sounddevice 0.5.6 has no public hot-plug refresh API. Its paired lifecycle
+    functions are confined here, behind the same lock used to reserve all Odessy
+    native streams. Never reset while playback/capture or cancellation drains.
+    A backend not loaded yet has no cached enumeration to invalidate.
+    """
+    if backend_name(backend) != 'native':
+        return
+    with _backend_lock:
+        if _backend_users:
+            raise AudioBackendBusy('Native audio is active or still draining; refresh deferred.')
+        module = sys.modules.get('sounddevice')
+        if module is None:
+            return
+        if getattr(module, '_initialized', 1) > 0:
+            module._terminate()
+        module._initialize()
 
 def prepare_native_dependencies():
     """Load Windows audio DLLs before request workers can start concurrently.
@@ -125,6 +177,11 @@ def inventory(backend='auto', recorder='arecord', player='aplay'):
                 'status':'available_unverified' if devices else 'configured_unverified',
                 'devices':devices,'message':message,
                 'directions':_directions(devices,'command',recorder,player)}
+    with _using_backend():
+        return _native_inventory(recorder, player)
+
+
+def _native_inventory(recorder, player):
     try:
         module=library();apis=module.query_hostapis()
         default=getattr(getattr(module,'default',None),'device',())
@@ -157,26 +214,37 @@ class NativeInput:
     def __init__(self,device=None):
         self.device=device;self.stream=None;self.pending=bytearray()
         self.frames=queue.Queue(maxsize=64);self.closed=threading.Event();self.overflow=False
+        self._opening=False;self._reservation=None
     def start(self):
-        module=library()
-        def callback(data,frames,timing,status):
-            if self.closed.is_set():return
-            if status:self.overflow=True
-            try:self.frames.put_nowait(bytes(data))
-            except queue.Full:self.overflow=True
-        stream=module.RawInputStream(device=resolve_device(self.device,'input',module),
-                     samplerate=16000,channels=1,dtype='int16',blocksize=1280,callback=callback)
-        self.stream=stream
-        if self.closed.is_set():stream.close();raise RuntimeError('Capture cancelled before startup')
-        try:stream.start()
-        except BaseException:self.close();raise
-        if self.closed.is_set():
-            # close() may already have detached self.stream while start() blocked.
-            # The local handle must be stopped again after startup has drained.
-            try:stream.abort()
-            finally:stream.close()
-            raise RuntimeError('Capture cancelled during startup')
-        return self
+        with _backend_lock:
+            if self.closed.is_set():raise RuntimeError('Capture cancelled before startup')
+            if self._reservation is not None:raise RuntimeError('Capture already started')
+            self._opening=True;self._reservation=_reserve_backend()
+        try:
+            module=library()
+            def callback(data,frames,timing,status):
+                if self.closed.is_set():return
+                if status:self.overflow=True
+                try:self.frames.put_nowait(bytes(data))
+                except queue.Full:self.overflow=True
+            stream=module.RawInputStream(device=resolve_device(self.device,'input',module),
+                         samplerate=16000,channels=1,dtype='int16',blocksize=1280,callback=callback)
+            self.stream=stream
+            if self.closed.is_set():stream.close();raise RuntimeError('Capture cancelled before startup')
+            stream.start()
+            if self.closed.is_set():
+                # close() can detach the handle while its blocking start drains.
+                try:stream.abort()
+                finally:stream.close()
+                raise RuntimeError('Capture cancelled during startup')
+            return self
+        except BaseException:
+            self.close();raise
+        finally:
+            with _backend_lock:
+                self._opening=False
+                if self.closed.is_set():
+                    _release_backend(self._reservation);self._reservation=None
     def read(self,size):
         while not self.closed.is_set():
             if self.overflow:raise RuntimeError('Microphone overflow; captured audio discarded')
@@ -186,11 +254,21 @@ class NativeInput:
             except queue.Empty:continue
         return b''
     def close(self):
-        self.closed.set()
-        stream,self.stream=self.stream,None
-        if stream is not None:
-            try:stream.abort()
-            finally:stream.close()
+        with _using_backend():
+            self._close()
+    def _close(self):
+        with _backend_lock:
+            self.closed.set()
+            stream,self.stream=self.stream,None
+            # Keep the reservation until the actual blocking owner finishes.
+            reservation=None if self._opening else self._reservation
+            if not self._opening:self._reservation=None
+        try:
+            if stream is not None:
+                try:stream.abort()
+                finally:stream.close()
+        finally:
+            if reservation is not None:_release_backend(reservation)
 
 class NativePlayer:
     def __init__(self,device=None):
@@ -199,12 +277,18 @@ class NativePlayer:
     def generation(self):
         with self.lock:return self._generation
     def stop(self):
+        with _using_backend():
+            self._stop()
+    def _stop(self):
         with self.lock:
             self._generation+=1;stream=self.stream;self.stream=None
         if stream is not None:
             try:stream.abort()
             finally:stream.close()
     def play(self,path,*,generation=None):
+        with _using_backend():
+            return self._play(path,generation=generation)
+    def _play(self,path,*,generation=None):
         token=self.generation if generation is None else generation
         module=library()
         with wave.open(str(path),'rb') as wav:
