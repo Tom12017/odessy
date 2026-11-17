@@ -13,6 +13,30 @@ class Audio:
 def controller():return SessionController(model_factory=lambda _:object(),agent_factory=lambda *a,**k:object(),profiles={'local':{}})
 
 
+def test_explicit_output_failure_is_not_acknowledged_as_idle_success_and_retry_clears_error():
+    httpx=pytest.importorskip('httpx')
+    from odessy.application.desktop_voice import DesktopVoice
+    from odessy.application.api import create_app
+    class Speaker(Audio):
+        failed=True
+        async def speak(self,text):
+            if self.failed:raise RuntimeError('unavailable device')
+    async def run():
+        audio=Speaker();voice=DesktopVoice(lambda:audio,host='local')
+        app=create_app(controller,token='secret',desktop_voice=voice)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),base_url='http://test',headers={'Authorization':'Bearer secret'}) as client:
+            sid=(await client.post('/v1/sessions')).json()['id'];route=f'/v1/sessions/{sid}/voice'
+            failed=await client.post(route,json={'action':'test_output'})
+            assert failed.status_code==503
+            assert (await client.get(route)).json()['state']=='error'
+            audio.failed=False
+            retried=await client.post(route,json={'action':'test_output'})
+            assert retried.status_code==200
+            assert retried.json()['state']=='idle' and retried.json()['message']==''
+        await voice.close()
+    asyncio.run(run())
+
+
 def test_spoken_turn_plays_genuine_stream_before_completion_without_duplicate_final():
     from types import SimpleNamespace
     from odessy.application.desktop_voice import DesktopVoice

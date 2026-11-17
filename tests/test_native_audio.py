@@ -12,6 +12,24 @@ def test_inventory_does_not_open_devices_and_duplicate_name_does_not_silently_pi
     with pytest.raises(ValueError,match='ambiguous'):
         native_audio.resolve_device('test::Headset','input',module)
 
+
+@pytest.mark.parametrize('kind', ['input','output'])
+def test_reconnect_never_refreshes_active_audio_or_selects_a_different_device(monkeypatch, kind):
+    from odessy.voice import native_audio
+    calls=[]
+    module=SimpleNamespace(query_devices=lambda:[],query_hostapis=lambda:[{'name':'test'}],
+        _terminate=lambda:calls.append('terminate'),_initialize=lambda:calls.append('initialize'))
+    monkeypatch.setitem(sys.modules,'sounddevice',module)
+    reservation=native_audio._reserve_backend()
+    try:
+        with pytest.raises(native_audio.AudioDeviceUnavailable,match='Stop recording'):
+            native_audio.prepare_device('test::Disconnected headset',kind,'native')
+        assert calls==[]
+    finally:native_audio._release_backend(reservation)
+    with pytest.raises(native_audio.AudioDeviceUnavailable,match='missing or ambiguous'):
+        native_audio.prepare_device('test::Disconnected headset',kind,'native')
+    assert calls==['terminate','initialize']
+
 def test_cancel_unblocks_native_capture_and_overflow_fails_closed(monkeypatch):
     from odessy.voice import native_audio
     streams=[]

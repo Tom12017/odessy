@@ -140,9 +140,12 @@ class DesktopVoice:
             if epoch!=self._epoch:raise VoiceError('Capture superseded',410)
             if entry is not None:c.interactions.mark_ready(entry['id'])
             self.state='recording';self._emit(c);return self.snapshot(c)
-        except Exception:
-            await self._cancel_audio();self.owner=None;self.state='error';self.error='Audio input unavailable. Typed input remains available.';self._emit(c)
-            raise
+        except Exception as exc:
+            from odessy.voice.native_audio import AudioDeviceUnavailable
+            await self._cancel_audio();self.owner=None;self.state='error'
+            self.error=str(exc) if isinstance(exc,AudioDeviceUnavailable) else 'Audio input unavailable. Typed input remains available.'
+            self._emit(c)
+            raise VoiceError(self.error,503) from None
         finally:self._preparing=False
     async def finish(self,c,identifier,submit):
         if self.owner!=c.id or identifier!=self.capture_id or self.state!='recording':raise VoiceError('Capture is stale or already consumed',410)
@@ -271,17 +274,21 @@ class DesktopVoice:
     async def speak(self,c,text):
         self._available()
         if self.busy:raise VoiceError('Finish capture before playback')
-        self.owner=c.id;self.state='speaking';self._speaking=True;self._emit(c)
+        self.owner=c.id;self.state='speaking';self.error='';self._speaking=True;self._emit(c)
         try:
             if self.audio is None:self.audio=self.factory()
             self._bind_timing(c)
             await self._owned(c,self.audio.speak(text))
-        except Exception:
-            self.error='Audio output unavailable. The completed text answer was not retried.'
+        except Exception as exc:
+            from odessy.voice.native_audio import AudioDeviceUnavailable
+            self.state='error'
+            self.error=str(exc) if isinstance(exc,AudioDeviceUnavailable) else 'Audio output unavailable. The completed text answer was not retried.'
             c.emit('audio_error',{'message':self.error})
         finally:
             self._speaking=False
-            if self._draining is None:self.owner=None;self.state='idle'
+            if self._draining is None:
+                self.owner=None
+                if self.state!='error':self.state='idle'
             self._emit(c)
     async def close(self):
         self._epoch+=1

@@ -29,6 +29,30 @@ class AudioBackendBusy(RuntimeError):
     pass
 
 
+class AudioDeviceUnavailable(ValueError):
+    """Safe, actionable device error that may be shown in the desktop UI."""
+
+
+def prepare_device(value, kind, backend='auto'):
+    """Resolve an explicit selection, refreshing stale idle enumeration once.
+
+    Never switch to another microphone/speaker, or reset an active native stream.
+    Reconnection is retried only on an explicit capture/wake/playback request.
+    """
+    if not value or backend_name(backend) != 'native':
+        return
+    module = library()
+    try:
+        resolve_device(value, kind, module)
+    except AudioDeviceUnavailable:
+        try:
+            refresh_devices(backend)
+        except AudioBackendBusy:
+            raise AudioDeviceUnavailable(
+                'Audio device changed while audio is active. Stop recording, wake listening and playback, then retry.') from None
+        resolve_device(value, kind, module)
+
+
 def _reserve_backend():
     token = object()
     with _backend_lock:
@@ -207,7 +231,9 @@ def resolve_device(value,kind,module):
     apis=module.query_hostapis()
     matches=[i for i,d in enumerate(module.query_devices())
              if f"{apis[d['hostapi']]['name']}::{d['name']}"==value and d[f'max_{kind}_channels']>0]
-    if len(matches)!=1:raise ValueError('Selected audio device is missing or ambiguous; refresh device selection.')
+    if len(matches)!=1:
+        device = 'microphone' if kind == 'input' else 'speaker'
+        raise AudioDeviceUnavailable(f'Selected {device} is missing or ambiguous. Connect it and retry, or choose a device in Settings > Audio devices.')
     return matches[0]
 
 class NativeInput:

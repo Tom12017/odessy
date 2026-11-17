@@ -36,6 +36,32 @@ def test_external_piper_creates_valid_wav_without_shell(tmp_path, monkeypatch):
     assert provider.synthesize('closed', path).status == 'failed'
 
 
+def test_python_piper_receives_unicode_text_under_a_windows_legacy_locale(tmp_path, monkeypatch):
+    """Keep the real interpreter flags and pipe; replace only the external model CLI."""
+    from odessy.voice import piper
+    real_popen = piper.subprocess.Popen
+    script = (
+        "import sys,wave; "
+        "sys.stdin.reconfigure(encoding='utf-8' if sys.flags.utf8_mode else 'cp1252'); "
+        "assert sys.stdin.read() == 'You\\u2019re ready \\u2014 caf\\u00e9.\\n'; "
+        "w=wave.open(sys.argv[-1],'wb'); w.setparams((1,2,22050,0,'NONE','')); "
+        "w.writeframes(b'\\x00\\x00'*2205); w.close()"
+    )
+
+    def launch(command, **kwargs):
+        module = command.index('-m')
+        assert command[module + 1] == 'piper'
+        return real_popen(command[:module] + ['-c', script] + command[module + 2:], **kwargs)
+
+    monkeypatch.setattr(piper.subprocess, 'Popen', launch)
+    provider = create_tts(config(tmp_path))
+    try:
+        result = provider.synthesize('You\u2019re ready \u2014 caf\u00e9.', tmp_path / 'unicode.wav')
+        assert result.status == 'ok', result.error
+    finally:
+        provider.close()
+
+
 @pytest.mark.parametrize('kind', ['missing_config', 'invalid_config', 'failed_child', 'invalid_wav'])
 def test_piper_failure_preserves_previous_output(tmp_path, monkeypatch, kind):
     cfg = config(tmp_path)

@@ -32,7 +32,10 @@ class PiperTTS:
         executable = str(Path(self.executable).expanduser())
         command = [executable]
         if Path(executable).stem.lower().startswith('python'):
-            command += ['-I', '-B', '-m', 'piper']
+            # stdin is UTF-8 bytes. Windows redirected Python stdin otherwise
+            # uses the active locale, corrupting normal punctuation/accented text.
+            # -I ignores PYTHONUTF8, so set the interpreter option explicitly.
+            command += ['-I', '-B', '-X', 'utf8', '-m', 'piper']
         return command + ['--model', str(model), '--output_file', str(output)]
 
     def synthesize(self, text: str, output_path: Path) -> TTSResult:

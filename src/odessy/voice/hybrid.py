@@ -296,6 +296,8 @@ class HybridAudioAdapter:
     async def speak_once(self,text):
         """Explicit playback using the same owned providers and cancellation guard."""
         if self._closing:return
+        from .native_audio import prepare_device
+        await self._run_blocking(prepare_device, self.config.audio_output_device, 'output', self.config.audio_backend)
         self._speech_epoch += 1
         epoch=self._speech_epoch
         self._started=True
@@ -506,7 +508,8 @@ class HybridAudioAdapter:
                 self._vad = (
                     await self._run_blocking(self.vad_factory)
                     if self.vad_factory is not None
-                    else await self._run_blocking(SileroSpeechDetector)
+                    else await self._run_blocking(SileroSpeechDetector,
+                        model_path=Path(self.config.wake_model).parent / 'silero_vad.onnx')
                 )
             except Exception as error:  # noqa: BLE001 - optional dependency
                 self._fail_input(CAPTURE, f"speech detection could not start: {error}")
@@ -530,6 +533,8 @@ class HybridAudioAdapter:
             return True
         try:
             def open_stream():
+                from .native_audio import prepare_device
+                prepare_device(self.config.audio_input_device, 'input', self.config.audio_backend)
                 self._stream.start()
                 if self._closing:
                     self._stream.close()
