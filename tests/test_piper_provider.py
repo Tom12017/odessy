@@ -82,10 +82,14 @@ def test_detection_finds_piper_pair_and_keeps_it_out_of_wake_models(tmp_path, mo
     model.parent.mkdir(parents=True)
     model.write_bytes(b'model')
     Path(str(model) + '.json').write_text('{"sample_rate":22050}')
+    executable = root / 'piper/runtime/python.exe'
+    executable.parent.mkdir()
+    executable.touch()
     monkeypatch.setenv('ODESSY_VOICE_ROOT', str(root))
     monkeypatch.setattr(Path, 'home', lambda: tmp_path)
     result = voice_assets.discover_voice_assets({'voice': {'tts_provider': 'piper'}})
     assert str(model.resolve()) in result['candidates']['tts_model']
+    assert str(executable.resolve()) in result['candidates']['tts_executable']
     assert str(model.resolve()) not in result['candidates']['wake_model']
     assert 'kokoro_model' not in result['missing']
 

@@ -132,6 +132,7 @@ def discover_voice_assets(selection):
     voice_root = default_root()
     if voice.get('tts_provider') == 'piper':
         add('tts_executable', shutil.which('piper'))
+        add('tts_executable', voice_root/'piper/runtime/python.exe')
         add('tts_executable', voice_root/'piper/runtime/Scripts/python.exe')
         add('tts_executable', voice_root/'piper/runtime/bin/python')
     roots = [home/'models', home/'odessy-voice-test', home/'whisper.cpp/models', home/'odessy/models', home/'odessy/voice', home/'.local/share/odessy',
