@@ -64,11 +64,7 @@ master_doc = "index"
 # target has no corresponding document. The links still render as plain URLs,
 # so suppress the noise; a follow-up pass should fix the links themselves.
 #
-# `misc.highlighting_failure` covers code blocks that name a Pygments lexer
-# Sphinx does not know (e.g. `mermaid` in ARCHITECTURE.md). The block is still
-# rendered as plain text; suppressing keeps the docs build warning-clean until
-# a Mermaid renderer is added separately.
-suppress_warnings = ["myst.xref_missing", "misc.highlighting_failure"]
+suppress_warnings = ["myst.xref_missing"]
 
 # -- Options for HTML output -------------------------------------------------
 
@@ -96,3 +92,16 @@ html_baseurl = os.environ.get("ODESSY_DOCS_BASEURL", "")
 # -- sphinx.ext.autosectionlabel --------------------------------------------
 
 autosectionlabel_prefix_document = True
+
+
+def setup(app):
+    """Register unknown lexers so code blocks don't emit ``lexer not known`` warnings.
+
+    ``ARCHITECTURE.md`` uses a ```mermaid`` block. Sphinx 8.1's highlighter logs
+    "Pygments lexer name 'mermaid' is not known" without a warning type, so it
+    cannot be silenced through ``suppress_warnings``. Mapping it to a plain-text
+    lexer keeps the block rendered as text without the warning.
+    """
+    from pygments.lexers import TextLexer  # noqa: PLC0415
+
+    app.add_lexer("mermaid", TextLexer)
