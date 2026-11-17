@@ -5,8 +5,9 @@
 ## Piper migration decision — November 17, 2026
 
 Piper is Odessy's selected TTS engine following the CPU evaluation, replacing
-Kokoro. Further Kokoro latency tuning is stopped. The implementation checklist
-below tracks the migration work separately from this product decision.
+Kokoro. The [external Piper connector](piper-connection.md) now uses existing
+provider/executable/model settings. Further Kokoro latency tuning is stopped.
+Default installer resources and redistribution qualification remain separate.
 
 The standalone Piper medium voice generated roughly 12.4 seconds of audio in
 0.38 seconds at eight CPU threads on the tested laptop; four threads took about
@@ -16,9 +17,9 @@ voice-quality approval or a production realtime claim. See the
 [listening preview](../../benchmark/tts/license-review.md#try-it-without-changing-odessy)
 and [benchmark index](../../benchmark/README.md).
 
-Before shipment: finish GPL/Corresponding Source and model/native license review,
-integrate through the existing TTS ownership/lifecycle, test Save/Stop/wake/STT
-preservation, and qualify a matching installer. The Kokoro measurements below
+Before bundled shipment: finish GPL/Corresponding Source and model/native license
+review and qualify the selected resources. The external user-installed connector
+retains existing Save/Stop/wake/STT ownership. The Kokoro measurements below
 are retained historical evidence, not the selected engine or a recommendation
 for new installations.
 
