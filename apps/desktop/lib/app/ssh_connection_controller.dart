@@ -92,19 +92,16 @@ class SshConnectionController extends ChangeNotifier {
       if (savedAlias != null && savedAlias.isNotEmpty) {
         if (selected != savedAlias) identity = test = null;
         selected = savedAlias;
-        await inspect(savedAlias, manageBusy: false);
+        if (saved['target']['temporary'] != true) {
+          await inspect(savedAlias, manageBusy: false);
+        }
         if (_disposed || epoch != _epoch) return;
         await refreshStatus();
         if (_disposed || epoch != _epoch) return;
         _startPolling();
-      } else if (aliases.isNotEmpty &&
-          (selected == null || !aliases.contains(selected))) {
-        identity = test = null;
-        selected = aliases.first;
-        await inspect(selected!, manageBusy: false);
       }
       message = aliases.isEmpty
-          ? 'No SSH aliases found. Add a Host entry to your OpenSSH config, then refresh.'
+          ? 'Enter user@hostname directly, or choose an existing SSH alias.'
           : '';
     } catch (failure) {
       if (_disposed || epoch != _epoch) return;
@@ -119,6 +116,72 @@ class SshConnectionController extends ChangeNotifier {
   }
 
   Future<void> refreshAliases() => load();
+
+  void editTarget(String value) {
+    if (_disposed || busy) return;
+    selected = value.trim().isEmpty ? null : value.trim();
+    identity = test = null;
+    message = error = '';
+    _notify();
+  }
+
+  Future<void> connect(String address,
+      {int? port, String password = ''}) async {
+    final client = api;
+    if (client == null || busy || _disposed) return;
+    if (address.trim().isEmpty) {
+      error = message = 'Enter user@hostname.';
+      _notify();
+      return;
+    }
+    if (client is! TemporarySshConnectionApi) {
+      error = message =
+          'Temporary SSH connections require an updated local service.';
+      _notify();
+      return;
+    }
+    final epoch = _epoch;
+    selected = address.trim();
+    identity = test = null;
+    busy = true;
+    busyAction = 'connect';
+    error = '';
+    message = 'Connecting to ${selected!}${port == null ? '' : ':$port'}…';
+    _notify();
+    try {
+      final result = await (client as TemporarySshConnectionApi)
+          .connectSsh(selected!, port: port, password: password);
+      if (_disposed || epoch != _epoch) return;
+      identity = result['identity'] is Map
+          ? Map<String, dynamic>.from(result['identity'] as Map)
+          : null;
+      test = result['test'] is Map
+          ? Map<String, dynamic>.from(result['test'] as Map)
+          : null;
+      if (result['connected'] != true || result['target'] is! Map) {
+        message =
+            '${test?['message'] ?? 'Connection failed. Check the address and credentials.'}';
+        error = message;
+        return;
+      }
+      target = result;
+      status = null;
+      ++_statusEpoch;
+      statusError = '';
+      message =
+          'Connected for this session. Reconnect after restarting Odessy. Monitoring is read-only.';
+      await refreshStatus();
+      if (!_disposed && epoch == _epoch) _startPolling();
+    } catch (failure) {
+      if (!_disposed && epoch == _epoch) _fail(failure);
+    } finally {
+      if (!_disposed && epoch == _epoch) {
+        busy = false;
+        busyAction = '';
+        _notify();
+      }
+    }
+  }
 
   Future<void> select(String alias) async {
     if (busy || _disposed) return;
@@ -166,7 +229,7 @@ class SshConnectionController extends ChangeNotifier {
     }
   }
 
-  Future<void> testConnection() async {
+  Future<void> testConnection({String password = ''}) async {
     final client = api;
     final alias = selected;
     if (client == null || alias == null || busy || _disposed) return;
@@ -177,14 +240,21 @@ class SshConnectionController extends ChangeNotifier {
     message = 'Testing the read-only SSH connection…';
     _notify();
     try {
-      final result = await client.testSshAlias(alias);
+      if (password.isNotEmpty && client is! SshPasswordConnectionApi) {
+        throw const SshConnectionFailure(
+            503, 'Password login requires an updated local service.');
+      }
+      final result = password.isNotEmpty
+          ? await (client as SshPasswordConnectionApi)
+              .testSshPassword(alias, password)
+          : await client.testSshAlias(alias);
       if (_disposed || epoch != _epoch || selected != alias) return;
       test = result['test'] is Map
           ? Map<String, dynamic>.from(result['test'] as Map)
           : null;
       message = test?['ok'] == true
           ? 'SSH login works. Only read-only status is available in this build.'
-          : 'SSH login did not succeed. Check the alias, key/agent and host key.';
+          : '${test?['message'] ?? 'SSH login did not succeed. Check the username, password or SSH agent.'}';
     } catch (failure) {
       if (_disposed || epoch != _epoch || selected != alias) return;
       _fail(failure);
@@ -197,7 +267,7 @@ class SshConnectionController extends ChangeNotifier {
     }
   }
 
-  Future<void> save() async {
+  Future<void> save({String password = ''}) async {
     final client = api;
     final alias = selected;
     if (client == null || alias == null || busy || _disposed) return;
@@ -209,7 +279,14 @@ class SshConnectionController extends ChangeNotifier {
     message = 'Saving the SSH computer…';
     _notify();
     try {
-      final result = await client.saveSshTarget(alias);
+      if (password.isNotEmpty && client is! SshPasswordConnectionApi) {
+        throw const SshConnectionFailure(
+            503, 'Password login requires an updated local service.');
+      }
+      final result = password.isNotEmpty
+          ? await (client as SshPasswordConnectionApi)
+              .saveSshPassword(alias, password)
+          : await client.saveSshTarget(alias);
       if (_disposed || epoch != _epoch || selected != alias) return;
       final previousHost = targetHostId;
       target = result;
@@ -344,6 +421,8 @@ class SshConnectionController extends ChangeNotifier {
     busyAction = '';
     statusRefreshing = false;
     message = switch (action) {
+      'connect' =>
+        'Stopped waiting. The service may finish connecting; refresh before retrying. No credentials were saved to disk.',
       'save' =>
         'Stopped waiting. The service may still finish saving the SSH computer; refresh to see the current target.',
       'remove' =>
@@ -362,6 +441,10 @@ class SshConnectionController extends ChangeNotifier {
   }
 
   void _fail(Object failure) {
+    if (failure is SshConnectionFailure && failure.message.isNotEmpty) {
+      error = message = failure.message;
+      return;
+    }
     final status = failure is SshConnectionFailure ? failure.status : 0;
     error = switch (status) {
       409 =>

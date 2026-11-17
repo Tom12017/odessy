@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/odessy/odessy/services/monitoring/internal/askpass"
 	"github.com/odessy/odessy/services/monitoring/internal/events"
 	"github.com/odessy/odessy/services/monitoring/internal/fleet"
 	"github.com/odessy/odessy/services/monitoring/internal/history"
@@ -32,6 +33,9 @@ type systemClock struct{}
 func (systemClock) Now() time.Time { return time.Now() }
 
 func main() {
+	if os.Getenv("ODESSY_SSH_ASKPASS") == "1" {
+		os.Exit(askpass.Run())
+	}
 	if err := run(); err != nil {
 		fmt.Fprintf(os.Stderr, "odessy-monitor: %v\n", errors.Unwrap(err))
 		os.Exit(1)

@@ -153,6 +153,7 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
                 voice_watch.cancel()
                 with contextlib.suppress(asyncio.CancelledError):
                     await voice_watch
+        app.state.ssh_connections.close()
         if desktop_voice is not None:await desktop_voice.close()
         if monitoring is not None and hasattr(monitoring, 'close'):
             await monitoring.close()
