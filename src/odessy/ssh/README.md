@@ -2,8 +2,11 @@
 
 One computer model carries its connection method and capabilities. Existing paired
 computers and SSH computers share the monitoring fleet; SSH does not replace pairing,
-identity or execution grants. This production SSH path is **monitoring-only**:
-`execution=false`, `workspace=false`. Start with the offline fixtures below, then
+identity or execution grants. The monitoring DTO retains `execution=false`,
+`workspace=false`. A separate temporary **Custom command execution** selection
+exposes `ssh.run`, with exact approval in every mode, pinned endpoint/key and no
+remote sandbox. See the [command loop](../../../docs/setup/ssh-computers.md#agent-command-loop-custom-preview).
+Start with the offline fixtures below, then
 use an existing trusted target for an explicitly selected live check.
 
 ## First useful status with an address or existing alias
@@ -22,9 +25,10 @@ needs the existing Go monitor binary. See configuration below if it is not found
 3. Connections created by Connect last only for the running service. **Disconnect**
    removes that runtime selection and closes its password lease without writing
    configuration or revoking independent OS SSH access. Reconnect after restart.
-4. **Optional granted task:** unavailable on this SSH path. Existing LAN execution
-   and pairing retain separate grants. Neither an SSH login nor monitoring consent
-   grants workspace or execution access.
+4. **Optional command target:** explicitly select **Use for agent commands** after
+   login. New Custom chats discover `ssh.run` through the existing tool interface;
+   the existing approval broker binds each command/target. Disconnect revokes old
+   server objects. LAN selection is mutually exclusive; pairing grants are separate.
 
 See the [connection guide](../../../docs/setup/ssh-computers.md) for trust,
 password lifetime, retained legacy configuration and GitHub's Git-only behavior.
@@ -34,7 +38,7 @@ password lifetime, retained legacy configuration and GitHub's Git-only behavior.
 From the repository root, using the prepared Python environment:
 
 ```powershell
-python -m pytest -q tests/test_ssh_fresh_bootstrap.py tests/test_ssh_connections_api.py tests/test_ssh_connection.py tests/test_ssh_onboarding.py tests/test_ssh_password.py
+python -m pytest -q tests/test_ssh_execution.py tests/test_ssh_fresh_bootstrap.py tests/test_ssh_connections_api.py tests/test_ssh_connection.py tests/test_ssh_onboarding.py tests/test_ssh_password.py
 ```
 
 Then from `services/monitoring`:

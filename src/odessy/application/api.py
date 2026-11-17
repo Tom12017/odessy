@@ -1256,6 +1256,7 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
                 if voice_configuration is not None:await voice_configuration.refresh(app)
                 admission_open()
                 await desktop_voice.speak(controller,'Odessy audio output test.')
+                if desktop_voice.error:raise VoiceError(desktop_voice.error,503)
                 return desktop_voice.snapshot(controller)
             raise VoiceError('Unsupported voice action',400)
         except VoiceError as exc:raise HTTPException(exc.code,str(exc)) from None

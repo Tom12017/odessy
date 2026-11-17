@@ -293,6 +293,12 @@ abstract interface class TemporarySshConnectionApi {
   Future<Json> connectSsh(String target, {int? port, String password = ''});
 }
 
+abstract interface class SshExecutionApi {
+  Future<Json> sshExecutionStatus();
+  Future<Json> enableSshExecution();
+  Future<Json> disableSshExecution();
+}
+
 class SshConnectionFailure implements Exception {
   const SshConnectionFailure(this.status, [this.message = '']);
   final int status;
@@ -353,7 +359,8 @@ class LocalApi
         ExecutionHostsApi,
         SshConnectionApi,
         SshPasswordConnectionApi,
-        TemporarySshConnectionApi {
+        TemporarySshConnectionApi,
+        SshExecutionApi {
   LocalApi(this.base, String token) : _token = token {
     if (!['http', 'https'].contains(base.scheme) ||
         !['localhost', '127.0.0.1', '::1'].contains(base.host) ||
@@ -575,6 +582,13 @@ class LocalApi
   Future<Json> sshAliases() => _sshJson('/v1/ssh/aliases');
   @override
   Future<Json> sshTarget() => _sshJson('/v1/ssh/target');
+  @override
+  Future<Json> sshExecutionStatus() => _sshJson('/v1/ssh/execution');
+  @override
+  Future<Json> enableSshExecution() =>
+      _sshJson('/v1/ssh/execution', 'POST', {'confirmed': true});
+  @override
+  Future<Json> disableSshExecution() => _sshJson('/v1/ssh/execution', 'DELETE');
   @override
   Future<Json> inspectSshAlias(String alias) => _sshJson(
       '/v1/ssh/inspect', 'POST', {'alias': alias}, const Duration(seconds: 25));

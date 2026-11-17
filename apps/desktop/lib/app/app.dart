@@ -403,7 +403,22 @@ class _OdessyAppState extends State<OdessyApp> {
     final sshApi = api is SshConnectionApi ? api as SshConnectionApi : null;
     if (sshConnections == null || !identical(sshConnections!.api, sshApi)) {
       sshConnections?.dispose();
-      sshConnections = SshConnectionController(sshApi);
+      sshConnections =
+          SshConnectionController(sshApi, beforeExecutionChange: (enabled) {
+        if (controller.busy || controller.session?.running == true) {
+          throw StateError(
+              'Stop the active turn before changing SSH execution.');
+        }
+        if (enabled &&
+            (controller.newSessionRuntime ?? controller.engineDefault) !=
+                'legacy') {
+          throw StateError(
+              'Select Custom for new chats before enabling SSH commands.');
+        }
+      }, onExecutionChanged: () async {
+        await controller.reloadExecutionTarget();
+        if (!controller.connected) throw StateError(controller.error);
+      });
     }
     return sshConnections!;
   }

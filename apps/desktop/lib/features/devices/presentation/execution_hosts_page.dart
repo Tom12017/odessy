@@ -40,7 +40,7 @@ class _ExecutionHostsPageState extends State<ExecutionHostsPage> {
               style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
           const Text(
-              'Enter an SSH address to view read-only computer status. Remote execution and workspace access are not enabled.'),
+              'Connect with SSH, then explicitly select it for agent commands. OdessyExecutor LAN remains experimental.'),
           const SizedBox(height: 12),
           if (widget.ssh == null)
             const Card(
@@ -293,6 +293,32 @@ class _SshSectionState extends State<_SshSection> {
                       ]))),
           if (c.test != null) _testCard(context, c.test!),
           if (c.hasTarget) _targetCard(context, c, c.status),
+          if (c.hasTarget && c.api is SshExecutionApi)
+            Card(
+                child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                              c.execution == null
+                                  ? 'Remote agent commands'
+                                  : 'SSH command target: ${c.execution!['target']}',
+                              style: Theme.of(context).textTheme.titleMedium),
+                          const SizedBox(height: 8),
+                          const Text(
+                              'Custom engine preview · POSIX shell commands run as the SSH user WITHOUT a remote sandbox. Every exact command needs approval. Stop closes the SSH channel; detached remote processes may survive. No remote file inspector or interactive terminal.'),
+                          const SizedBox(height: 8),
+                          FilledButton.icon(
+                              key: const Key('ssh-execution'),
+                              onPressed: c.busy
+                                  ? null
+                                  : () => c.setExecution(c.execution == null),
+                              icon: const Icon(Icons.terminal),
+                              label: Text(c.execution == null
+                                  ? 'Use for agent commands'
+                                  : 'Disconnect agent commands')),
+                        ]))),
           ExpansionTile(
               title: const Text('Advanced: SSH aliases and host identity'),
               children: [
@@ -410,7 +436,7 @@ class _SshSectionState extends State<_SshSection> {
                   : 'SSH login failed · ${test['code'] ?? 'error'}'),
           const SizedBox(height: 8),
           Text(ok
-              ? 'Transport verified. Monitoring is read-only. Execution is not available in this build.'
+              ? 'Login verified. Monitoring is separate from the optional agent command target below.'
               : '${test['message'] ?? 'Check the username, password / SSH agent and trusted host key.'}'),
         ]),
       ),
@@ -472,7 +498,11 @@ class _SshSectionState extends State<_SshSection> {
                 capabilities?['monitoring'] == true && c.statusError.isEmpty
                     ? 'read-only'
                     : 'unavailable'),
-            _capability('Execution', 'not available in this build'),
+            _capability(
+                'Agent commands',
+                c.execution == null
+                    ? 'not selected'
+                    : 'exact approval required'),
             _capability('Workspace', 'not required for status'),
           ]),
           const SizedBox(height: 10),

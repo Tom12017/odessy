@@ -40,6 +40,65 @@ class SshConnections:
     def __init__(self, monitor):
         self.monitor = monitor
         self._lock = asyncio.Lock()
+        self._login_verified = False
+        self._verified_identity = None
+        self._execution_epoch = 0
+
+    async def enable_execution(self):
+        async with self._lock:
+            return await self._enable_execution()
+
+    async def _enable_execution(self):
+        epoch = self._execution_epoch
+        from odessy.tools.ssh_executor import current, select, SshExecutionConnection
+        from odessy.tools.lan_executor import current as lan_target
+        if lan_target() is not None:raise SshConnectionError('Disconnect experimental LAN execution first.',status=409)
+        settings=self._settings()
+        if not self._login_verified or not settings.ssh_alias:
+            raise SshConnectionError('Connect and verify SSH login first.',status=409)
+        from odessy.ssh.identity import read_identity
+        try:
+            host=await asyncio.to_thread(resolve_host,settings.ssh_alias,ssh=self._binary(settings),
+                config_path=self._config(settings),port=settings.ssh_port or None)
+            identity=await asyncio.to_thread(read_identity,host,ssh=self._binary(settings))
+        except (SshError, OSError) as error:
+            raise SshConnectionError(str(error),status=409) from None
+        if not identity.known:raise SshConnectionError('SSH host identity is no longer trusted.',status=409)
+        verified = self._verified_identity or {}
+        if ((host.hostname, host.user, host.port) !=
+                (verified.get('hostname'), verified.get('user'), verified.get('port'))
+                or identity.primary_fingerprint not in verified.get('known_fingerprints', ())):
+            raise SshConnectionError('SSH identity changed since login. Reconnect before selecting execution.',status=409)
+        if host.proxy_jump:
+            raise SshConnectionError('SSH execution preview supports direct connections; jump hosts are unavailable.',status=409)
+        if not identity.public_keys:
+            raise SshConnectionError('Trusted SSH public key unavailable. Reconnect.',status=409)
+        old=current()
+        if old is not None:raise SshConnectionError('Disconnect SSH execution before selecting it again.',status=409)
+        lease=getattr(self.monitor,'ssh_password_lease',None)
+        if settings.ssh_authentication=='password' and not getattr(lease,'active',False):
+            raise SshConnectionError('SSH password expired. Reconnect.',status=409)
+        helper=getattr(settings,'binary','')
+        if epoch != self._execution_epoch:
+            raise SshConnectionError('SSH selection was cancelled. Reconnect and review again.',status=409)
+        if lan_target() is not None:
+            raise SshConnectionError('LAN execution changed while selecting SSH. Disconnect it first.',status=409)
+        connection=SshExecutionConnection(host,settings.ssh_display_name or host.alias,
+            identity.primary_fingerprint,self._binary(settings),lease,helper,
+            public_keys=identity.public_keys)
+        select(connection)
+        return {'execution':connection.public()}
+
+    def execution_status(self):
+        from odessy.tools.ssh_executor import current
+        connection=current()
+        return {'execution':connection.public() if connection else None}
+
+    def disable_execution(self):
+        from odessy.tools.ssh_executor import clear
+        self._execution_epoch += 1
+        clear()
+        return {'execution':None}
 
     def _settings(self):
         settings = getattr(self.monitor, 'settings', None)
@@ -144,6 +203,8 @@ class SshConnections:
 
     async def save(self, alias: str, display_name: str = '', password: str = '') -> dict[str, object]:
         async with self._lock:
+            self.disable_execution()
+            self._login_verified=False
             old = getattr(self.monitor, 'ssh_password_lease', None)
             candidate = PasswordLease(password) if password else (old if self._settings().ssh_alias == alias else None)
             try:
@@ -165,6 +226,8 @@ class SshConnections:
         if port is not None and (type(port) is not int or not 1 <= port <= 65535):
             raise SshConnectionError('Port must be between 1 and 65535')
         async with self._lock:
+            self.disable_execution()
+            self._login_verified=False
             old = getattr(self.monitor, 'ssh_password_lease', None)
             candidate = PasswordLease(password) if password else None
             try:
@@ -269,6 +332,8 @@ class SshConnections:
                       'The previous target could not be fully restored; restart Odessy and verify it.')
             raise SshConnectionError(
                 f'Monitoring did not start: {error}. {suffix}', status=503) from None
+        self._verified_identity = dict(result['identity'])
+        self._login_verified=True
         return {'schema_version': 1, 'connected': True, 'target': self.target()['target'],
                 'identity': result['identity'], 'test': result['test']}
 
@@ -325,6 +390,9 @@ class SshConnections:
                            'authorized_keys access on the host; remove those separately if needed.'}
 
     def close(self):
+        self.disable_execution()
+        self._login_verified=False
+        self._verified_identity=None
         lease = getattr(self.monitor, 'ssh_password_lease', None)
         if lease:
             self.monitor.ssh_password_lease = None
@@ -370,6 +438,33 @@ def register(app, monitor):
 
     def failure(error: SshConnectionError):
         raise HTTPException(error.status, str(error))
+
+    @app.get('/v1/ssh/execution')
+    async def ssh_execution_status():return manager.execution_status()
+
+    def idle():
+        if any(c.running for c in app.state.sessions.values()):
+            raise HTTPException(409,'Stop active turns before changing the SSH execution target')
+
+    @app.post('/v1/ssh/execution')
+    async def ssh_enable_execution(request: Request):
+        data=await body(request)
+        if set(data) != {'confirmed'} or data.get('confirmed') is not True:
+            raise HTTPException(400,'Confirm remote account execution without a sandbox')
+        idle()
+        try:
+            result = await manager.enable_execution()
+            try:
+                idle()
+            except HTTPException:
+                manager.disable_execution()
+                raise
+            return result
+        except SshConnectionError as error:failure(error)
+
+    @app.delete('/v1/ssh/execution')
+    async def ssh_disable_execution():
+        return manager.disable_execution()
 
     @app.get('/v1/ssh/aliases')
     async def ssh_aliases():

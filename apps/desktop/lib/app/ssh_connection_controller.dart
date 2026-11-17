@@ -5,7 +5,44 @@ import 'package:odessy_client/odessy_client.dart';
 /// Presentation state for one SSH computer. SSH trust, readiness and monitoring
 /// stay in the backend; this controller only sequences user actions.
 class SshConnectionController extends ChangeNotifier {
-  SshConnectionController(this.api);
+  SshConnectionController(this.api,
+      {this.onExecutionChanged, this.beforeExecutionChange});
+  final Future<void> Function()? onExecutionChanged;
+  final void Function(bool enabled)? beforeExecutionChange;
+  Json? execution;
+
+  Future<void> setExecution(bool enabled) async {
+    final client = api;
+    if (client is! SshExecutionApi || busy || _disposed) return;
+    final epoch = _epoch;
+    busy = true;
+    busyAction = 'execution';
+    error = '';
+    _notify();
+    try {
+      beforeExecutionChange?.call(enabled);
+      final result = enabled
+          ? await (client as SshExecutionApi).enableSshExecution()
+          : await (client as SshExecutionApi).disableSshExecution();
+      if (_disposed || epoch != _epoch) return;
+      execution = result['execution'] is Map
+          ? Map<String, dynamic>.from(result['execution'] as Map)
+          : null;
+      message = enabled
+          ? 'SSH command target selected. Each command requires approval. Open Chat and ask for hostname, whoami and pwd.'
+          : 'SSH command execution disconnected.';
+      await onExecutionChanged?.call();
+    } catch (failure) {
+      if (!_disposed && epoch == _epoch) _fail(failure);
+    } finally {
+      if (!_disposed && epoch == _epoch) {
+        busy = false;
+        busyAction = '';
+        _notify();
+      }
+    }
+  }
+
   SshConnectionApi? api;
   List<String> aliases = const [];
   String? selected;
@@ -76,6 +113,14 @@ class SshConnectionController extends ChangeNotifier {
       if (_disposed || epoch != _epoch) return;
       final previousHost = targetHostId;
       target = saved;
+      if (client is SshExecutionApi) {
+        final selectedExecution =
+            await (client as SshExecutionApi).sshExecutionStatus();
+        if (_disposed || epoch != _epoch) return;
+        execution = selectedExecution['execution'] is Map
+            ? Map<String, dynamic>.from(selectedExecution['execution'] as Map)
+            : null;
+      }
       if (previousHost != targetHostId) status = null;
       ++_statusEpoch;
       statusError = '';
@@ -165,11 +210,14 @@ class SshConnectionController extends ChangeNotifier {
         return;
       }
       target = result;
+      final hadExecution = execution != null;
+      execution = null;
+      if (hadExecution) await onExecutionChanged?.call();
       status = null;
       ++_statusEpoch;
       statusError = '';
       message =
-          'Connected for this session. Reconnect after restarting Odessy. Monitoring is read-only.';
+          'Login verified for this session. Select Use for agent commands below to enable remote operations.';
       await refreshStatus();
       if (!_disposed && epoch == _epoch) _startPolling();
     } catch (failure) {
@@ -253,7 +301,7 @@ class SshConnectionController extends ChangeNotifier {
           ? Map<String, dynamic>.from(result['test'] as Map)
           : null;
       message = test?['ok'] == true
-          ? 'SSH login works. Only read-only status is available in this build.'
+          ? 'SSH login works. Connect, then select Use for agent commands to enable remote operations.'
           : '${test?['message'] ?? 'SSH login did not succeed. Check the username, password or SSH agent.'}';
     } catch (failure) {
       if (_disposed || epoch != _epoch || selected != alias) return;
@@ -328,6 +376,9 @@ class SshConnectionController extends ChangeNotifier {
       final result = await client.removeSshTarget();
       if (_disposed || epoch != _epoch) return;
       target = null;
+      final hadExecution = execution != null;
+      execution = null;
+      if (hadExecution) await onExecutionChanged?.call();
       test = null;
       status = null;
       ++_statusEpoch;
@@ -441,6 +492,10 @@ class SshConnectionController extends ChangeNotifier {
   }
 
   void _fail(Object failure) {
+    if (failure is StateError) {
+      error = message = failure.message;
+      return;
+    }
     if (failure is SshConnectionFailure && failure.message.isNotEmpty) {
       error = message = failure.message;
       return;

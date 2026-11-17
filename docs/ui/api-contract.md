@@ -41,6 +41,7 @@ an implicit request target. There are no direct provider/native calls in widgets
 | Monitoring events | GET `/v1/monitoring/events`, `Last-Event-ID: epoch:sequence` |
 | SSH connection actions | POST `/v1/ssh/connect`, GET `/v1/ssh/aliases`, GET `/v1/ssh/target`, POST `/v1/ssh/inspect`, POST `/v1/ssh/test`, POST/DELETE `/v1/ssh/target` |
 | SSH typed readiness | GET `/v1/ssh/computer` |
+| Explicit temporary Custom SSH execution selection | GET/POST/DELETE `/v1/ssh/execution`; POST requires `{"confirmed":true}` |
 
 Stop returns HTTP 200 with a body that says what was actually established, not merely that the
 request was accepted:

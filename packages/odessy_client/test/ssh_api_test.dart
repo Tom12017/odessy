@@ -4,6 +4,33 @@ import 'package:test/test.dart';
 import 'package:odessy_client/odessy_client.dart';
 
 void main() {
+  test('SSH execution selection uses authenticated explicit mutation',
+      () async {
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    final api =
+        LocalApi(Uri.parse('http://127.0.0.1:${server.port}'), 'fixture');
+    final methods = <String>[];
+    server.listen((request) async {
+      expect(request.headers.value('authorization'), 'Bearer fixture');
+      expect(request.uri.path, '/v1/ssh/execution');
+      expect(request.uri.query, isEmpty);
+      methods.add(request.method);
+      final body = await utf8.decoder.bind(request).join();
+      if (request.method == 'POST')
+        expect(jsonDecode(body), {'confirmed': true});
+      request.response.write(jsonEncode({'execution': null}));
+      await request.response.close();
+    });
+    try {
+      await api.sshExecutionStatus();
+      await api.enableSshExecution();
+      await api.disableSshExecution();
+      expect(methods, ['GET', 'POST', 'DELETE']);
+    } finally {
+      api.close();
+      await server.close(force: true);
+    }
+  });
   test(
       'temporary connect sends explicit port/password only in authenticated body',
       () async {

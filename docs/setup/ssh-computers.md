@@ -2,8 +2,34 @@
 
 **Developer Preview · v0.5.0-alpha**
 
-Connect using an ordinary SSH address. SSH supplies read-only computer monitoring;
-it does not grant remote tasks, a terminal, files or workspace permissions.
+Connect using an ordinary SSH address. Login starts read-only computer monitoring.
+You can separately enable **Custom engine SSH commands** for this service session.
+Neither login nor monitoring alone grants command execution or workspace access.
+
+## Agent command loop (Custom preview)
+
+1. Choose the **Custom** runtime for new chats. Harness SSH execution is unsupported;
+   Odessy refuses it explicitly instead of silently switching engines.
+2. Connect below, then click **Use for agent commands**. This selects one temporary
+   target and opens a new live chat to load its tools. Existing saved history remains.
+3. Ask: **On the selected SSH computer, run hostname, whoami and pwd using ssh.run.**
+4. Review the exact command and target in the approval, then approve once or decline.
+   Approval is required in Ask, Auto and Full modes. Results return to the chat and
+   recorded **Output** panel; command failures remain remote failures.
+5. **Disconnect agent commands** revokes the selection and closes active local SSH
+   channels. Disconnecting/replacing the SSH connection does the same.
+
+Commands run as the SSH account using a POSIX shell, **without a remote sandbox**.
+Timeout is 1–60 seconds; stdout and stderr are bounded. Stop/disconnect closes the
+SSH channel but cannot promise termination of detached remote descendants or undo
+effects. No interactive prompts, sudo password entry, PTY, jump hosts, remote file
+inspector, automatic retries or local fallback are provided. Connections with
+required sandbox isolation are refused. Host key/address/user/port and the exact
+command are bound at dispatch; changed trust requires reconnecting.
+
+SSH and experimental LAN execution cannot be selected simultaneously. LAN remains
+experimental. The monitoring capability DTO remains monitoring-only; the separate
+`GET/POST/DELETE /v1/ssh/execution` route owns explicit execution selection.
 
 ## Connect for this session
 
