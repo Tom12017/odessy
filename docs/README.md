@@ -16,7 +16,7 @@ Historical plans and test receipts describe their recorded snapshots, not today'
 | Understand tool authority | [Access modes](ui/access-modes.md) · [Permissions](reference/permissions.mdx) · [Security limits](reference/current-limitations.mdx) |
 | Use memory and documents | [Context, memory and retrieval](ui/context-memory-retrieval.md) |
 | Use local terminal or checkpoints | [Capabilities and safety limits](ui/terminal-checkpoints.md) |
-| Connect computers | [SSH monitoring](../src/odessy/ssh/README.md) · [Host pairing](reference/host-pairing.mdx) |
+| Connect computers | [SSH setup](setup/ssh-computers.md) · [Experimental executor](setup/executor-preview.md) · [Host pairing](reference/host-pairing.mdx) |
 | Inspect telemetry | [Monitoring](monitoring/README.md) · [Monitoring API](monitoring/api.md) |
 | Work on voice | [Desktop voice](ui/desktop-voice.md) · [Providers](reference/speech-providers.md) |
 | Contribute and test | [Contributing](../CONTRIBUTING.md) · [Architecture](ARCHITECTURE.md) · [Desktop contracts](ui/api-contract.md) |

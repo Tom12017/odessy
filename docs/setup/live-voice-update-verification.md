@@ -1,5 +1,7 @@
 # Live voice update verification — 16 November 2026
 
+**Latest installed check:** the November 17 combined update is recorded [here](../verification/combined-update-2026-11-17.md). The November 16 evidence below remains historical.
+
 Branch: `fix/live-voice-configuration`; source base `b9b955702c271a01d06bf92d79223761fdcf0af1`, with recorded dirty source hashes in `.qualification/live-voice-20261116/source.json`.
 
 ## Result
@@ -60,3 +62,8 @@ Open the main composer's **Voice options** → **Test speech output**, then **Te
 ## Subsequent TTS optimization
 
 The November 16 source optimization is described in [speech playback latency](../ui/voice-performance.md). It is newer than the installed GUI receipt above. Do not reuse the earlier installer hashes to claim delivery of that optimization. A new coherent update candidate and installed check remain necessary.
+
+
+## Combined installed update — November 17, 2026
+
+The later combined candidate has now been applied to `D:\Odessy-test`, including the TTS optimization and SSH/history/compact-inspector fixes. The earlier artifacts and timings above remain historical. See the [new installed update receipt](../verification/combined-update-2026-11-17.md) for exact identities, preservation checks and voice-test steps.
