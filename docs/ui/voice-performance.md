@@ -2,6 +2,26 @@
 
 **Developer Preview · v0.5.0-alpha**
 
+## Piper migration decision — November 17, 2026
+
+Piper is Odessy's selected TTS engine following the CPU evaluation, replacing
+Kokoro. Further Kokoro latency tuning is stopped. The implementation checklist
+below tracks the migration work separately from this product decision.
+
+The standalone Piper medium voice generated roughly 12.4 seconds of audio in
+0.38 seconds at eight CPU threads on the tested laptop; four threads took about
+0.47 seconds. Sixteen threads was slower. This is synthesis evidence, not human
+voice-quality approval or a production realtime claim. See the
+[organized TTS benchmark and receipts](../../benchmark/tts/README.md),
+[listening preview](../../benchmark/tts/license-review.md#try-it-without-changing-odessy)
+and [benchmark index](../../benchmark/README.md).
+
+Before shipment: finish GPL/Corresponding Source and model/native license review,
+integrate through the existing TTS ownership/lifecycle, test Save/Stop/wake/STT
+preservation, and qualify a matching installer. The Kokoro measurements below
+are retained historical evidence, not the selected engine or a recommendation
+for new installations.
+
 The main-panel spoken-turn path uses the existing runtime text stream and audio
 lease. Complete sentences can play before model generation ends. A provider that
 does not emit text deltas still speaks its completed answer. Tool actions retain
@@ -101,3 +121,8 @@ Its five changed production modules match the current source byte for byte
 (`tts-final-wheel-check.json`). This is wheel-content verification, not a new
 installer or installed-upgrade qualification. No hosted CI or GPU hardware
 qualification is claimed.
+
+
+## Installed follow-up — November 17, 2026
+
+The combined update is now verified on `D:\Odessy-test`. The [installed follow-up receipt](../verification/combined-update-2026-11-17.md) records a fresh benchmark using the actual new installed interpreter, short local playback, artifact identity and preserved data. Earlier source measurements and old wheel hashes above remain historical; GPU and human speech acceptance remain pending.
