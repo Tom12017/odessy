@@ -66,6 +66,10 @@ The versioned format (`src/odessy/setup/`) instead copies each payload component
 `<root>/versions/<id>/` (`python` virtualenv, `desktop`, `node`, `tools`, `harness`) and
 records every owned file digest in `installation.json`.
 
+Full upgrades retain prior version inventories for rollback. Setup records have a
+64 MiB limit for both reads and writes; an oversized write is rejected before it
+replaces the previous record. Existing versions and profile data are preserved.
+
 ## Download, verification and recovery
 
 - Resource URLs, versions, sizes and SHA-256 digests are pinned in the `releases/`

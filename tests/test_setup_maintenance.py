@@ -6,6 +6,29 @@ from odessy.setup.maintenance import ManagedInstallation, Cancelled
 from odessy.setup.contracts import SetupSelection
 
 
+def test_accumulated_upgrade_metadata_remains_readable(tmp_path):
+    from odessy.setup.maintenance import read_json
+    path=tmp_path/'installation.json'
+    # Repeated full Windows upgrades retain rollback inventories and registration
+    # hashes; their combined metadata can legitimately exceed the former 16 MiB.
+    payload='x'*(17*1024*1024)
+    path.write_text(json.dumps({'rollback_metadata':payload}),encoding='utf-8')
+    assert read_json(path)['rollback_metadata']==payload
+
+
+def test_oversized_atomic_record_preserves_previous_file(tmp_path,monkeypatch):
+    from odessy.setup import maintenance
+    path=tmp_path/'installation.json';path.write_text('{"previous":true}')
+    monkeypatch.setattr(maintenance,'MAX_RECORD_BYTES',64)
+    with pytest.raises(ValueError,match='record exceeds limit'):
+        maintenance.atomic(path,{'rollback_metadata':'x'*65})
+    assert path.read_text()=='{"previous":true}'
+    assert list(tmp_path.iterdir())==[path]
+    path.write_text(json.dumps({'oversized':'x'*65}))
+    with pytest.raises(ValueError,match='record exceeds limit'):
+        maintenance.read_json(path)
+
+
 def bundle(tmp_path):
     root=tmp_path/'bundle'; root.mkdir()
     wheel=root/'odessy-0.5.0-py3-none-any.whl'; wheel.write_bytes(b'wheel')

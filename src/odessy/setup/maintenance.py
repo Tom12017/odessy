@@ -25,9 +25,10 @@ class Cancelled(RuntimeError):
     pass
 
 # One installed version is described by every file it owns, digests included, which
-# is roughly 1.5 MiB for a full desktop installation. History is kept so rollback
-# works, so the ceiling has to allow several versions rather than a couple.
-MAX_RECORD_BYTES=16*1024*1024
+# can exceed 3.5 MiB for a full Windows voice installation. Rollback inventories
+# and the maintenance helper are retained across upgrades, so allow several full
+# versions. Reads and atomic writes share this finite ceiling.
+MAX_RECORD_BYTES=64*1024*1024
 
 def digest(path):
     with Path(path).open('rb') as stream:
@@ -83,7 +84,10 @@ def atomic(path,data):
     fd,name=tempfile.mkstemp(prefix='.setup-',dir=path.parent)
     try:
         with os.fdopen(fd,'w',encoding='utf-8') as stream:
-            json.dump(data,stream,indent=2);stream.flush();os.fsync(stream.fileno())
+            json.dump(data,stream,indent=2);stream.flush()
+            if os.fstat(stream.fileno()).st_size>MAX_RECORD_BYTES:
+                raise ValueError('setup record exceeds limit')
+            os.fsync(stream.fileno())
         # A just-written file can be briefly locked by a scanner or indexer; a
         # replace that fails is retried rather than leaving a torn journal.
         for attempt in range(10):
