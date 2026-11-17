@@ -102,6 +102,19 @@ func run() error {
 	}
 	defer worker.Close()
 
+	// A ready API must already contain the selected hosts. Otherwise the first
+	// desktop status request races the scheduler's initial inventory and returns
+	// HOST_NOT_FOUND immediately after a successful SSH connection.
+	initialCtx, initialCancel := context.WithTimeout(context.Background(), protocol.RequestDeadline)
+	initial, initialErr := worker.Inventory(initialCtx)
+	initialCancel()
+	if initialErr == nil {
+		initialErr = f.ApplyInventory(initial, clock.Now())
+	}
+	if initialErr != nil {
+		f.MarkInventoryFailure(clock.Now(), initialErr)
+	}
+
 	scheduler := fleet.NewScheduler(worker, f, clock, intervals)
 	ingestor := runtime.New(f, clock.Now)
 
