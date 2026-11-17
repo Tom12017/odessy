@@ -35,6 +35,7 @@ import 'ux_copy.dart';
 import 'dart:ui' show AppExitResponse;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:odessy_client/odessy_client.dart';
 
 import '../features/conversation/presentation/conversation.dart';
@@ -878,7 +879,8 @@ class _OdessyAppState extends State<OdessyApp> {
               ]),
               builder: (context, _) =>
                   LayoutBuilder(builder: (context, constraints) {
-                    final narrow = constraints.maxWidth < 900;
+                    final narrow = constraints.maxWidth < 900 ||
+                        (inspectorOpen && constraints.maxWidth < 1100);
                     final sidebar = _sidebar(context);
 
                     return Scaffold(
@@ -1237,9 +1239,15 @@ class _OdessyAppState extends State<OdessyApp> {
                                       }),
                                   onOpenManagement: widget.installed == null ? null : () => setState(() => page = 'Manage installation')),
                               _ => LayoutBuilder(builder: (context, box) {
-                                  final sideBySide = box.maxWidth >= 920;
-                                  final panelWidth = inspectorWidth.clamp(320.0,
-                                      (box.maxWidth - 480).clamp(320.0, 480.0));
+                                  // Keep the inspector on the right. Reserve a usable chat
+                                  // width; very small windows use a dismissible sheet.
+                                  final sideBySide = box.maxWidth >= 608;
+                                  final panelWidth = sideBySide
+                                      ? inspectorWidth.clamp(
+                                          280.0,
+                                          (box.maxWidth - 328)
+                                              .clamp(280.0, 480.0))
+                                      : (box.maxWidth - 48).clamp(0.0, 390.0);
                                   final conversation = ConversationPage(
                                       accessMode: basics.mode?.mode,
                                       accessModeDescription:
@@ -1281,61 +1289,78 @@ class _OdessyAppState extends State<OdessyApp> {
                                                   _openBasics('Terminal')),
                                               onClose: _closeInspector)
                                           : null;
-                                  return Stack(children: [
-                                    Positioned.fill(
-                                      right: panel != null && sideBySide
-                                          ? panelWidth + 8
-                                          : 0,
-                                      child: Offstage(
-                                        offstage: panel != null && !sideBySide,
-                                        child: conversation,
-                                      ),
-                                    ),
-                                    if (panel != null && sideBySide)
-                                      Positioned(
-                                        top: 0,
-                                        bottom: 0,
-                                        right: panelWidth,
-                                        width: 8,
-                                        child: Semantics(
-                                          label: 'Resize workspace inspector',
-                                          child: MouseRegion(
-                                            cursor:
-                                                SystemMouseCursors.resizeColumn,
-                                            child: GestureDetector(
-                                              key: const Key(
-                                                  'inspector-resize-handle'),
-                                              behavior: HitTestBehavior.opaque,
-                                              onHorizontalDragUpdate: (event) =>
-                                                  setState(() =>
-                                                      inspectorWidth =
-                                                          (inspectorWidth -
-                                                                  event
-                                                                      .delta.dx)
-                                                              .clamp(320.0,
-                                                                  480.0)),
-                                              onHorizontalDragEnd: (_) =>
-                                                  _saveShellLayout(),
-                                              child: Center(
-                                                  child: Container(
-                                                      width: 1,
-                                                      color: Theme.of(context)
-                                                          .dividerColor)),
+                                  return CallbackShortcuts(
+                                      bindings: {
+                                        if (panel != null)
+                                          const SingleActivator(
+                                                  LogicalKeyboardKey.escape):
+                                              _closeInspector,
+                                      },
+                                      child: Stack(children: [
+                                        Positioned.fill(
+                                          right: panel != null && sideBySide
+                                              ? panelWidth + 8
+                                              : 0,
+                                          bottom: 0,
+                                          child: conversation,
+                                        ),
+                                        if (panel != null && !sideBySide)
+                                          Positioned.fill(
+                                            child: ModalBarrier(
+                                              color: Colors.black26,
+                                              dismissible: true,
+                                              onDismiss: _closeInspector,
+                                              semanticsLabel:
+                                                  'Close workspace inspector',
                                             ),
                                           ),
-                                        ),
-                                      ),
-                                    if (panel != null)
-                                      Positioned(
-                                        top: 0,
-                                        bottom: 0,
-                                        right: 0,
-                                        width: sideBySide
-                                            ? panelWidth
-                                            : box.maxWidth,
-                                        child: panel,
-                                      ),
-                                  ]);
+                                        if (panel != null && sideBySide)
+                                          Positioned(
+                                            top: 0,
+                                            bottom: 0,
+                                            right: panelWidth,
+                                            width: 8,
+                                            child: Semantics(
+                                              label:
+                                                  'Resize workspace inspector',
+                                              child: MouseRegion(
+                                                cursor: SystemMouseCursors
+                                                    .resizeColumn,
+                                                child: GestureDetector(
+                                                  key: const Key(
+                                                      'inspector-resize-handle'),
+                                                  behavior:
+                                                      HitTestBehavior.opaque,
+                                                  onHorizontalDragUpdate:
+                                                      (event) => setState(() =>
+                                                          inspectorWidth =
+                                                              (inspectorWidth -
+                                                                      event
+                                                                          .delta
+                                                                          .dx)
+                                                                  .clamp(320.0,
+                                                                      480.0)),
+                                                  onHorizontalDragEnd: (_) =>
+                                                      _saveShellLayout(),
+                                                  child: Center(
+                                                      child: Container(
+                                                          width: 1,
+                                                          color: Theme.of(
+                                                                  context)
+                                                              .dividerColor)),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        if (panel != null)
+                                          Positioned(
+                                            top: 0,
+                                            bottom: 0,
+                                            right: 0,
+                                            width: panelWidth,
+                                            child: panel,
+                                          ),
+                                      ]));
                                 }),
                             }),
                           ])),
