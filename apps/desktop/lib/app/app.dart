@@ -1,6 +1,7 @@
 import '../features/shell/presentation/app_icon_rail.dart';
 import '../features/history/controllers/basics_controller.dart';
 import '../features/history/presentation/basics_page.dart';
+import '../features/history/presentation/saved_chat.dart';
 import 'preferences/shell_layout_store.dart';
 import 'dart:async';
 import 'dart:io';
@@ -305,6 +306,30 @@ class _OdessyAppState extends State<OdessyApp> {
       page = 'History & tools';
     });
     await basics.refresh();
+  }
+
+  Future<void> _openSavedConversation(String id) async {
+    if (basics.busy ||
+        controller.busy ||
+        controller.session?.running == true ||
+        !await _mayNavigate() ||
+        !mounted) {
+      return;
+    }
+    await voice.release();
+    await basics.open(id);
+    if (!mounted || basics.selected?.id != id || basics.error != null) return;
+    scaffoldKey.currentState?.closeDrawer();
+    inspector?.invalidate();
+    setState(() {
+      page = 'Saved conversation';
+      inspectorOpen = false;
+    });
+    if (controller.connected && controller.session?.conversationId == id) {
+      await _openSession(controller.session!.id);
+    } else if (basics.selected!.continuable && basics.live) {
+      await _resumeSavedConversation();
+    }
   }
 
   Future<void> _resumeSavedConversation() async {
@@ -1077,7 +1102,11 @@ class _OdessyAppState extends State<OdessyApp> {
                               'Device details' => _devicePage(),
                               'Jobs' => JobsPage(controller: jobs),
                               'Handoffs' => HandoffPage(controller: handoffs),
+                              'Saved conversation' => SavedChatView(
+                                  controller: basics,
+                                  onManage: () => _openBasics()),
                               'History & tools' => BasicsPage(
+                                  onOpenConversation: _openSavedConversation,
                                   controller: basics,
                                   initialTab: basicsTab,
                                   workspaceLabel: readiness
@@ -1460,26 +1489,32 @@ class _OdessyAppState extends State<OdessyApp> {
                     controller.session?.running == true
                 ? null
                 : () => _openSession(row.id));
-        Widget savedLink(SavedConversation chat, {bool nested = true}) =>
-            ListTile(
-                dense: true,
-                contentPadding:
-                    EdgeInsets.only(left: nested ? 32 : 12, right: 12),
-                visualDensity: const VisualDensity(vertical: -1),
-                selected: basics.selected?.id == chat.id,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-                title: Text(chat.title,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                trailing: chat.pinned
-                    ? const Icon(Icons.push_pin_outlined, size: 14)
-                    : null,
-                onTap: basics.busy
-                    ? null
-                    : () async {
-                        await _openBasics();
-                        await basics.open(chat.id);
-                      });
+        Widget
+            savedLink(SavedConversation chat, {bool nested = true}) =>
+                SavedChatMenu(
+                    controller: basics,
+                    chat: chat,
+                    child:
+                        ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.only(
+                                left: nested ? 32 : 12, right: 12),
+                            visualDensity: const VisualDensity(vertical: -1),
+                            selected: page == 'Conversation'
+                                ? controller.session?.conversationId == chat.id
+                                : basics.selected?.id == chat.id,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10)),
+                            title: Text(chat.title,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                            trailing:
+                                chat.pinned
+                                    ? const Icon(Icons.push_pin_outlined,
+                                        size: 14)
+                                    : null,
+                            onTap: basics.busy
+                                ? null
+                                : () => _openSavedConversation(chat.id)));
         final saved = basics.conversations.where((r) => !r.archived).toList();
         return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
