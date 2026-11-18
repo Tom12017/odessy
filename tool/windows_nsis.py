@@ -39,12 +39,13 @@ def quote(value):
 def script(files,output,icon):
     return f'''Unicode true
 RequestExecutionLevel user
+ManifestLongPathAware true
 Name "Odessy Setup"
 Caption "Preparing Odessy Setup"
 OutFile "{quote(output)}"
 Icon "{quote(icon)}"
 CRCCheck force
-SetCompressor /SOLID lzma
+SetCompressor /SOLID zlib
 AutoCloseWindow true
 ShowInstDetails show
 Page instfiles
@@ -56,7 +57,7 @@ Section "Preparing Odessy Setup"
   IfFileExists "$INSTDIR\\." 0 +3
     MessageBox MB_ICONSTOP "Setup staging already exists. Reopen the installer."
     Abort
-  SetOutPath "$INSTDIR"
+  SetOutPath "\\\\?\\$INSTDIR"
   DetailPrint "Preparing verified Odessy components..."
   File /r "{quote(Path(files)/'*')}"
   IfErrors failed
