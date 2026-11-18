@@ -544,6 +544,7 @@ class _SetupApplicationState extends State<SetupApplication> {
             : (ready ? 'Voice components are ready.' : '');
       });
       await _refreshVoiceState();
+      if (!mounted || _closing) return false;
       if (!_voiceComplete && ttsProvider != 'piper') {
         setState(() => voiceError =
             'Select the chosen speech engine paths above, or turn off voice to continue.');

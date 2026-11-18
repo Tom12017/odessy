@@ -305,6 +305,13 @@ class InstalledManageController extends ChangeNotifier {
       'package-configure-review',
       {'selection': selection, 'workspace': workspace});
 
+  Future<void> reviewVoiceEnabled(bool enabled) =>
+      _review('package-voice-configure-review', {
+        'selection': {
+          'voice': {'enabled': enabled}
+        },
+      });
+
   Future<void> reviewUninstall() =>
       _review('package-uninstall-review', const {});
 
@@ -352,6 +359,7 @@ class InstalledManageController extends ChangeNotifier {
       'package-repair-review' => 'package-repair',
       'package-rollback-review' => 'package-rollback',
       'package-configure-review' => 'package-configure',
+      'package-voice-configure-review' => 'package-voice-configure',
       'package-uninstall-review' => 'package-uninstall',
       'service-plan' => 'service-install',
       _ => null,
@@ -402,6 +410,8 @@ class InstalledManageController extends ChangeNotifier {
         'package-repair' =>
           'A new version was installed and activated from the bundled payload.',
         'package-rollback' => 'The previous owned version is active again.',
+        'package-voice-configure' =>
+          'Speech configuration saved for the next launch. Saved speech paths and device choices are preserved.',
         'package-configure' =>
           'Configuration saved. The next launch uses it; nothing was started.',
         'service-install' =>

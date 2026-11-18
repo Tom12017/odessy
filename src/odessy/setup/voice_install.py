@@ -1209,14 +1209,21 @@ def prepare_piper_upgrade(selection, previous_runtime, interpreter, *, cancelled
             or os.path.normcase(os.path.abspath(voice.tts_executable)) != os.path.normcase(os.path.abspath(previous_runtime))):
         return selection
     root = default_root()
-    result = python_install(None, root, payload=payload, features=['voice'], tts_provider='piper',
-                            cancelled=cancelled, _interpreter=interpreter)
+    recovery = ('The previous version remains active. In Manage Odessy, review and confirm '
+                '"Pause speech for update", then retry Repair or update files. '
+                'Speech stays off until you explicitly enable saved speech; its files and device choices are preserved.')
+    try:
+        result = python_install(None, root, payload=payload, features=['voice'], tts_provider='piper',
+                                cancelled=cancelled, _interpreter=interpreter)
+    except ValueError as error:
+        if cancelled(): raise
+        raise ValueError(f'Piper upgrade could not complete: {error}. {recovery}') from error
     if cancelled():
         raise ValueError('cancelled')
     current = status(payload, root=root, features=['voice'], tts_provider='piper', _interpreter=interpreter)
     if (not result['verified'] or not current['ready']
             or current['paths'].get('tts_model') != voice.tts_model):
-        raise ValueError('Piper could not be verified in the replacement runtime; repair speech components before retrying. The previous version remains active.')
+        raise ValueError(f'Piper could not be verified in the replacement runtime. {recovery}')
     return replace(selection, voice=replace(voice, tts_executable=str(interpreter)))
 
 

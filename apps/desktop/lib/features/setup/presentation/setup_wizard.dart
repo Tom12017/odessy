@@ -186,7 +186,7 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
       final values = candidates[name] as List? ?? [];
       if (values.length == 1 &&
           fields[name]!.text.trim().isEmpty &&
-          (ttsProvider == 'piper'
+          (ttsProvider != 'kokoro'
               ? !name.startsWith('kokoro_')
               : !name.startsWith('tts_'))) {
         fields[name]!.text = values.single as String;

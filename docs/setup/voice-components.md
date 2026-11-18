@@ -151,6 +151,28 @@ After a wake cue finishes, the session reports `Recording speech` so the desktop
 can show that the command window is open. Model-file verification alone does not
 verify microphone selection, wake sensitivity or transcription accuracy.
 
+## Upgrading after removing the speech cache
+
+Managed Piper is installed and verified in the replacement runtime before an
+update is activated. If its hash-pinned wheel cache was deleted or verification
+fails, the update stops and the previous version remains active. No download or
+silent speech disable occurs.
+
+To proceed without speech, close the running Odessy app. In **Manage Odessy**,
+choose **Pause speech for update**, review the change and **Confirm once**. Then
+review **Repair or update files** again. Text use remains available. Speech
+paths, audio devices, wake model, model configuration and workspace are retained.
+Speech stays paused until an explicit **Enable saved speech** confirmation;
+that uses the retained provider path, so keep its previous runtime/files. It
+does not claim to restore missing or damaged files or download them. If those
+files are unavailable, select valid components in Settings or rerun speech setup
+with its explicit download consent. Microphone/wake/playback checks remain
+separate from component verification.
+
+Voice-only configuration changes merge supplied keys over the stored voice
+selection. Omitted device/backend/wake fields are preserved; an explicit empty
+string clears a selected device. Stale configuration reviews are rejected.
+
 ## Where the ideas came from
 
 Reference implementations were read, and only the mechanics were adapted:

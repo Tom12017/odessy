@@ -291,3 +291,65 @@ def test_piper_upgrade_failure_leaves_previous_version_active(tmp_path, monkeypa
         manager.repair(source, confirm=manager.plan(source, selection)['plan_id'])
     assert manager.record()['active'] == old
     assert manager.verify()['valid']
+
+
+def test_voice_patch_preserves_audio_devices_and_allows_explicit_updates(tmp_path):
+    from odessy.setup.contracts import VoiceSelection
+    source = bundle(tmp_path)
+    manager = ManagedInstallation(tmp_path/'installed', runner=fake_runner)
+    selection = SetupSelection(role='combined', voice=VoiceSelection(
+        audio_input_device='saved microphone', audio_output_device='saved speaker',
+        audio_backend='native', wake_model='wake.onnx'))
+    manager.install(source, selection, manager.plan(source, selection)['plan_id'])
+    patch = {'enabled': False, 'tts_provider': 'piper'}
+    plan = manager.voice_configuration_plan(patch)
+    manager.configure_voice(patch, plan['plan_id'])
+    voice = manager.record()['selection']['voice']
+    assert voice['audio_input_device'] == 'saved microphone'
+    assert voice['audio_output_device'] == 'saved speaker'
+    assert voice['audio_backend'] == 'native' and voice['wake_model'] == 'wake.onnx'
+    patch = {'audio_input_device': 'new microphone', 'audio_output_device': ''}
+    manager.configure_voice(patch, manager.voice_configuration_plan(patch)['plan_id'])
+    assert manager.record()['selection']['voice']['audio_input_device'] == 'new microphone'
+    assert manager.record()['selection']['voice']['audio_output_device'] == ''
+    for invalid in (None, [], {'unsupported': True}):
+        with pytest.raises(ValueError):
+            manager.voice_configuration_plan(invalid)
+
+
+def test_reviewed_speech_pause_recovers_empty_cache_upgrade(tmp_path, monkeypatch):
+    import os
+    from dataclasses import replace
+    from odessy.setup import voice_install
+    from odessy.setup.contracts import VoiceSelection
+    source = bundle(tmp_path)
+    manager = ManagedInstallation(tmp_path/'installed', runner=fake_runner)
+    selection = SetupSelection(role='combined')
+    manager.install(source, selection, manager.plan(source, selection)['plan_id'])
+    old = manager.record()['active']
+    old_python = manager.root/'versions'/old/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
+    selection = replace(selection, voice=VoiceSelection(enabled=True, tts_provider='piper',
+        tts_executable=str(old_python), tts_model='saved.onnx', audio_input_device='saved mic'))
+    manager.configure(selection, None, manager.configuration_plan(selection)['plan_id'])
+    def empty_cache(*args, **kwargs):
+        raise ValueError('speech components have not been downloaded yet')
+    monkeypatch.setattr(voice_install, 'python_install', empty_cache)
+    with pytest.raises(ValueError, match='Pause speech for update'):
+        manager.repair(source, confirm=manager.plan(source, selection)['plan_id'])
+    assert manager.record()['active'] == old
+    assert manager.status()['configuration']['voice_enabled'] is True
+    patch = {'enabled': False}
+    review = manager.voice_configuration_plan(patch)
+    with pytest.raises(ValueError):
+        manager.configure_voice(patch, 'not-reviewed')
+    manager.configure_voice(patch, review['plan_id'])
+    paused = SetupSelection.from_dict(manager.record()['selection'])
+    manager.repair(source, confirm=manager.plan(source, paused)['plan_id'])
+    assert manager.record()['active'] != old
+    assert manager.record()['selection']['voice']['tts_executable'] == str(old_python)
+    assert manager.record()['selection']['voice']['audio_input_device'] == 'saved mic'
+    assert manager.status()['configuration']['voice_enabled'] is False
+    patch = {'enabled': True}
+    manager.configure_voice(patch, manager.voice_configuration_plan(patch)['plan_id'])
+    assert manager.status()['configuration']['voice_enabled'] is True
+    assert manager.verify()['valid']

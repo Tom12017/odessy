@@ -280,7 +280,9 @@ class ManagedInstallation:
         record=self.record()
         if not record['active']: raise ValueError('repair the installation before changing configuration')
         previous=read_json(self.root/'configuration.json')
-        selection=SetupSelection.from_dict({**previous['selection'], 'voice':voice})
+        if not isinstance(voice, dict): raise ValueError('voice must be an object')
+        selection=SetupSelection.from_dict({**previous['selection'],
+            'voice':{**previous['selection'].get('voice', {}), **voice}})
         configuration={'schema_version':1,'selection':public(selection),
             'workspace':str(validated_workspace(previous['workspace'],self.root))}
         plan={'installation_id':record['id'],'active':record['active'],
@@ -415,7 +417,8 @@ class ManagedInstallation:
             value=read_json(self.root/'configuration.json')
             configuration={'workspace':value.get('workspace'),
                            'model_configured':(value.get('selection') or {}).get('model') is not None,
-                           'role':(value.get('selection') or {}).get('role')}
+                           'role':(value.get('selection') or {}).get('role'),
+                           'voice_enabled':((value.get('selection') or {}).get('voice') or {}).get('enabled', False)}
         registration=record.get('windows_registration') or record.get('linux_registration') or {}
         helper=registration.get('helper')
         payload=None
