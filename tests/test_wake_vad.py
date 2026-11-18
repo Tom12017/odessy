@@ -68,6 +68,8 @@ def test_wake_uses_vad_beside_selected_model_with_an_isolated_profile(tmp_path, 
     module.VAD = VAD
     monkeypatch.setitem(sys.modules, 'openwakeword', package)
     monkeypatch.setitem(sys.modules, 'openwakeword.vad', module)
+    # This initialization test must not depend on the optional voice extra.
+    monkeypatch.setitem(sys.modules, 'numpy', ModuleType('numpy'))
     monkeypatch.setattr(hybrid, '_recognition_missing', lambda c: None)
     async def run():
         adapter = HybridAudioAdapter(VoiceConfig('', '', '', '', wake_model=resources / 'hey_jarvis.onnx'),
