@@ -1157,9 +1157,9 @@ def create_app(controller_factory, *, config=None, settings=None, jobs=None, tok
                 if data.get('_verified_attachments'):
                     workspace_inspector.binding(sid, data['_attachment_binding'])
                 extra = {'attachments': data['_verified_attachments']} if data.get('_verified_attachments') else {}
-                entered_controller = True
                 async def run_turn():
-                    nonlocal settled
+                    nonlocal settled, entered_controller
+                    entered_controller = True
                     result=await controller.run_turn(data['text'], participant=data.get('participant'), turn_id=turn_id, admitted_epoch=epoch, **extra)
                     settled = True
                     if timing is not None:

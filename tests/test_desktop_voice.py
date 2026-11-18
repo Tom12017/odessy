@@ -304,3 +304,38 @@ def test_cancelled_request_retains_audio_lease_until_worker_finishes(stage):
         await v.close();await a.close();await b.close()
     asyncio.run(run())
 
+
+
+def test_streamed_turn_releases_playback_for_exact_spoken_question_without_replaying():
+    from types import SimpleNamespace
+    from odessy.application.desktop_voice import DesktopVoice, VoiceError
+    from odessy.runtime.speech import current_speech
+    async def run():
+        heard = []
+        class Speaker(Audio):
+            async def speak(self, text): heard.append(text)
+        c = controller(); c.interactions.start_turn()
+        voice = DesktopVoice(lambda: Speaker('Odessy'), host='local')
+        calls = 0
+        async def turn():
+            nonlocal calls
+            calls += 1
+            result = await c.interactions.ask('Which project?')
+            assert result['answer'] == 'Odessy'
+            return SimpleNamespace(final_text='Project selected.')
+        task = asyncio.create_task(voice.run_spoken(c, turn))
+        try:
+            for _ in range(20):
+                if c.interactions.pending: break
+                await asyncio.sleep(0)
+            entry = c.interactions.pending[0]
+            with pytest.raises(VoiceError): await voice.start(c, 'stale-question')
+            capture = await voice.start(c, entry['id'])
+            await voice.finish(c, capture['capture_id'], None)
+            assert (await asyncio.wait_for(task, 1)).final_text == 'Project selected.'
+            assert calls == 1 and heard == ['Project selected.']
+            assert not voice.busy
+        finally:
+            task.cancel(); await asyncio.gather(task, return_exceptions=True)
+            await voice.close(); await c.close()
+    asyncio.run(run())

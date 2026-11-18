@@ -443,12 +443,12 @@ class HybridAudioAdapter:
         self._input_failure = None
         if self._closing or not self._input_enabled:
             return False
+        if self._session is not None and not self._session_alive():
+            await self._stop_session()
         if not await self._ensure_components():
             return False
         if self._closing or not self._input_enabled:
             return False
-        if self._session is not None and not self._session_alive():
-            await self._stop_session()
         if self._session is None:
             if not await self._open_stream():
                 return False
@@ -531,15 +531,17 @@ class HybridAudioAdapter:
             return False
         if self._stream_started:
             return True
+        stream = self._stream
         try:
             def open_stream():
                 from .native_audio import prepare_device
                 prepare_device(self.config.audio_input_device, 'input', self.config.audio_backend)
-                self._stream.start()
+                stream.start()
                 if self._closing:
-                    self._stream.close()
+                    stream.close()
             await self._run_blocking(open_stream)
         except Exception as error:  # noqa: BLE001 - reported, never propagated
+            self._close_stream()
             self._fail_input(CAPTURE, f"microphone capture could not start: {error}")
             return False
         self._stream_started = True
@@ -596,7 +598,7 @@ class HybridAudioAdapter:
         self._task = asyncio.create_task(session.run(), name="odessy-hybrid-voice")
 
     def _close_stream(self) -> None:
-        stream, self._stream_started = self._stream, False
+        stream, self._stream, self._stream_started = self._stream, None, False
         if stream is None:
             return
         with contextlib.suppress(Exception):

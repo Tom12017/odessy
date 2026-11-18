@@ -14,7 +14,7 @@ class DesktopVoice:
         self.owner=None;self.capture_id=None;self.expected=None;self.state='idle';self.error=''
         self._epoch=0;self._decoding=False;self._preparing=False;self._speaking=False;self._playback=None;self._draining=None
         self.wake=None;self._wake_controller=None;self._previous_handler=None;self._wake_handler=None
-        self.enabled=True;self.reconfiguring=False
+        self.enabled=True;self.reconfiguring=False;self._spoken_pause=None
     @property
     def busy(self):
         return (self.reconfiguring or self.owner is not None or self._playback is not None
@@ -122,12 +122,19 @@ class DesktopVoice:
         return next((e for e in c.interactions.pending if e['id']==identifier and c.interactions.is_pending(identifier)),None)
     async def start(self,c,expected=None,*,preview=False):
         self._available()
-        if self.busy:raise VoiceError('Audio is already owned by another capture or playback')
         pending=c.interactions.pending
         if preview and pending:raise VoiceError('Answer the pending interaction before testing speech input')
         entry=self._entry(c,expected) if expected else None
         if pending and entry is None:raise VoiceError('Select the exact pending question or approval before recording')
         if entry is not None and not voice_allowed(entry):raise VoiceError('This action requires keyboard or authenticated UI confirmation.',403)
+        if self.busy:
+            pause=self._spoken_pause
+            if (entry is None or preview or pause is None or pause[0]!=c.id
+                    or self.capture_id is not None or self._decoding or self._preparing
+                    or self._draining is not None):
+                raise VoiceError('Audio is already owned by another capture or playback')
+            await pause[1]()
+            if self.busy:raise VoiceError('Playback is still draining; retry the pending interaction')
         if c.running and entry is None:raise VoiceError('Finish or stop the current task before recording')
         self._epoch+=1;epoch=self._epoch;self.owner=c.id;self.expected=expected
         self.capture_id=uuid.uuid4().hex;self.state='preparing';self.error='';self._emit(c)
@@ -208,6 +215,7 @@ class DesktopVoice:
         loop=asyncio.get_running_loop()
         queue=asyncio.Queue(maxsize=8)
         overflow=False;failed=False;accepting=True
+        suspended=False;lease_active=True;speaker_task=None
         heard=SpeechStream(lambda text:None)
 
         def deliver(text):
@@ -222,10 +230,11 @@ class DesktopVoice:
 
         async def say(text):
             nonlocal failed
-            if failed or epoch!=self._epoch:return
+            if failed or suspended or epoch!=self._epoch:return
             try:
                 await self.audio.speak(text)
-                heard.begin();heard.feed(text);heard.end()
+                if not suspended:
+                    heard.begin();heard.feed(text);heard.end()
             except Exception:
                 failed=True
                 self.error='Audio output unavailable. The text answer was not retried.'
@@ -237,8 +246,21 @@ class DesktopVoice:
                 if text is None:return
                 await say(text)
 
+        async def pause_for_answer():
+            nonlocal accepting,suspended,lease_active
+            accepting=False;suspended=True
+            await self._cancel_audio()
+            if speaker_task is not None and not speaker_task.done():
+                await queue.put(None)
+                await speaker_task
+            self._speaking=False;self.owner=None;self.state='idle';lease_active=False
+            self._emit(c)
+
+        pause_binding=(c.id,pause_for_answer)
+        self._spoken_pause=pause_binding
+
         async def operation():
-            nonlocal accepting,failed
+            nonlocal accepting,failed,speaker_task,suspended,lease_active,epoch
             try:
                 if self.audio is None:self.audio=self.factory()
                 self._bind_timing(c)
@@ -247,14 +269,18 @@ class DesktopVoice:
                 self.error='Audio output unavailable. Typed output remains available.'
                 c.emit('audio_error',{'message':self.error})
             stream=SpeechStream(emit)
-            task=asyncio.create_task(speaker())
+            task=asyncio.create_task(speaker());speaker_task=task
             try:
                 with speech_scope(stream):result=await run_turn()
                 # Thread-safe deliveries queued by the completed turn precede this fence.
                 await asyncio.sleep(0)
                 accepting=False
-                await queue.put(None)
+                if not task.done():await queue.put(None)
                 await task
+                if suspended:
+                    if self.busy:return result
+                    self.owner=c.id;self.state='speaking';self._speaking=True
+                    lease_active=True;suspended=False;epoch=self._epoch
                 remainder=heard.unspoken(result.final_text)
                 if remainder:await say(remainder)
                 return result
@@ -267,8 +293,10 @@ class DesktopVoice:
 
         try:return await self._owned(c,operation())
         finally:
-            self._speaking=False
-            if self._draining is None:self.owner=None;self.state='idle'
+            if self._spoken_pause is pause_binding:self._spoken_pause=None
+            if lease_active:
+                self._speaking=False
+                if self._draining is None:self.owner=None;self.state='idle'
             self._emit(c)
 
     async def speak(self,c,text):
