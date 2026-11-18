@@ -329,8 +329,9 @@ class _SetupApplicationState extends State<SetupApplication> {
       setState(() => voiceState = value);
       return value;
     } catch (_) {
-      if (mounted && provider == ttsProvider)
+      if (mounted && provider == ttsProvider) {
         setState(() => voiceState = const {});
+      }
       return null;
     }
   }
@@ -405,8 +406,9 @@ class _SetupApplicationState extends State<SetupApplication> {
             piperModel.text = paths['tts_model'] as String;
             _automaticVoiceVerified = true;
             _edit();
-            if (!_voiceComplete)
+            if (!_voiceComplete) {
               throw StateError('Speech paths are incomplete.');
+            }
             final patch = {
               'selection': {'voice': _selection()['voice']}
             };
@@ -634,9 +636,7 @@ class _SetupApplicationState extends State<SetupApplication> {
       });
       if (path.isNotEmpty && previous != path) _edit();
     } catch (_) {
-      if (mounted && provider == ttsProvider)
-        setState(() => voiceState = const {});
-      return null;
+      // Readiness is observational here; errors stay in the requested flow.
     }
   }
 
@@ -776,8 +776,9 @@ class _SetupApplicationState extends State<SetupApplication> {
   Future<void> _browseVoice(TextEditingController target,
       {List<String> extensions = const []}) async {
     final selected = await widget.picker.pickFile(extensions: extensions);
-    if (!mounted || _closing || selected == null || selected.trim().isEmpty)
+    if (!mounted || _closing || selected == null || selected.trim().isEmpty) {
       return;
+    }
     target.text = selected;
     _edit();
     setState(() {});
