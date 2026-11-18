@@ -61,12 +61,12 @@ Section "Preparing Odessy Setup"
   DetailPrint "Preparing verified Odessy components..."
   File /r "{quote(Path(files)/'*')}"
   IfErrors failed
-  System::Call 'kernel32::SetEnvironmentVariableW(w "ODESSY_SETUP_PAYLOAD", w "$INSTDIR") i .r0'
+  System::Call 'kernel32::SetEnvironmentVariableW(w "ODESSY_SETUP_PAYLOAD", w "\\\\?\\$INSTDIR") i .r0'
   HideWindow
   # The payload root is passed explicitly: the Flutter setup only discovers a
   # payload beside the executable, and this bootstrap extracts it one level above
   # desktop/. The environment variable stays for the Python helper.
-  Exec '"$INSTDIR\\desktop\\odessy_desktop.exe" --setup --payload "$INSTDIR"'
+  Exec '"\\\\?\\$INSTDIR\\desktop\\odessy_desktop.exe" --setup --payload "\\\\?\\$INSTDIR"'
   IfErrors failed
   Goto done
 failed:

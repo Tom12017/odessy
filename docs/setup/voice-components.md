@@ -12,10 +12,11 @@ contacts the network.
 
 Every artifact is pinned by SHA-256 and size in `src/odessy/setup/voice-artifacts.json`.
 The release helper `installer/build/pin_voice_manifest.py`
-re-hashes cached files and checks them against publisher metadata. Wheel pins are
-checked against PyPI metadata; wake assets are checked against the runtime asset
-table. The whisper model URL is pinned to a repository revision instead of a
-moving branch.
+generates the manifest from cached files and compares independent digests where
+available: wheels against PyPI metadata and release assets against published
+digests. Whisper/Piper file-only pins hash the local cache; obtain and verify
+those files separately. Their revision-pinned URLs identify an upstream snapshot,
+not an independent publisher checksum. Wake assets use the runtime asset table.
 
 | Component | Kind | License |
 | --- | --- | --- |

@@ -5,12 +5,13 @@ cache directory, so every hash in the shipped manifest is reproducible:
 
     python installer/build/pin_voice_manifest.py --cache .voice-cache
 
-Each artifact is hashed twice independently -- once from the file on disk and
-once from the publisher's own metadata (PyPI JSON digests for wheels, the
+Artifacts with publisher digests are checked independently against local bytes
+and the publisher's own metadata (PyPI JSON digests for wheels, the
 GitHub release asset digest for the release downloads) -- and the script fails
-if they disagree. The HuggingFace whisper model publishes no digest, so its
-hash is only the file's own; the URL is pinned to a repository revision instead
-of a moving branch, which is what makes that hash stable.
+if they disagree. HuggingFace Whisper and Piper files have no independent
+publisher digest in this helper: their file-only hashes come from the cached
+bytes. Obtain and verify those files separately; revision-pinned URLs identify
+the intended upstream snapshot but are not an independent checksum.
 
 Nothing here runs during an installation. It is a release step.
 """

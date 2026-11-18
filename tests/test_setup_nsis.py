@@ -28,7 +28,7 @@ def test_native_script_is_single_layer_and_per_user(tmp_path):
     assert '--setup' in script
     # The Flutter setup receives the staged payload root explicitly; it only
     # auto-discovers a `payload/` folder beside the executable.
-    assert '--payload "$INSTDIR"' in script
+    assert r'--payload "\\?\$INSTDIR"' in script
     assert 'payload.zip' not in script and 'powershell' not in script.lower()
     assert 'RMDir /r' not in script
 
@@ -54,7 +54,8 @@ def test_native_bootstrap_extracts_paths_beyond_max_path(tmp_path):
     relative = Path('a'*60)/('b'*60)/'proof.txt'
     (files/relative).parent.mkdir(parents=True)
     (files/relative).write_text('complete payload', encoding='utf-8')
-    target = tmp_path/('profile-'+'p'*60)/'setup'
+    padding = max(1, 280 - len(str(tmp_path/relative/'setup')))
+    target = tmp_path/('p'*min(padding, 200))/'setup'
     assert len(str(target/relative)) > 260
     output = tmp_path/'Setup.exe'
     source = tmp_path/'Setup.nsi'
@@ -70,7 +71,11 @@ def test_native_bootstrap_extracts_paths_beyond_max_path(tmp_path):
     value.compile_installer(source, output, compiler_path=compiler)
     result = subprocess.run([str(output), '/S'], timeout=30)
     assert result.returncode == 0
-    assert (target/relative).read_text(encoding='utf-8') == 'complete payload'
+    try:
+        assert Path('\\\\?\\' + str(target/relative)).read_text(encoding='utf-8') == 'complete payload'
+    finally:
+        import shutil
+        shutil.rmtree('\\\\?\\' + str(target))
 
 
 FAKE_COMPILER = '''\

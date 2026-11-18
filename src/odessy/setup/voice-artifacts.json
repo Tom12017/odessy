@@ -660,7 +660,7 @@
       "sha256": "6f52a751e2349abe7a76735eb09dc1875298c77ea2342ffd2fef79ff81b87f22",
       "size_bytes": 63531379,
       "license": "MIT",
-      "provenance": "pinned-repository-MIT-and-model-card"
+      "provenance": "file-only"
     },
     {
       "platform": "windows",
@@ -677,7 +677,7 @@
       "sha256": "141d612cc0a95ed7efc1ca936b845c2364967f2e9217c5dbfcf69fc4d6c65860",
       "size_bytes": 4972,
       "license": "MIT",
-      "provenance": "pinned-repository-MIT-and-model-card"
+      "provenance": "file-only"
     },
     {
       "platform": "windows",
@@ -694,7 +694,7 @@
       "sha256": "fbee1529c89d36b3fe76d7e9f3f832dce17f44900a52d76a9bda735654766b4d",
       "size_bytes": 517,
       "license": "MIT",
-      "provenance": "pinned-repository-MIT-and-model-card"
+      "provenance": "file-only"
     },
     {
       "platform": "windows",
@@ -711,7 +711,7 @@
       "sha256": "33e93643fce5180886300f9f0070eeeab8af148efb8e84361f8904def80fd9fb",
       "size_bytes": 497,
       "license": "MIT",
-      "provenance": "pinned-repository-license"
+      "provenance": "file-only"
     }
   ]
 }
