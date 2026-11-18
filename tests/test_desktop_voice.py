@@ -339,3 +339,74 @@ def test_streamed_turn_releases_playback_for_exact_spoken_question_without_repla
             task.cancel(); await asyncio.gather(task, return_exceptions=True)
             await voice.close(); await c.close()
     asyncio.run(run())
+
+
+def test_cancel_suspended_spoken_turn_preserves_other_capture():
+    from odessy.application.desktop_voice import DesktopVoice
+    async def run():
+        a, b = controller(), controller()
+        a.interactions.start_turn()
+        voice = DesktopVoice(lambda: Audio(), host='local')
+        async def turn():
+            await a.interactions.ask('Which project?')
+        task = asyncio.create_task(voice.run_spoken(a, turn))
+        try:
+            for _ in range(30):
+                if a.interactions.pending:
+                    break
+                await asyncio.sleep(0)
+            entry = a.interactions.pending[0]
+            await voice.start(a, entry['id'])
+            await voice.cancel(a)
+            capture = await voice.start(b)
+            epoch = voice._epoch
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            assert voice.owner == b.id
+            assert voice.capture_id == capture['capture_id']
+            assert voice._epoch == epoch
+            assert voice._draining is None
+        finally:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            await voice.close()
+            await a.close()
+            await b.close()
+    asyncio.run(run())
+
+
+def test_concurrent_spoken_question_pause_is_single_entry():
+    from odessy.application.desktop_voice import DesktopVoice, VoiceError
+    async def run():
+        c = controller()
+        c.interactions.start_turn()
+        voice = DesktopVoice(lambda: Audio(), host='local')
+        entered, release = asyncio.Event(), asyncio.Event()
+        async def cancel_audio():
+            entered.set()
+            await release.wait()
+        voice._cancel_audio = cancel_audio
+        async def turn():
+            await c.interactions.ask('Which project?')
+        task = asyncio.create_task(voice.run_spoken(c, turn))
+        try:
+            for _ in range(30):
+                if c.interactions.pending:
+                    break
+                await asyncio.sleep(0)
+            pause = voice._spoken_pause[1]
+            first = asyncio.create_task(pause())
+            await entered.wait()
+            with pytest.raises(VoiceError):
+                await pause()
+            release.set()
+            await first
+            capture = await voice.start(c, c.interactions.pending[0]['id'])
+            assert voice.owner == c.id and voice.capture_id == capture['capture_id']
+        finally:
+            release.set()
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            await voice.close()
+            await c.close()
+    asyncio.run(run())

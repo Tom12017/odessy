@@ -135,7 +135,9 @@ class SshServer:
             args[1:1] = options
             env = None
             if c.lease is not None:
-                args = [a.replace('BatchMode=yes', 'BatchMode=no') for a in args]
+                option = next(i + 1 for i, value in enumerate(args[:-1])
+                              if value == '-o' and args[i + 1] == 'BatchMode=yes')
+                args[option] = 'BatchMode=no'
                 args[1:1] = ['-o', 'PreferredAuthentications=password', '-o', 'PubkeyAuthentication=no',
                              '-o', 'KbdInteractiveAuthentication=no', '-o', 'NumberOfPasswordPrompts=1']
                 env = c.lease.environment(c.askpass)
@@ -152,7 +154,8 @@ class SshServer:
 
             async def drain(stream, index):
                 while chunk := await stream.read(4096):
-                    remaining = 32768 - len(buffers[index])
+                    # Retain enough lookahead to redact a secret crossing the cap.
+                    remaining = 32768 + len(redaction_password.encode('utf-8')) - len(buffers[index])
                     buffers[index].extend(chunk[:remaining])
                     truncated[index] |= len(chunk) > remaining
 
@@ -181,13 +184,13 @@ class SshServer:
                 finally:
                     c.processes.discard(process)
             def output(data):
-                text = data.decode('utf-8', errors='replace')
                 if redaction_password:
-                    text = text.replace(redaction_password, '<redacted>')
+                    data = data.replace(redaction_password.encode('utf-8'), b'<redacted>')
+                text = data[:32768].decode('utf-8', errors='replace')
                 return redact_text(text)
             result = {'status': status, 'exit_code': process.returncode,
                       'stdout': output(buffers[0]), 'stderr': output(buffers[1]),
-                      'truncated': any(truncated), 'origin': 'ssh', 'target': c.host.alias,
+                      'truncated': any(truncated) or any(len(data) > 32768 for data in buffers), 'origin': 'ssh', 'target': c.host.alias,
                       'port': c.host.port,
                       'cancellation': 'SSH channel closes on Stop; remote descendant termination is not guaranteed.'}
             return SimpleNamespace(structured_content=result, is_error=status != 'ok')

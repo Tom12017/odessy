@@ -100,10 +100,17 @@ class DesktopVoice:
                 if controller.interactions.is_pending(entry['id']):controller.interactions.mark_ready(entry['id'])
         if self.audio is not None:await self.audio.close()
         self.audio=None
-    async def _owned(self,c,operation):
+    async def _owned(self,c,operation,*,owns_audio=None):
+        epoch = self._epoch
+        if owns_audio is None:
+            owns_audio = lambda: self.owner == c.id and self._epoch == epoch
         task=asyncio.create_task(operation)
         try:return await asyncio.shield(task)
         except asyncio.CancelledError:
+            if not owns_audio():
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+                raise
             self._epoch+=1;self.state='cancelling';self._emit(c)
             async def drain():
                 try:
@@ -248,6 +255,8 @@ class DesktopVoice:
 
         async def pause_for_answer():
             nonlocal accepting,suspended,lease_active
+            if suspended:
+                raise VoiceError('Playback is already pausing')
             accepting=False;suspended=True
             await self._cancel_audio()
             if speaker_task is not None and not speaker_task.done():
@@ -288,13 +297,16 @@ class DesktopVoice:
                 accepting=False
                 if not task.done():
                     task.cancel()
-                    await self._cancel_audio()
+                    if lease_active and self.owner == c.id and self._epoch == epoch:
+                        await self._cancel_audio()
                     await asyncio.gather(task,return_exceptions=True)
 
-        try:return await self._owned(c,operation())
+        try:
+            return await self._owned(c,operation(), owns_audio=lambda:
+                lease_active and self.owner == c.id and self._epoch == epoch)
         finally:
             if self._spoken_pause is pause_binding:self._spoken_pause=None
-            if lease_active:
+            if lease_active and self.owner == c.id:
                 self._speaking=False
                 if self._draining is None:self.owner=None;self.state='idle'
             self._emit(c)

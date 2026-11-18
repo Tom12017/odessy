@@ -10,10 +10,16 @@ class SshConnectionController extends ChangeNotifier {
   final Future<void> Function()? onExecutionChanged;
   final void Function(bool enabled)? beforeExecutionChange;
   Json? execution;
+  bool executionNeedsReconciliation = false;
 
   Future<void> setExecution(bool enabled) async {
     final client = api;
-    if (client is! SshExecutionApi || busy || _disposed) return;
+    if (client is! SshExecutionApi ||
+        busy ||
+        _disposed ||
+        executionNeedsReconciliation) {
+      return;
+    }
     final epoch = _epoch;
     busy = true;
     busyAction = 'execution';
@@ -35,6 +41,16 @@ class SshConnectionController extends ChangeNotifier {
     } catch (failure) {
       if (!_disposed && epoch == _epoch) _fail(failure);
     } finally {
+      if (!_disposed &&
+          identical(api, client) &&
+          executionNeedsReconciliation) {
+        await load();
+        if (!_disposed && identical(api, client)) {
+          executionNeedsReconciliation = false;
+          await onExecutionChanged?.call();
+          _notify();
+        }
+      }
       if (!_disposed && epoch == _epoch) {
         busy = false;
         busyAction = '';
@@ -114,12 +130,18 @@ class SshConnectionController extends ChangeNotifier {
       final previousHost = targetHostId;
       target = saved;
       if (client is SshExecutionApi) {
-        final selectedExecution =
-            await (client as SshExecutionApi).sshExecutionStatus();
-        if (_disposed || epoch != _epoch) return;
-        execution = selectedExecution['execution'] is Map
-            ? Map<String, dynamic>.from(selectedExecution['execution'] as Map)
-            : null;
+        try {
+          final selectedExecution =
+              await (client as SshExecutionApi).sshExecutionStatus();
+          if (_disposed || epoch != _epoch) return;
+          execution = selectedExecution['execution'] is Map
+              ? Map<String, dynamic>.from(selectedExecution['execution'] as Map)
+              : null;
+        } on SshConnectionFailure catch (failure) {
+          if (_disposed || epoch != _epoch) return;
+          if (failure.status != 404) rethrow;
+          execution = null;
+        }
       }
       if (previousHost != targetHostId) status = null;
       ++_statusEpoch;
@@ -484,6 +506,7 @@ class SshConnectionController extends ChangeNotifier {
   void cancel() {
     if (!busy) return;
     final action = busyAction;
+    if (action == 'execution') executionNeedsReconciliation = true;
     ++_epoch;
     ++_statusEpoch;
     ++_refreshToken;
@@ -491,6 +514,8 @@ class SshConnectionController extends ChangeNotifier {
     busyAction = '';
     statusRefreshing = false;
     message = switch (action) {
+      'execution' =>
+        'Stopped waiting. Execution state will refresh when the service request settles.',
       'connect' =>
         'Stopped waiting. The service may finish connecting; refresh before retrying. No credentials were saved to disk.',
       'save' =>

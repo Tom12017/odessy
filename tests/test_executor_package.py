@@ -40,6 +40,7 @@ def test_executor_uses_existing_builder_and_no_desktop(tmp_path):
     assert 'payload=payload' in (out/'install-executor.py').read_text()
     assert 'verify' in (out/'run-executor.py').read_text()
     assert 'unencrypted' in (out/'README.md').read_text(encoding='utf-8')
+    assert 'unzip payload.zip -d payload' in (out/'README.md').read_text(encoding='utf-8')
     with pytest.raises(FileExistsError):
         builder().package(wheels,licenses,out,node=node,toolserver=tools)
 
@@ -51,3 +52,23 @@ def test_missing_executor_fails_before_artifact(tmp_path):
     with pytest.raises(ValueError, match='lacks executor'):
         builder().package(wheels,tmp_path/'licenses',tmp_path/'out',node=tmp_path,toolserver=tmp_path)
     assert not (tmp_path/'out').exists()
+
+
+def test_executor_launcher_uses_verified_installation_as_working_directory(tmp_path, monkeypatch):
+    import subprocess
+    version = 'a' * 32
+    root = tmp_path / 'installation'; base = root / 'versions' / version
+    (base / 'node').mkdir(parents=True); (base / 'node' / 'bin').mkdir()
+    (base / 'node' / 'node.exe').write_bytes(b'fixture')
+    (base / 'node' / 'bin' / 'node').write_bytes(b'fixture')
+    (base / 'tools' / 'dist' / 'src').mkdir(parents=True)
+    (base / 'tools' / 'dist' / 'src' / 'server.js').write_text('//fixture')
+    (root / 'installation.json').write_text(json.dumps({'active': version}))
+    captured = []
+    monkeypatch.setattr(subprocess, 'run', lambda *a, **k: type('Result', (), {'stdout': '{"valid":true}'})())
+    monkeypatch.setattr(subprocess, 'call', lambda *a, **k: captured.append((a, k)) or 0)
+    monkeypatch.setattr(sys, 'argv', ['run-executor.py', '--installation', str(root), '--workspace', 'workspace'])
+    with pytest.raises(SystemExit) as result: exec(builder().LAUNCHER, {'__name__': '__main__'})
+    assert result.value.code == 0
+    assert Path(captured[0][1]['cwd']).resolve() == base.resolve()
+    assert Path(captured[0][0][0][-1]).is_absolute()

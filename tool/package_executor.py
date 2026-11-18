@@ -45,7 +45,7 @@ env['PATH'] = str(node.parent) + os.pathsep + env.get('PATH', '')
 command = [str(python), '-I', '-m', 'odessy.application.executor', '--workspace', str(args.workspace.resolve())]
 if args.host:
     command += ['--host', args.host]
-raise SystemExit(subprocess.call(command, env=env))
+raise SystemExit(subprocess.call(command, env=env, cwd=base))
 '''
 
 INSTALLER = r'''"""Headless front door to Odessy's existing reviewed offline installer."""
@@ -85,6 +85,8 @@ model or speech assets. Node and the tool-server closure remain required; this
 is not a tiny self-contained executable. Match OS, CPU and Python wheel ABI.
 
 1. Verify this archive's publisher-provided SHA-256, then extract payload.zip into payload/.
+   On POSIX use `unzip payload.zip -d payload` to preserve executable permissions
+   on the bundled node/bin/node binary.
 2. Review the exact isolated installation plan (choose a NEW dedicated root):
    python install-executor.py plan --root <executor-root>
 3. Apply only the reviewed plan_id; nothing starts or registers a service automatically:

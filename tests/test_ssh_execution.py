@@ -294,3 +294,26 @@ def test_password_remains_redacted_when_lease_clears_during_output(monkeypatch):
         assert secret not in result.structured_content['stdout']
         assert '<redacted>' in result.structured_content['stdout']
     asyncio.run(run())
+
+
+@pytest.mark.parametrize('stream', ['stdout', 'stderr'])
+def test_password_crossing_output_cap_and_literal_command_are_safe(stream):
+    from odessy.tools.ssh_executor import select
+    async def run():
+        selected = connection()
+        secret = 'mango7'
+        selected.lease = SimpleNamespace(active=True, password=secret, environment=lambda helper: {})
+        select(selected)
+        server = selected.server()
+        command = 'printf %s BatchMode=yes'
+        async def spawn(*args, **kwargs):
+            assert args[-1].endswith(command + "'")
+            assert 'BatchMode=no' in args
+            code = "import sys;sys." + stream + ".write('x' * 32763 + 'mango7' + 'z' * 100)"
+            return await asyncio.create_subprocess_exec(sys.executable, '-c', code, **kwargs)
+        server.spawn = spawn
+        result = (await server.call_tool('ssh.run', {'command': command})).structured_content
+        assert 'mango' not in result[stream]
+        assert result['truncated']
+        assert len(result[stream].encode()) <= 32768
+    asyncio.run(run())

@@ -297,7 +297,10 @@ class HybridAudioAdapter:
         """Explicit playback using the same owned providers and cancellation guard."""
         if self._closing:return
         from .native_audio import prepare_device
+        preparing_epoch = self._speech_epoch
         await self._run_blocking(prepare_device, self.config.audio_output_device, 'output', self.config.audio_backend)
+        if self._closing or preparing_epoch != self._speech_epoch:
+            return
         self._speech_epoch += 1
         epoch=self._speech_epoch
         self._started=True
