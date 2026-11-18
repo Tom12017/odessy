@@ -17,7 +17,11 @@ This roadmap identifies useful next work, not promised release dates. Check the
 | Voice/providers | Existing adapters and scoped audio evidence | Reproducible provider/device compatibility and acoustic interruption tests |
 | Platforms | Windows primary; Linux source/CI | Native Linux package/GUI evidence; no unsupported parity claim |
 
-Contributors can start with [setup and checks](../CONTRIBUTING.md), inspect
+For a first PR, choose an [open GitHub issue](https://github.com/Trisoma/odessy/issues).
+Each scoped issue includes likely files, acceptance criteria and relevant checks.
+Follow the [path to area ownership](../CONTRIBUTING.md#path-to-area-ownership) for continuing responsibility.
+
+Contributors can start with [managed desktop setup](getting-started.md), inspect
 [open issues](https://github.com/Trisoma/odessy/issues), and propose one bounded
 improvement with an acceptance test. Security-sensitive restoration, grants and
 runtime dispatch need maintainer review. MCU support, a custom wake word,

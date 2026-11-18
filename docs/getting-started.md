@@ -1,102 +1,116 @@
 # Getting started
 
-**Developer Preview · v0.5.0-alpha**
+**Developer Preview · v0.5.0-alpha · Windows 11 x64**
 
-This guide runs the production desktop against an authenticated local service
-with deterministic model replies. It verifies the contributor plumbing, not
-real-model quality or release-package qualification. Check the
-[source baseline](current-status.md#source-and-release-baseline) first.
+Open the desktop, configure a model in Settings, choose a disposable workspace,
+and send a request. The desktop starts and authenticates its local service for you.
+Manual Python service startup and token copying are **advanced integration checks**,
+not the normal user workflow. The module CLI still exists for development and diagnostics.
 
-## Choose your installation path
+## Choose your route
 
-- **Packaged candidate:** use its matching release instructions and checksum manifest,
-  then follow the [setup wizard](setup/wizard.md). A complete package carries its
-  own supported runtime; development SDKs are not an end-user prerequisite.
-- **Source checkout:** use the commands below. Do not combine an old published
-  UI-client archive with the latest service and assume protocol compatibility.
+- **Supplied full installer:** follow the [desktop manual](GOLDEN_PATH.md#1-install-and-open-odessy).
+  The package supplies its runtime; no Python, Node or Flutter SDK is an end-user requirement.
+- **Source checkout:** use the steps below. As of November 18, 2026, the public release page
+  only supplies older UI-client archives, not a matching full installer. Do not combine them
+  with current source. Source builds require development tools; first build time varies.
 
-## Prepare a source checkout
+## Prepare a Windows source checkout
 
-On Windows, use Python 3.10–3.13, Node 22 and Flutter 3.47.7 stable.
-Git is required; Rust and Go are needed only for the components you build.
-Dependency installation uses network access unless a verified cache is available.
+Install Git, Python 3.13 with the `py` launcher, Node.js 22, Flutter 3.47.7 stable,
+and Visual Studio's **Desktop development with C++** workload with a Windows SDK.
+Use `flutter doctor -v` to check Windows build readiness. No GPU or speech model is
+required for typed chat. Dependency installation uses network access.
 
-From the repository root in PowerShell:
+In PowerShell, from a parent folder of your choice, use a new checkout:
 
 ```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[test,ui]"
-Set-Location tools
-npm ci --no-audit --no-fund
-npm run build
-Set-Location ..
-python -m odessy doctor
+git clone --branch develop --single-branch https://github.com/Trisoma/odessy.git odessy-preview
+Set-Location odessy-preview
+$previewRepo = (Get-Location).Path.Replace('\', '/')
+$previewPython = "$previewRepo/.venv/Scripts/python.exe"
+py -3.13 -m venv .venv
+& $previewPython -m pip install -e ".[test,ui]"
+Push-Location tools
+npm.cmd ci --no-audit --no-fund
+npm.cmd run build
+Pop-Location
+flutter doctor -v
+git rev-parse HEAD
 ```
 
-A missing live model in `doctor` is expected before you configure one. It does
-not prevent the fake-model text check. Do not download a model just to run this guide.
+Stop if a command fails. Save the printed source revision with any bug report.
+You do not need to activate the virtual environment or change PowerShell execution policy.
+Rust and Go are needed only when building their optional components; they are not
+required to begin the local typed-chat exercise.
 
-## Start the service
+## Launch with desktop-owned startup
 
-Keep the token private. After connecting, select a disposable workspace through
-Workspaces before requesting file or shell actions:
-
-```powershell
-$env:ODESSY_API_TOKEN = python -c "import secrets; print(secrets.token_urlsafe(32))"
-python -m odessy serve --fake-model
-```
-
-Leave that terminal open. The service prints its loopback address, not the token.
-Read the token locally from `$env:ODESSY_API_TOKEN` when connecting the desktop;
-never include it in an issue, screenshot or command-line URL.
-
-## Start the desktop
-
-In a second terminal from the repository root:
+In that **same terminal**:
 
 ```powershell
+$previewDefines = @(
+    '--dart-define=ODESSY_LOCAL_DESKTOP=true'
+    "--dart-define=ODESSY_DESKTOP_ROOT=$previewRepo"
+    "--dart-define=ODESSY_DESKTOP_PYTHON=$previewPython"
+    "--dart-define=ODESSY_SETUP_ROOT=$previewRepo"
+    "--dart-define=ODESSY_SETUP_PYTHON=$previewPython"
+)
 Set-Location apps/desktop
 flutter pub get
-flutter run -d windows
+flutter run -d windows @previewDefines
 ```
 
-Open the connection control, enter the printed loopback address and token, and
-send `what time is it?`. The app normally starts disconnected; it must not
-silently substitute demo data when the service is unavailable.
+These defines select `LocalDesktopApplication` in production `lib/main.dart` and
+bind both the service owner and setup helper to this checkout's Python. Plain
+`flutter run -d windows` selects the disconnected client surface instead. Neither is
+`--demo`; the managed mode must report a startup failure rather than substitute fixtures.
 
-For a CLI-only deterministic check, use:
+No second backend terminal, manually generated token or API key in the command line is
+needed. Use **Settings → Models and connections** to configure your provider/model and
+masked credential. Save, follow the indicated apply/reconnect step, and use
+**Connect saved configuration** if not already connected. The [manual](GOLDEN_PATH.md#2-configure-deepseek)
+walks through DeepSeek as one tested example; another compatible provider is optional.
+Cloud requests can incur charges and send permitted observations to that provider.
+
+If a previous source configuration is discovered, review its model and workspace
+before connecting. Preview connector/runtime state uses `build/local-desktop/state`;
+the desktop can also remember a source configuration pointer in the user's Odessy
+settings. This is a checkout build, not a claim of complete profile isolation or an
+installer update. Closing the app shuts down its owned service.
+
+## Reach the finish line
+
+Choose a disposable folder through **Workspaces**, save and apply any restart prompt,
+then start a **Custom** chat. Follow the manual's [local Deny → Approve once exercise](GOLDEN_PATH.md#3-run-a-command-on-your-windows-laptop).
+Check the actual tool output and exit code. A fixture greeting or an assistant's
+success claim does not prove a real tool ran.
+
+Voice and SSH are optional next steps. Source setup does not download their assets or
+build the optional monitoring/password helpers. See [voice components](setup/voice-components.md)
+and [SSH setup](setup/ssh-computers.md) for their separate requirements.
+
+## Diagnose a failed start
+
+Start with the visible error in Settings. For a source CLI diagnostic, return to the
+repository root, point doctor at the source-managed profile and select the backend
+you configured, for example:
 
 ```powershell
-python -m odessy --fake-model "what time is it?"
+Set-Location $previewRepo
+$env:ODESSY_CONFIG_FILE = "$previewRepo/build/local-desktop/state/odessy.env"
+& $previewPython -m odessy doctor --model-backend deepseek
 ```
 
-On Linux, activate the environment with `source .venv/bin/activate`, export a
-locally generated `ODESSY_API_TOKEN`, and use `flutter run -d linux`. Linux native
-desktop/package acceptance is a separate gate. macOS is unqualified.
+The selected configuration and model credentials also have setup/secure-store owners;
+doctor is not a complete replica of the running desktop state. A session-only API key
+is deliberately absent from another process. Do not copy a key into a plaintext file
+to satisfy doctor. An unrelated default Ollama failure does not prove the configured
+DeepSeek service failed. Doctor can probe configured endpoints or list configured tools;
+it does not download models, run a live cloud inference or test physical audio.
 
-## Connect a real model
-
-Stop the fake-model service. Configure an existing model in **Settings → Models
-and connections**, or use [headless setup](setup/headless.md). Start the service
-without `--fake-model`; select the intended profile for the next turn. Local
-inference requires an available compatible endpoint; cloud inference requires
-your explicit provider configuration and may incur charges.
-
-Voice is optional. Do not enable microphone capture or download audio assets
-unless you intend to use it. See [voice components](setup/voice-components.md).
-
-## Troubleshooting
-
-| Symptom | Check |
-| --- | --- |
-| Connection refused | Confirm the owning service is running and use its actual loopback port. |
-| HTTP 401 | Use the token from that service launch. Do not reuse tokens from another profile or restart. |
-| Feature unavailable / HTTP 501 | Check the live engine and capability response; opening a panel cannot enable missing services. |
-| Native terminal unavailable | Verify the packaged helper/native closure; Output is not an interactive shell. |
-| History appears missing | Check the service's configuration/profile path and engine; do not delete or recreate databases. |
-| Saved chat cannot resume | Harness restart history is read-only; Custom continuation also requires a valid matching workspace. |
-| Monitoring unavailable / HTTP 503 | Check opt-in configuration, collector readiness and read-only permissions independently of SSH login. |
-
-Continue with [the desktop guide](ui/README.md), [contributor checks](../CONTRIBUTING.md)
-and [known limitations](../LIMITATION.md).
+Use the manual's [troubleshooting and sanitized reporting steps](GOLDEN_PATH.md#troubleshooting-and-reporting).
+For deterministic component tests or a manually managed API server, see
+[advanced development checks](../CONTRIBUTING.md#advanced-component-and-api-checks).
+The Linux CI/source path remains available there; this Windows guide does not qualify
+Linux/macOS desktop packages.

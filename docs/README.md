@@ -8,7 +8,7 @@ Historical plans and test receipts describe their recorded snapshots, not today'
 
 | Task | Guide |
 | --- | --- |
-| Run a first local conversation | [Getting started](getting-started.md) |
+| Run the app and verify a local action | [Desktop manual](GOLDEN_PATH.md) · [Managed source launch](getting-started.md) |
 | Install or manage a packaged candidate | [Setup wizard](setup/wizard.md) · [Installer](../installer/README.md) |
 | Configure a model or credentials | [Headless setup](setup/headless.md) · [Cloud models](reference/cloud-models.mdx) · [Credentials](setup/secure-model-credentials.md) |
 | Use the desktop | [Desktop guide](ui/README.md) · [Screen gallery](view/README.md) |
@@ -19,7 +19,7 @@ Historical plans and test receipts describe their recorded snapshots, not today'
 | Connect computers | [SSH setup](setup/ssh-computers.md) · [Experimental executor](setup/executor-preview.md) · [Host pairing](reference/host-pairing.mdx) |
 | Inspect telemetry | [Monitoring](monitoring/README.md) · [Monitoring API](monitoring/api.md) |
 | Work on voice | [Desktop voice](ui/desktop-voice.md) · [Providers](reference/speech-providers.md) |
-| Contribute and test | [Contributing](../CONTRIBUTING.md) · [Architecture](ARCHITECTURE.md) · [Desktop contracts](ui/api-contract.md) |
+| Contribute and grow into an area | [Open GitHub issues](https://github.com/Trisoma/odessy/issues) · [Contribution/ownership path](../CONTRIBUTING.md#path-to-area-ownership) · [Architecture](ARCHITECTURE.md) |
 | Prepare a release | [Alpha preview scope](releases/v0.5.0-alpha.md) · [Release verification](release-verification.md) |
 
 ## Reading evidence correctly

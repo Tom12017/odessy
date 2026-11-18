@@ -6,19 +6,60 @@ New here? Read [the story](../Story.md) for the intended end-to-end experience a
 how it differs from what is qualified today, then use the
 [contribution guide](../CONTRIBUTING.md#choose-where-to-start) to choose a focused task.
 
+## Architectural bets
+
+The model is a proposer; Python policy and dispatch validation own authority.
+Voice is an intended primary interface and shares that boundary with typed input.
+Coordination can stay on the laptop while an explicitly selected execution adapter
+targets another computer. Local/cloud model selection and local/remote tool selection
+are independent: an SSH target does not receive a model or API key to run its command.
+These bets are design commitments, not exclusive inventions or proof of full isolation.
+
 ```mermaid
 flowchart LR
-  Input[CLI / voice / Flutter] --> Python[Python runtime and authority]
-  Python --> Model[Local or cloud model adapter]
-  Model --> Python
-  Python --> Approval[Policy / human decision]
-  Approval --> MCP[Node MCP tools]
-  Approval --> Rust[Rust mTLS paired transport]
-  Rust --> MCP
-  Telemetry[Rust telemetry] --> Go[Go monitoring aggregation]
+  Input[Flutter / typed input / voice / CLI] --> Service[Python session and lifecycle]
+  Service --> Model[Local or cloud model adapter]
+  Model --> Proposal[Proposed tool call]
+  Proposal --> Gate[Policy / exact approval / dispatch revalidation]
+  Gate --> Builtin[Python built-in tools]
+  Gate --> MCP[Node MCP tools]
+  Gate --> Pair[Rust authenticated paired transport]
+  Pair --> Remote[Authorized remote executor]
+  Gate --> SSH[Pinned SSH command adapter]
+  SSH --> POSIX[Selected POSIX account]
+  Telemetry[Local / paired / SSH telemetry] --> Go[Optional Go aggregation]
   Go --> API[Python authenticated monitoring API]
   API --> Flutter[Flutter presentation]
 ```
+
+## Where actions are gated
+
+| Boundary | Actual source | What to preserve |
+| --- | --- | --- |
+| Proposal and dispatch | [`runtime/agent_loop.py`](../src/odessy/runtime/agent_loop.py) | Screen the proposal, snapshot its plan and revalidate immediately before dispatch. |
+| Policy and exact approval | [`authority/policy.py`](../src/odessy/authority/policy.py), [`action_approval.py`](../src/odessy/authority/action_approval.py) | Hard denials, exact arguments/target/content and independent authorization scopes. |
+| Interaction and mode | [`interaction/broker.py`](../src/odessy/interaction/broker.py), [`application/access_modes.py`](../src/odessy/application/access_modes.py) | A UI/voice answer resolves the bound request. Modes cannot create workspace or remote rights. |
+| Execution adapters | [`tools/`](../src/odessy/tools), [`tools/src/`](../tools/src), [`execution/`](../src/odessy/execution) | Adapter-specific validation and available confinement. MCP protocol itself is not a permission grant. |
+| SSH commands | [`tools/ssh_executor.py`](../src/odessy/tools/ssh_executor.py) | Exact approval, pinned host identity, bounded output and revocation; no remote sandbox or PTY. |
+
+Not every tool runs through Node: Python built-ins and the SSH adapter also exist.
+Go monitoring grants no command access, and Rust pairing identity is distinct from
+execution grants. The experimental trusted-LAN executor has different boundaries;
+do not treat it as equivalent to authenticated pairing. MCU automation is unimplemented.
+
+## Desktop lifecycle and development entry points
+
+The installed app uses `InstalledApplication` and `InstalledCoordinator` to select the
+verified runtime, start one authenticated loopback service, pass session credentials
+over private stdin and close the owned child. Source-managed desktop mode uses
+`LocalDesktopApplication` with the same owner and a saved configured selection.
+See [managed launch commands](getting-started.md).
+
+`python -m odessy` is an implemented module entry point, also exposed as the `odessy`
+console command. `doctor`, headless CLI and manually managed `serve` are developer or
+operator interfaces. Their presence does not mean desktop users should exchange tokens
+or start a second service. The engine identifier `legacy` currently names **Custom**;
+it does not mark every Python module or CLI command as deprecated.
 
 Go monitoring is an optional packaged component and remains opt-in. Use the
 [SSH contributor path](../src/odessy/ssh/README.md) for the shared computer model,
@@ -37,7 +78,7 @@ Commands below are component entry points after
 | [`apps/desktop/`](../apps/desktop) | Dart/Flutter conversation, settings, interactions | In directory: `flutter pub get`, `flutter analyze`, `flutter test`; Windows build: `flutter build windows` | UI/accessibility contributors; UI is not execution authority |
 | [`packages/odessy_client/`](../packages/odessy_client) | Dart backend client and models | In directory: `dart pub get`, `dart analyze`, `dart test` | Client/API contributors; authentication needs maintainer review |
 | [`services/monitoring/`](../services/monitoring) | Go aggregation/internal API; optional, opt-in | In directory: `go build ./cmd/odessy-monitor`, `go test ./...` | Go/observability contributors; no execution authorization here |
-| [`docs/`](.) | Markdown/MDX guidance and evidence | Resolve links; verify commands against workflows | Good starting point for newcomers |
+| [`docs/`](README.md) | Markdown/MDX guidance and evidence | Resolve links; verify commands against workflows | Start with [open GitHub issues](https://github.com/Trisoma/odessy/issues) and the [ownership path](../CONTRIBUTING.md#path-to-area-ownership) |
 
 Credential storage and OS keyring integration, including
 [`src/odessy/credentials.py`](../src/odessy/credentials.py) and the
@@ -48,7 +89,8 @@ Read component-local `AGENTS.md` instructions before editing desktop/client code
 [approval](reference/permissions.mdx#approval),
 [current pairing scope](reference/host-pairing.mdx),
 [monitoring status](monitoring/README.md), [release limits](current-status.md).
-No MCU execution capability, complete sandbox or reliable voice is implied.
+MCU support remains a future direction; confinement and physical voice reliability
+require the platform-specific checks in the linked support matrix.
 
 ## Durable application services
 

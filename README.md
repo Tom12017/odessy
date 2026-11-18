@@ -10,33 +10,53 @@ Hi, this is Odessy, not Odyssey! ⛵
 
 > Curious how this started? [Read the story behind Odessy](Story.md).
 
-Odessy is a single-user AI agent application with a Flutter desktop interface,
-local or cloud model connections, policy-controlled tools and optional voice.
-The model proposes actions; Odessy's service validates authority and obtains
-the required approval before dispatch.
+Odessy is building toward a **voice-first personal agent**: one desktop coordinates
+local or cloud models and reviewed work on your laptop or a connected Linux computer.
+The long-term inspiration is JARVIS/FRIDAY; today's product is an experimental
+Windows-first app, with typed chat available while you configure voice.
 
-The desktop brings projects, conversations, workspace inspection, activity and
-usage, device monitoring and settings into one application. This is experimental
-software: expect bugs and changing interfaces, and use a disposable workspace
-before granting access to important files.
+**The model proposes; Odessy's policy layer decides.** The service validates actions,
+obtains required human approval and rechecks authority before tool dispatch.
 
-[Get started](docs/getting-started.md) · [Documentation](docs/README.md) ·
-[Screenshots](docs/view/README.md) · [Support and limits](docs/current-status.md) ·
-[Contribute](CONTRIBUTING.md)
+**We are looking for 3–5 developer collaborators** who want to run a real workflow,
+report what breaks and take on a bounded area. Start with the [desktop manual](docs/GOLDEN_PATH.md),
+choose an [open GitHub issue](https://github.com/Trisoma/odessy/issues), and read the [contribution and ownership path](CONTRIBUTING.md#path-to-area-ownership).
+
+[Run from source](docs/getting-started.md) · [Architecture](docs/ARCHITECTURE.md) ·
+[Screenshots](docs/view/README.md) · [Support and limits](docs/current-status.md)
+
+## Architectural bets
+
+- **Policy owns authority.** Model output is a proposal. Python owns policy and approvals;
+  tool adapters revalidate at dispatch. A chat message or connected device grants no rights.
+- **One coordinator, separate execution targets.** Keep the model on the laptop or a chosen
+  provider; select local, authenticated paired, or explicitly approved SSH execution.
+  The SSH computer needs no model. Edge/LAN integration has narrower experimental scope,
+  and MCU/home automation remains a direction for contribution, not implemented support.
+- **Voice is an intended primary interface.** STT, TTS and wake listening share the agent
+  lifecycle and authority boundaries with typed input. Speech setup, latency and hardware
+  compatibility still need work; spoken approval is not identity authentication.
+
+These are design choices to develop and test, not claims that other agents lack approvals,
+that every provider is local, or that Odessy is a complete sandbox.
 
 ## Try the developer preview
 
-For a reproducible source setup and first offline conversation, follow
-[Getting started](docs/getting-started.md). It uses the production application
-with an explicitly deterministic model; no paid provider, microphone, remote
-computer or model download is required for that first check.
+The normal experience is **open Odessy → configure a model in Settings → choose a
+workspace → chat and review actions**. The desktop owns backend startup and local
+authentication. Users do not manually run Python or exchange bearer tokens.
 
-The repository also implements a Windows setup application with private runtime
-components, versioned installation and maintenance. See [installed setup](docs/setup/wizard.md)
-and [the installer build guide](installer/README.md). An implementation or an old
-qualification receipt does not mean a matching public installer is available.
-The previously published `v0.5.0-unstable` UI-client archives are historical and
-do not contain the complete current preview. Do not mix them with current source.
+- **Have a full candidate?** Follow the [illustrated manual](docs/GOLDEN_PATH.md).
+  The Windows setup includes its supported runtime and versioned maintenance.
+- **Building from source?** Follow [Getting started](docs/getting-started.md).
+  Its desktop-managed mode uses the same configured-service lifecycle, after installing
+  the developer SDKs. Manual server and fake-model commands are separate contributor checks.
+
+No matching full installer is publicly published as of November 18, 2026. The older
+[`v0.5.0-unstable` UI-client archives](https://github.com/Trisoma/odessy/releases)
+do not contain the current complete app. This distribution gap and Windows build-tool
+setup make onboarding rougher than it should be. See the [installed evidence](docs/verification/ssh-voice-installed-update-2026-11-18.md)
+for the specific candidate exercised; it does not qualify every later build.
 
 ## What you can explore
 
@@ -47,7 +67,7 @@ do not contain the complete current preview. Do not mix them with current source
 | Workspace panels | Scoped file reads, proposed diffs and recorded command output. Output is distinct from an interactive terminal. |
 | Context | Explicit project memory and opt-in local document retrieval, with source citations and bounded Custom context preparation. |
 | Local terminal | Conditional Windows PTY support when the verified native helper closure is available; requires an explicit shell grant. No SSH terminal. |
-| Devices | Opt-in read-only monitoring through existing paired or SSH connections. SSH authentication does not grant execution or workspace access. |
+| Devices and SSH | Read-only monitoring plus separately selected Custom SSH commands, each requiring exact approval. Login alone grants no execution or workspace access; experimental LAN is a separate path. |
 | Voice and settings | Existing voice and model configuration, eight settings groups and local appearance preferences. Physical audio and provider behavior need separate validation. |
 
 Checkpoint creation, listing and preview remain available on Windows, but
@@ -79,6 +99,8 @@ Report vulnerabilities privately through [SECURITY.md](SECURITY.md).
 We're a small team of two regular contributors, with three others helping out
 on a short-term basis, and we'd love some company. Whether you'd like to fix a
 bug, improve a component or work with us on a larger part of Odessy, you're welcome.
+We are seeking collaborators who can take a focused task through reproduction,
+implementation and review. Reproductions, tests and documentation are useful first contributions.
 
 Some areas we'd love help with:
 
@@ -93,6 +115,12 @@ Some areas we'd love help with:
 Documentation, compatibility tests and reproducible bug reports are welcome too.
 Odessy is an independent, volunteer-driven project. Contributions are unpaid,
 and there's no fixed time commitment: help when you can.
+
+Start with [Piper diagnostics](https://github.com/Trisoma/odessy/issues/69),
+[SSH connection status](https://github.com/Trisoma/odessy/issues/70),
+[TTS benchmark summaries](https://github.com/Trisoma/odessy/issues/71), or
+[recorded-output UX](https://github.com/Trisoma/odessy/issues/72). Each GitHub issue
+contains scope, acceptance criteria and test commands. Comment on the issue to coordinate before starting.
 
 Start with [Contributing](CONTRIBUTING.md), explore the
 [architecture](docs/ARCHITECTURE.md), browse

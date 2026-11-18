@@ -2,7 +2,7 @@
 
 **Developer Preview · v0.5.0-alpha**
 
-Start with [Getting started](docs/getting-started.md), the [support matrix](docs/current-status.md) and [document index](docs/README.md).
+Start with the [managed desktop setup](docs/getting-started.md), [open GitHub issues](https://github.com/Trisoma/odessy/issues), the [support matrix](docs/current-status.md) and [architecture](docs/ARCHITECTURE.md). We are looking for collaborators who can take one focused area through review; volunteer availability is welcome.
 
 > A short story of this project in [Story](Story.md)
 
@@ -25,6 +25,32 @@ and component documentation start at the [documentation index](docs/README.md).
 
 You are welcome to report a problem even if you cannot implement a fix. Let us
 know whether you plan to work on it so others can coordinate with you.
+
+## Path to area ownership
+
+1. Pick an [open GitHub issue](https://github.com/Trisoma/odessy/issues), reproduce the behavior and comment
+   with your proposed scope. Check its current discussion and assignments before
+   starting, and search for overlapping work.
+2. Submit one focused PR with its acceptance checks. Explain fixture versus real
+   provider/hardware evidence. The first contribution can be a regression test,
+   diagnostic improvement, presentation fix or reproducible benchmark report.
+3. After reviewed contributions, propose responsibility for a named area: maintain
+   its tests/docs, triage relevant reports and help review follow-up changes. Agree
+   the boundaries and availability with the project maintainer in a public issue.
+4. Repository permissions or a named maintainer role require a separate explicit
+   decision. A merged PR, self-assignment or AI-written plan grants no access.
+
+Policy/dispatch, credentials, pairing/host identity, installation ownership and
+restoration safety require project-owner review. Desktop `lib/app/`, controllers
+and shared clients also require owner review under their `AGENTS.md`; presentation
+work can start in the agreed view files. Read the [architecture map](docs/ARCHITECTURE.md)
+and local instructions before changing a shared contract.
+
+This is volunteer maintenance, with no guaranteed response-time SLA. Put the
+reproduction, acceptance criteria and checks in the issue/PR so progress does not
+depend on private messages. If it has had no response after a week, add one concise
+follow-up before undertaking a larger change. Contributor trust and response times
+must be demonstrated in actual interactions; commit volume does not prove either.
 
 ## Before opening an issue
 
@@ -124,10 +150,22 @@ packaged application does not ask for any of them.
 | Flutter | 3.47.7 stable for `apps/desktop`; its bundled Dart SDK for `packages/odessy_client` |
 | Rust | stable, only for `native/odessy-link` pairing work |
 
-## Start it
+## Run the desktop
 
-Everything below runs locally and needs no paid provider, microphone or remote
-host. A deterministic fake model makes the first text path checkable offline.
+Use [Getting started](docs/getting-started.md) for the configured desktop-managed
+launch. The app starts the service and handles local authentication. Configure a
+real model in Settings for the [golden path](docs/GOLDEN_PATH.md). Source startup
+tests include `local_desktop_application_test.dart`, `source_setup_wiring_test.dart`
+and the opt-in `source_model_integration_test.dart` under `apps/desktop/test/`.
+The last uses a real Python service and a loopback provider fixture, not paid inference.
+
+## Advanced component and API checks
+
+The module CLI remains implemented for diagnostics, headless use and integration
+tests. These manual-server commands are not required to use the managed desktop.
+Everything below needs no paid provider, microphone or remote host. A deterministic
+fake model checks component plumbing; it does not validate a real model, live
+approval experience, speech or remote execution.
 
 Start the backend (this prints the loopback address; the API needs a token):
 
@@ -175,9 +213,13 @@ python -m odessy doctor --voice
 
 `doctor` names each failed or optional step with one fix next to it, for example a
 model endpoint that is not answering, an unbuilt `tools/` directory, or the
-optional Whisper/Kokoro assets voice needs. A `[FAIL]` for the model endpoint is
+optional speech/wake assets. Piper and custom provider checks are incomplete;
+use their controlled provider tests as well. A `[FAIL]` for the model endpoint is
 expected before Ollama (or another endpoint) runs and does not block the fake-model
-checks above. It reads local configuration; it downloads and sends nothing.
+checks above. It does not download assets or perform a cloud inference, but it can
+probe configured endpoints and list third-party tools. It is not a complete replica
+of desktop session-only credentials or a physical audio acceptance test. Keep the
+visible desktop error and selected configuration alongside its output.
 
 ## Run the relevant checks
 
@@ -231,8 +273,12 @@ python -m pytest -q tests/test_paired_transport.py tests/test_paired_integration
 Use the [SSH contributor path](src/odessy/ssh/README.md) for an existing alias →
 test connection → first timestamped status → disconnect/reconnect. It includes
 the one-laptop fixture commands, provider/lifecycle seam and troubleshooting.
-SSH is monitoring-only; optional tasks still require an independently supported
-execution path and its grants. Existing paired hosts remain supported consumers.
+Monitoring remains read-only. The separate Custom SSH execution selection exposes
+`ssh.run` only after an explicit **Use for agent commands** action; each exact remote
+command requires approval in every mode. It runs as the SSH account without a remote
+sandbox. Harness SSH execution, remote file editing and remote PTY are unsupported.
+See [the SSH command boundary](docs/setup/ssh-computers.md). Existing authenticated
+paired hosts remain a separate supported transport.
 
 ### Live Linux confinement
 

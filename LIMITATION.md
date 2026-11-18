@@ -17,7 +17,7 @@ and release baseline. This page summarizes constraints that affect adoption.
   history remains readable but cannot resume after restart through this adapter.
   Custom access modes and context injection are not silently emulated on Harness.
 - **Authority:** full control never grants new workspace/remote rights or defeats
-  hard denials. SSH targets are monitoring-only. Pairing, monitoring and execution
+  hard denials. SSH login starts read-only monitoring. Custom can run individually approved commands after explicit SSH execution selection. Pairing, monitoring and execution
   authorization remain independent.
 - **Interactive shell:** an explicitly approved local shell has user-level OS
   authority; it is not intercepted or sandboxed command by command. Native helper
