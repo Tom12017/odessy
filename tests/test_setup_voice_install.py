@@ -453,7 +453,7 @@ def test_the_bridge_uses_its_own_voice_root_and_ignores_a_caller_path(tmp_path, 
     status = manage({'action': 'voice-status', 'root': 'ignored', 'install_root': ''})
     assert status['root'] == str(tmp_path / 'voice')
     fields = {item['field'] for item in plan['available'] if item['kind'] != 'wheel'}
-    assert fields == set(voice_install.COMPONENT_FIELDS)
+    assert fields == set(voice_install.COMPONENT_FIELDS) - {'tts_model', 'piper_config', 'piper_model_card', 'piper_license'}
     assert any(item['kind'] == 'wheel' for item in plan['available'])
 
 
@@ -709,3 +709,66 @@ def test_json_writes_do_not_touch_another_operations_temporary(tmp_path, monkeyp
     voice_install._write_json(target, {'state': 'ready'})
     assert json.loads(target.read_text()) == {'state': 'ready'}
     assert foreign.read_bytes() == b'other operation'
+
+
+@pytest.mark.parametrize('provider', ['piper', 'kokoro'])
+def test_dispatch_selects_engine_artifacts(monkeypatch, tmp_path, provider):
+    monkeypatch.setattr(voice_install, 'default_root', lambda: tmp_path / 'voice')
+    result = voice_install.dispatch({'action': 'voice-plan', 'features': ['voice'], 'tts_provider': provider})
+    ids = [entry['id'] for entry in result['available']]
+    assert any(name.startswith('whisper-') for name in ids)
+    assert any(name.startswith('kokoro-') for name in ids) == (provider == 'kokoro')
+    if provider == 'piper':
+        assert not any(name.startswith(('py-kokoro', 'py-phonemizer', 'py-espeakng_loader')) for name in ids)
+    assert ('kokoro_onnx' in voice_install._feature_modules('voice', provider)) == (provider == 'kokoro')
+
+
+def test_provider_change_invalidates_download_consent(monkeypatch, tmp_path):
+    monkeypatch.setattr(voice_install, 'default_root', lambda: tmp_path / 'voice')
+    old = voice_install.dispatch({'action': 'voice-plan', 'features': ['voice'], 'tts_provider': 'kokoro'})
+    with pytest.raises(ValueError):
+        voice_install.dispatch({'action': 'voice-install', 'features': ['voice'], 'tts_provider': 'piper', 'confirm': old['plan_id']})
+    with pytest.raises(ValueError, match='Piper or Kokoro'):
+        voice_install.dispatch({'action': 'voice-plan', 'tts_provider': 'unknown'})
+
+
+def test_piper_plan_contains_engine_model_and_companion(monkeypatch, tmp_path):
+    monkeypatch.setattr(voice_install, 'default_root', lambda: tmp_path / 'empty-profile')
+    plan = voice_install.dispatch({'action': 'voice-plan', 'features': ['voice'], 'tts_provider': 'piper'})
+    ids = {entry['id'] for entry in plan['available']}
+    assert {'py-piper_tts', 'piper-model', 'piper-config', 'piper-model-card'} <= ids
+    assert plan['total_bytes'] > 63531379
+    kokoro = voice_install.dispatch({'action': 'voice-plan', 'features': ['voice'], 'tts_provider': 'kokoro'})
+    assert not any(e['id'].startswith(('piper-', 'py-piper')) for e in kokoro['available'])
+
+
+def test_cached_whisper_and_wheels_do_not_make_piper_ready(tmp_path):
+    entries = voice_install.load_manifest(_manifest(tmp_path, [
+        _artifact(tmp_path, 'whisper.bin', b'model'),
+        _wheel_artifact(tmp_path, 'numpy-1.0-py3-none-any.whl', b'wheel', ['voice']),
+    ]))
+    root = tmp_path / 'voice'
+    plan = voice_install.plan(manifest=entries, root=root, features=['voice'])
+    voice_install.install({**plan, 'entries': entries}, confirm=plan['plan_id'])
+    result = voice_install.status(manifest=entries, root=root, install_root=_installed_runtime(tmp_path),
+                                  features=['voice'], tts_provider='piper', runner=_import_ok)
+    assert result['ready'] is False
+    assert result['piper']['ready'] is False
+
+
+def test_piper_python_install_returns_active_runtime_path_and_checks_engine(monkeypatch, tmp_path):
+    root = tmp_path / 'voice'
+    entries = voice_install.load_manifest(_manifest(tmp_path, [
+        _wheel_artifact(tmp_path, 'piper_tts-1.3.0-py3-none-any.whl', b'wheel', ['voice']),
+    ]))
+    plan = voice_install.plan(manifest=entries, root=root, features=['voice'])
+    voice_install.install({**plan, 'entries': entries}, confirm=plan['plan_id'])
+    install_root = _installed_runtime(tmp_path)
+    calls = []
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        return _import_ok(argv, **kwargs)
+    result = voice_install.python_install(install_root, root, entries=entries, features=['voice'],
+                                          tts_provider='piper', runner=runner)
+    assert result['paths']['tts_executable'] == str(voice_install._runtime_python(install_root))
+    assert any('import piper' in ' '.join(argv) or ', piper' in ' '.join(argv) for argv in calls)

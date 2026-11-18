@@ -24,6 +24,7 @@ class SetupWizardPage extends StatefulWidget {
 class _SetupWizardPageState extends State<SetupWizardPage> {
   int step = 0;
   late String role, provider, format;
+  String ttsProvider = 'piper';
   late bool voice;
   final fields = <String, TextEditingController>{};
   SetupController get c => widget.controller;
@@ -39,6 +40,8 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
     role = selection['role'] as String? ?? 'combined';
     provider = model?['provider'] as String? ?? 'later';
     voice = audio?['enabled'] == true;
+    ttsProvider =
+        audio == null ? 'piper' : audio['tts_provider'] as String? ?? 'kokoro';
     format = c.format;
     for (final name in [
       'name',
@@ -47,6 +50,8 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
       'whisper_model',
       'kokoro_model',
       'kokoro_voices',
+      'tts_executable',
+      'tts_model',
       'output'
     ]) {
       final value = switch (name) {
@@ -101,12 +106,15 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
         if (voice && role != 'execution')
           ...?c.selection['voice'] as Map<String, dynamic>?,
         'enabled': voice && role != 'execution',
+        'tts_provider': ttsProvider,
         if (voice && role != 'execution')
           for (final key in [
             'whisper_bin',
             'whisper_model',
             'kokoro_model',
-            'kokoro_voices'
+            'kokoro_voices',
+            'tts_executable',
+            'tts_model'
           ])
             key: fields[key]!.text.trim()
       }
@@ -127,7 +135,9 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
                 'whisper_bin',
                 'whisper_model',
                 'kokoro_model',
-                'kokoro_voices'
+                'kokoro_voices',
+                'tts_executable',
+                'tts_model'
               ].contains(name)
                   ? IconButton(
                       tooltip: 'Browse $label',
@@ -169,7 +179,9 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
       'whisper_bin',
       'whisper_model',
       'kokoro_model',
-      'kokoro_voices'
+      'kokoro_voices',
+      'tts_executable',
+      'tts_model'
     ]) {
       final values = candidates[name] as List? ?? [];
       if (values.length == 1 && fields[name]!.text != values.single) {
@@ -401,7 +413,36 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
                                                             }
                                                           }),
                                                 _note(
-                                                    'Whisper.cpp and Kokoro are supported defaults. Missing assets remain unavailable; no download or microphone recording starts here.'),
+                                                    'Choose Piper or Kokoro with Whisper.cpp. Missing assets remain unavailable; no download or microphone recording starts here.'),
+                                                DropdownButtonFormField<String>(
+                                                  isExpanded: true,
+                                                  key: const Key(
+                                                      'wizard-tts-provider'),
+                                                  initialValue: ttsProvider,
+                                                  decoration: const InputDecoration(
+                                                      labelText:
+                                                          'Speech output engine'),
+                                                  items: const [
+                                                    DropdownMenuItem(
+                                                        value: 'piper',
+                                                        child: Text('Piper')),
+                                                    DropdownMenuItem(
+                                                        value: 'kokoro',
+                                                        child: Text('Kokoro'))
+                                                  ],
+                                                  onChanged: locked
+                                                      ? null
+                                                      : (value) {
+                                                          setState(() =>
+                                                              ttsProvider =
+                                                                  value!);
+                                                          _update();
+                                                          if (voice) {
+                                                            unawaited(
+                                                                _detectVoice());
+                                                          }
+                                                        },
+                                                ),
                                                 if (voice) ...[
                                                   OutlinedButton.icon(
                                                       onPressed: locked
@@ -423,10 +464,20 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
                                                       'Whisper executable'),
                                                   _field('whisper_model',
                                                       'Whisper model file'),
-                                                  _field('kokoro_model',
-                                                      'Kokoro ONNX model'),
-                                                  _field('kokoro_voices',
-                                                      'Kokoro voices file'),
+                                                  if (ttsProvider ==
+                                                      'piper') ...[
+                                                    _field('tts_executable',
+                                                        'Piper executable or Python interpreter'),
+                                                    _field('tts_model',
+                                                        'Piper ONNX voice model'),
+                                                    _note(
+                                                        'Keep its matching .onnx.json beside the model. Piper runtime and model are user-supplied.'),
+                                                  ] else ...[
+                                                    _field('kokoro_model',
+                                                        'Kokoro ONNX model'),
+                                                    _field('kokoro_voices',
+                                                        'Kokoro voices file'),
+                                                  ],
                                                   _note(
                                                       'Model and phonemizer licenses remain applicable. Wake-word assets are configured separately.'),
                                                 ],

@@ -411,6 +411,8 @@ class FlowBackend implements SetupBackend {
             'features': selected.toList()..sort(),
             'missing': const [],
             'paths': {
+              if (request.parameters['tts_provider'] == 'piper')
+                'tts_model': voicePath('en_US-ljspeech-medium.onnx'),
               for (final entry in [...voiceArtifacts, ...wakeArtifacts])
                 if (artifactReady(entry))
                   entry['field'] as String: entry['field'] == 'wake_model'
@@ -438,6 +440,10 @@ class FlowBackend implements SetupBackend {
             'verified': true,
             'severity': 'info',
             'python': voicePath('Scripts\\python.exe'),
+            'paths': {
+              if (request.parameters['tts_provider'] == 'piper')
+                'tts_executable': voicePath('Scripts\\python.exe')
+            },
             'wheels': featureEntries(selected)
                 .where((entry) => entry['kind'] == 'wheel')
                 .length,

@@ -78,6 +78,9 @@ RELEASES = [
     },
 ]
 
+# Revision-pinned Piper assets; retain the individual model and repository cards.
+RELEASES.extend([{'id': 'piper-model', 'label': 'Piper English voice (LJ Speech, medium)', 'kind': 'file', 'field': 'tts_model', 'url': 'https://huggingface.co/rhasspy/piper-voices/resolve/0ca208afc2a2ee102b1e961e72e0a7e4907be3d0/en/en_US/ljspeech/medium/en_US-ljspeech-medium.onnx', 'license': 'MIT', 'cache': 'en_US-ljspeech-medium.onnx', 'target': 'en_US-ljspeech-medium.onnx', 'provenance': 'file-only'}, {'id': 'piper-config', 'label': 'Piper voice configuration', 'kind': 'file', 'field': 'piper_config', 'url': 'https://huggingface.co/rhasspy/piper-voices/resolve/0ca208afc2a2ee102b1e961e72e0a7e4907be3d0/en/en_US/ljspeech/medium/en_US-ljspeech-medium.onnx.json', 'license': 'MIT', 'cache': 'en_US-ljspeech-medium.onnx.json', 'target': 'en_US-ljspeech-medium.onnx.json', 'provenance': 'file-only'}, {'id': 'piper-model-card', 'label': 'Piper voice model card', 'kind': 'file', 'field': 'piper_model_card', 'url': 'https://huggingface.co/rhasspy/piper-voices/resolve/0ca208afc2a2ee102b1e961e72e0a7e4907be3d0/en/en_US/ljspeech/medium/MODEL_CARD', 'license': 'MIT', 'cache': 'piper-ljspeech-MODEL_CARD', 'target': 'piper-ljspeech-MODEL_CARD', 'provenance': 'file-only'}, {'id': 'piper-repository-license', 'label': 'Piper voice repository license', 'kind': 'file', 'field': 'piper_license', 'url': 'https://huggingface.co/rhasspy/piper-voices/resolve/0ca208afc2a2ee102b1e961e72e0a7e4907be3d0/README.md', 'license': 'MIT', 'cache': 'piper-voices-README.md', 'target': 'piper-voices-README.md', 'provenance': 'file-only'}])
+
 #: The Python side of the voice stack, resolved for CPython 3.11 / win_amd64.
 #: `pip download --only-binary=:all: --platform win_amd64 --python-version 311
 #: --implementation cp --abi cp311` produced this set; the licensing column
@@ -85,6 +88,7 @@ RELEASES = [
 #: Which opt-in feature(s) each wheel serves. A wheel that both need is listed
 #: under both, so selecting either feature fetches exactly what it needs.
 WHEEL_FEATURES = {
+    'piper-tts': ['voice'],
     'numpy': ['voice', 'wake'],
     'onnxruntime': ['voice', 'wake'],
     'joblib': ['voice', 'wake'],
@@ -123,6 +127,7 @@ WHEEL_FEATURES = {
 WAKE_ARTIFACT_ID = 'wake-model'
 
 WHEEL_LICENSES = {
+    'piper-tts': 'GPL-3.0-or-later',
     'numpy': 'BSD-3-Clause',
     'onnxruntime': 'MIT',
     'openwakeword': 'Apache-2.0',

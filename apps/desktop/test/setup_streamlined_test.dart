@@ -44,7 +44,8 @@ int _reviews(FlowBackend backend) => backend.requests
     .length;
 
 /// Opens the model-and-voice step without going on to the review.
-Future<void> _openVoiceStep(WidgetTester tester, FlowBackend backend) async {
+Future<void> _openVoiceStep(WidgetTester tester, FlowBackend backend,
+    {bool kokoro = true}) async {
   await tester.pumpWidget(SetupApplication(
       mode: 'setup',
       backendFactory: () => backend,
@@ -59,9 +60,120 @@ Future<void> _openVoiceStep(WidgetTester tester, FlowBackend backend) async {
       await tester.pump(const Duration(milliseconds: 50));
     }
   }
+  if (kokoro) {
+    final selector = find.byKey(const Key('setup-tts-provider'));
+    await tester.ensureVisible(selector);
+    await tester.tap(selector);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Kokoro').last);
+    await tester.pumpAndSettle();
+  }
 }
 
 void main() {
+  testWidgets('Piper configuration failure never claims speech is installed',
+      (tester) async {
+    final backend = FlowBackend()
+      ..failActions = {'package-configure'}
+      ..failureReason = 'Configuration could not be saved';
+    await _openVoiceStep(tester, backend, kokoro: false);
+    await tester.ensureVisible(find.byKey(const Key('setup-voice-download')));
+    await tester.tap(find.byKey(const Key('setup-voice-download')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Continue'));
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Install'));
+    for (var i = 0; i < 90; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(find.textContaining('Speech configuration was not activated'),
+        findsOneWidget);
+    expect(
+        find.textContaining(
+            'components and their Python dependencies are installed'),
+        findsNothing);
+    expect(find.text('Install speech dependencies'), findsOneWidget);
+  });
+
+  testWidgets(
+      'fresh Piper downloads install and configure without existing paths',
+      (tester) async {
+    final backend = FlowBackend();
+    await _openVoiceStep(tester, backend, kokoro: false);
+    await tester.ensureVisible(find.byKey(const Key('setup-voice-download')));
+    await tester.tap(find.byKey(const Key('setup-voice-download')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Continue'));
+    expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
+            .onPressed,
+        isNotNull);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Install'));
+    for (var i = 0; i < 90; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    final install = backend.requests
+        .firstWhere((r) => r.parameters['action'] == 'voice-python-install');
+    expect(install.parameters['tts_provider'], 'piper');
+    final saved = backend.requests
+        .lastWhere((r) => r.parameters['action'] == 'package-configure');
+    final audio = (saved.parameters['selection'] as Map)['voice'] as Map;
+    expect(audio['enabled'], isTrue);
+    expect(audio['tts_provider'], 'piper');
+    expect(audio['tts_executable'], isNotEmpty);
+    expect(audio['tts_model'], isNotEmpty);
+  });
+
+  testWidgets(
+      'cached downloads do not claim installed speech and zero size is honest',
+      (tester) async {
+    final backend = FlowBackend()..voiceInstalled = true;
+    await _openVoiceStep(tester, backend, kokoro: false);
+    await tester.ensureVisible(find.byKey(const Key('setup-voice-download')));
+    await tester.tap(find.byKey(const Key('setup-voice-download')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('All voice components are already installed'),
+        findsNothing);
+    expect(find.textContaining('unknown size'), findsNothing);
+    expect(find.textContaining('No downloads needed'), findsOneWidget);
+    expect(find.textContaining('Cached files'), findsOneWidget);
+  });
+
+  testWidgets('Piper default saves external runtime and model without Kokoro',
+      (tester) async {
+    final backend = FlowBackend();
+    await _openVoiceStep(tester, backend, kokoro: false);
+    expect(find.text('Piper (recommended for CPU)'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('setup-voice-toggle')));
+    await tester.pumpAndSettle();
+    for (final field in {
+      'setup-whisper-bin': 'C:/voice/whisper.exe',
+      'setup-whisper-model': 'C:/voice/whisper.bin',
+      'setup-piper-executable': 'C:/piper/piper.exe',
+      'setup-piper-model': 'C:/piper/en.onnx'
+    }.entries) {
+      final input = find.byKey(Key(field.key));
+      await tester.ensureVisible(input);
+      await tester.enterText(input, field.value);
+    }
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('setup-kokoro-model')), findsNothing);
+    await tester.ensureVisible(find.text('Continue'));
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    final review = backend.requests
+        .lastWhere((r) => r.parameters['action'] == 'package-review');
+    final voice = (review.parameters['selection'] as Map)['voice'] as Map;
+    expect(voice['tts_provider'], 'piper');
+    expect(voice['tts_executable'], 'C:/piper/piper.exe');
+    expect(voice['tts_model'], 'C:/piper/en.onnx');
+    expect(voice.containsKey('kokoro_model'), isFalse);
+  });
+
   testWidgets('missing voice wheels do not block installed wake support',
       (tester) async {
     final backend = MissingVoiceWheelsBackend();
@@ -336,7 +448,7 @@ void main() {
     for (var i = 0; i < 6; i++) {
       await tester.pump(const Duration(milliseconds: 50));
     }
-    expect(find.textContaining('already installed'), findsOneWidget);
+    expect(find.textContaining('Cached files'), findsOneWidget);
     expect(find.text('Download and install voice components'), findsNothing);
   });
 

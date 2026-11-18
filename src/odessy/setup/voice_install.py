@@ -43,6 +43,10 @@ COMPONENT_FIELDS = {
     'whisper_model': 'Whisper model',
     'kokoro_model': 'Kokoro model',
     'kokoro_voices': 'Kokoro voices',
+    'tts_model': 'Piper voice model',
+    'piper_config': 'Piper voice configuration',
+    'piper_model_card': 'Piper voice model card',
+    'piper_license': 'Piper voice license',
     'wake_model': 'Wake-word model',
     'wake_melspectrogram': 'Wake audio features',
     'wake_embedding': 'Wake audio embedding',
@@ -544,7 +548,7 @@ def _finding(check, severity, message, path='', fix_hint='', *, ready=False):
 
 
 def status(payload=None, *, manifest=None, root=None, install_root=None, features=None,
-           runner=None):
+           runner=None, tts_provider='kokoro'):
     """Report readiness as structured findings, one per component and per feature.
 
     Each finding carries a stable `check_id`, a severity and a remedy, so
@@ -612,7 +616,7 @@ def status(payload=None, *, manifest=None, root=None, install_root=None, feature
     python_findings = []
     for name in (selected or FEATURES):
         python_findings.append(python_status(voice_root, install_root=install_root,
-                                            feature=name, runner=runner))
+                                            feature=name, runner=runner, tts_provider=tts_provider))
     findings.extend(python_findings)
     wake = _wake_session_finding(components, python_findings, selected, install_root, runner)
     if wake:
@@ -637,6 +641,12 @@ def status(payload=None, *, manifest=None, root=None, install_root=None, feature
                            and feature_python is not None and feature_python['ready'])
     if wake is not None:
         readiness['wake'] = wake['ready']
+    piper = None
+    if tts_provider == 'piper' and (selected is None or 'voice' in selected):
+        piper = _piper_finding(components, python_findings, install_root, runner)
+        findings.append(piper)
+        readiness['voice'] = readiness.get('voice', False) and piper['ready']
+        severity = max((item['severity'] for item in findings), key=_severity_rank, default='info')
     return {
         'platform': platform, 'root': str(voice_root), 'wake_root': str(wake_root()),
         'features': list(selected) if selected is not None else list(FEATURES),
@@ -647,9 +657,28 @@ def status(payload=None, *, manifest=None, root=None, install_root=None, feature
         'readiness': readiness,
         'progress': progress, 'findings': findings, 'severity': severity,
         'python': python_findings[0] if python_findings else None,
-        'wake': wake,
-        'paths': {item['field']: item['path'] for item in components if item['state'] == 'ready'},
+        'wake': wake, 'piper': piper,
+        'paths': {**{item['field']: item['path'] for item in components if item['state'] == 'ready'},
+                  **({'tts_executable': str(_runtime_python(install_root))} if piper and piper['ready'] else {})},
     }
+
+
+def _piper_finding(components, python_findings, install_root, runner):
+    model = next((item for item in components if item['field'] == 'tts_model'), None)
+    config = next((item for item in components if item['field'] == 'piper_config'), None)
+    dependencies = next((item for item in python_findings if item['check_id'] == 'setup/voice/python/voice'), None)
+    ready = model and config and model['state'] == config['state'] == 'ready' and dependencies and dependencies['ready']
+    if ready:
+        try:
+            result = (runner or _run)([str(_runtime_python(install_root)), '-I', '-c',
+                'import sys; from piper import PiperVoice; PiperVoice.load(sys.argv[1], use_cuda=False)', model['path']], timeout=120)
+            ready = result.returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            ready = False
+    return _finding('piper-session', 'info' if ready else 'warning',
+        'Piper engine and voice model loaded successfully.' if ready else
+        'Piper is not ready: its engine, verified model and matching configuration must be installed and loadable.',
+        model['path'] if model else '', '' if ready else 'Install the selected speech components, then retry.', ready=bool(ready))
 
 
 def _wake_session_finding(components, python_findings, selected, install_root=None, runner=None):
@@ -709,14 +738,14 @@ def _wheel_files(voice_root):
     return sorted(directory.glob('*.whl')) if directory.is_dir() else []
 
 
-def python_status(voice_root, *, install_root=None, feature='voice', runner=None):
+def python_status(voice_root, *, install_root=None, feature='voice', runner=None, tts_provider='kokoro'):
     """Is the Python side of one feature installed? Checked, never assumed.
 
     Without an installation to inspect the answer is `info` with the wheels
     waiting: nothing has been installed into an application runtime yet, and
     that is a normal intermediate state, not a failure.
     """
-    modules = FEATURE_MODULES[feature]
+    modules = _feature_modules(feature, tts_provider)
     label = 'voice' if feature == 'voice' else 'wake-word'
     cached = _wheel_files(voice_root)
     if not cached:
@@ -1079,15 +1108,15 @@ def requirements_text(entries):
 
 
 def python_install(install_root, voice_root, *, entries=None, payload=None,
-                   cancelled=lambda: False, runner=None, features=None):
+                   cancelled=lambda: False, runner=None, features=None, tts_provider='kokoro'):
     """Install hash-locked cached wheels without racing another speech writer."""
     with _operation_locks([Path(voice_root)], cancelled=cancelled):
         return _python_install_locked(install_root, voice_root, entries=entries,
-            payload=payload, cancelled=cancelled, runner=runner, features=features)
+            payload=payload, cancelled=cancelled, runner=runner, features=features, tts_provider=tts_provider)
 
 
 def _python_install_locked(install_root, voice_root, *, entries=None, payload=None,
-                   cancelled=lambda: False, runner=None, features=None):
+                   cancelled=lambda: False, runner=None, features=None, tts_provider='kokoro'):
     """Install the cached wheels into the installed application runtime.
 
     Offline and hash-locked: `--no-index --no-deps --require-hashes` with the
@@ -1128,7 +1157,7 @@ def _python_install_locked(install_root, voice_root, *, entries=None, payload=No
                 'manual_step': 'Retry the dependency install, or continue with text only.'}
     imports = {}
     for name in (selected or FEATURES):
-        modules = FEATURE_MODULES[name]
+        modules = _feature_modules(name, tts_provider)
         check = run([str(interpreter), '-I', '-c',
                      'import ' + ', '.join(modules) + ';print("ok")'])
         imports[name] = {'verified': check.returncode == 0,
@@ -1143,6 +1172,8 @@ def _python_install_locked(install_root, voice_root, *, entries=None, payload=No
     return {'installed': True, 'verified': verified,
             'severity': 'info' if verified else 'error',
             'python': str(interpreter), 'wheels': len(wheels), 'log': log[-25:],
+            'paths': {**paths(root, all_entries), **({'tts_executable': str(interpreter)}
+                      if verified and tts_provider == 'piper' and 'voice' in imports else {})},
             'features': list(selected or FEATURES),
             'imports': {name: 'ok' if item['verified'] else item['error']
                         for name, item in imports.items()},
@@ -1152,23 +1183,38 @@ def _python_install_locked(install_root, voice_root, *, entries=None, payload=No
                  + ' could not be imported.')}
 
 
+def _feature_modules(feature, tts_provider):
+    modules = FEATURE_MODULES[feature]
+    return tuple(name for name in modules if name != 'kokoro_onnx') + ('piper',) if feature == 'voice' and tts_provider == 'piper' else modules
+
+
 def dispatch(parameters, *, cancelled=lambda: False):
     """Entry point used by the setup bridge. No path arrives from the caller."""
     action = parameters.get('action')
     payload = parameters.get('payload') or None
     root = default_root()
     entries = load_manifest(manifest_path(payload))
+    tts_provider = parameters.get('tts_provider', 'kokoro')
+    if tts_provider not in ('piper', 'kokoro'):
+        raise ValueError('Choose Piper or Kokoro for setup speech output')
+    if tts_provider == 'piper':
+        # The selected independent CLI is fetched from its pinned upstream wheel.
+        # Never download Kokoro behind a Piper choice.
+        entries = [entry for entry in entries if not entry['id'].startswith(
+            ('kokoro-', 'py-kokoro', 'py-phonemizer', 'py-espeakng_loader'))]
+    else:
+        entries = [entry for entry in entries if not entry['id'].startswith(('piper-', 'py-piper'))]
     features = parameters.get('features')
     if action == 'voice-plan':
         return plan(payload, manifest=entries, root=root, features=features)
     if action == 'voice-status':
         return status(payload, manifest=entries, root=root, features=features,
-                      install_root=parameters.get('install_root') or None)
+                      install_root=parameters.get('install_root') or None, tts_provider=tts_provider)
     if action == 'voice-install':
         value = plan(payload, manifest=entries, root=root, features=features)
         value['entries'] = _selected(entries, _feature_list(features))
         return install(value, confirm=parameters.get('confirm'), cancelled=cancelled)
     if action == 'voice-python-install':
         return python_install(parameters.get('install_root'), root, entries=entries,
-                              features=features, cancelled=cancelled)
+                              features=features, cancelled=cancelled, tts_provider=tts_provider)
     raise ValueError('unsupported voice operation')

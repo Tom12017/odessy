@@ -57,8 +57,8 @@ def _packaged(parameters,*,cancelled=lambda:False):
         # (action/root/payload/selection) stays usable here. `install_root` is
         # the installation whose runtime receives the Python packages, and it is
         # normalised before use.
-        allowed={'action','payload','confirm','features'} if action=='voice-install' else {
-            'action','payload','install_root','features'}
+        allowed={'action','payload','confirm','features','tts_provider'} if action=='voice-install' else {
+            'action','payload','install_root','features','tts_provider'}
         data={key:value for key,value in parameters.items() if key in allowed}
         if 'install_root' in data:
             value=data.get('install_root')
