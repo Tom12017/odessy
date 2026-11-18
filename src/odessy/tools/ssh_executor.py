@@ -142,6 +142,7 @@ class SshServer:
             self.preflight()
             if before_dispatch:
                 before_dispatch()
+            redaction_password = c.lease.password if c.lease is not None else ''
             process = await self.spawn(*args, stdin=asyncio.subprocess.DEVNULL,
                                        stdout=asyncio.subprocess.PIPE,
                                        stderr=asyncio.subprocess.PIPE, env=env)
@@ -181,8 +182,8 @@ class SshServer:
                     c.processes.discard(process)
             def output(data):
                 text = data.decode('utf-8', errors='replace')
-                if c.lease is not None and c.lease.password:
-                    text = text.replace(c.lease.password, '<redacted>')
+                if redaction_password:
+                    text = text.replace(redaction_password, '<redacted>')
                 return redact_text(text)
             result = {'status': status, 'exit_code': process.returncode,
                       'stdout': output(buffers[0]), 'stderr': output(buffers[1]),

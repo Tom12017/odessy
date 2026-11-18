@@ -171,6 +171,8 @@ def read_identity(host: SshHost, *, ssh_keygen: str = "ssh-keygen",
                 encoding='utf-8', errors='replace', timeout=timeout, check=False)
             for line in completed.stdout.splitlines():
                 parts = line.split()
+                if parts and parts[0] == '@revoked':
+                    raise SshError('SSH_HOST_KEY_REVOKED', 'The SSH host key is revoked; reconnect only after independent verification.')
                 if len(parts) < 3 or parts[0].startswith(('#', '@')):
                     continue
                 key_type, encoded = parts[1:3]

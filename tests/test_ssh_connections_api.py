@@ -536,3 +536,40 @@ def test_connect_route_auth_validation_and_no_disk_state(env):
             await client.delete('/v1/ssh/target', headers=headers)
             assert not env.exists()
     asyncio.run(run())
+
+
+def test_probe_never_borrows_a_replacement_targets_password(env, tmp_path, monkeypatch):
+    from dataclasses import replace
+    from types import SimpleNamespace
+    monitor = FakeMonitor()
+    monitor.settings = replace(monitor.settings, ssh_alias='jetson', ssh_monitoring=True,
+                               binary=str(tmp_path / 'helper'))
+    (tmp_path / 'helper').write_bytes(b'fixture')
+    captured = []
+    manager = SshConnections(monitor)
+    async def inspect(alias, **kwargs):
+        monitor.settings = replace(monitor.settings, ssh_alias='other')
+        monitor.ssh_password_lease = SimpleNamespace(password='other-target-secret')
+        return {'identity': identity()}
+    manager.inspect = inspect
+    monkeypatch.setattr('odessy.application.ssh_connections.probe_connection',
+                        lambda *a, **kw: captured.append(kw) or {'ok': True})
+    asyncio.run(manager.test('jetson'))
+    assert 'password_lease' not in captured[0]
+
+
+def test_legacy_save_does_not_reuse_nondefault_port_password(env, monkeypatch):
+    from dataclasses import replace
+    from types import SimpleNamespace
+    monitor = FakeMonitor()
+    monitor.settings = replace(monitor.settings, ssh_alias='jetson', ssh_port=2222)
+    old = SimpleNamespace(close=lambda: None)
+    monitor.ssh_password_lease = old
+    manager = SshConnections(monitor)
+    captured = []
+    async def save(alias, name, lease):
+        captured.append(lease)
+        return {'target': None}
+    manager._save = save
+    asyncio.run(manager.save('jetson'))
+    assert captured == [None]

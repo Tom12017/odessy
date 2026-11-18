@@ -168,6 +168,8 @@ class SshConnections:
     async def test(self, alias: str, password: str = '', *, lease=None, port: int | None = None,
                    reuse_saved_credentials: bool = True) -> dict[str, object]:
         settings = self._settings()
+        # Snapshot the owner and credential together before either awaited lookup.
+        saved_lease = getattr(self.monitor, 'ssh_password_lease', None)
         reviewed = await self.inspect(alias, **({'port': port} if port is not None else {}))
         identity = reviewed['identity']
         if not identity['known']:
@@ -182,7 +184,7 @@ class SshConnections:
                                        config_path=self._config(settings), **({'port': port} if port is not None else {}))
         temporary = PasswordLease(password) if password else None
         try:
-            credential = temporary or lease or (getattr(self.monitor, 'ssh_password_lease', None)
+            credential = temporary or lease or (saved_lease
                 if reuse_saved_credentials and settings.ssh_alias == alias and settings.ssh_port == (port or 0) else None)
             options = {}
             if credential is not None:
@@ -206,7 +208,9 @@ class SshConnections:
             self.disable_execution()
             self._login_verified=False
             old = getattr(self.monitor, 'ssh_password_lease', None)
-            candidate = PasswordLease(password) if password else (old if self._settings().ssh_alias == alias else None)
+            settings = self._settings()
+            candidate = PasswordLease(password) if password else (
+                old if settings.ssh_alias == alias and settings.ssh_port == 0 else None)
             try:
                 result = await self._coordinated(self._save(alias, display_name, candidate))
             except BaseException:

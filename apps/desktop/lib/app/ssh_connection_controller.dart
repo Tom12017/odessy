@@ -91,7 +91,7 @@ class SshConnectionController extends ChangeNotifier {
     _poll = null;
     aliases = const [];
     selected = null;
-    identity = test = target = status = null;
+    identity = test = target = status = execution = null;
     busy = removing = statusRefreshing = false;
     busyAction = '';
     message = '';
@@ -210,9 +210,7 @@ class SshConnectionController extends ChangeNotifier {
         return;
       }
       target = result;
-      final hadExecution = execution != null;
-      execution = null;
-      if (hadExecution) await onExecutionChanged?.call();
+      // Reconcile execution in finally for every reconnect outcome.
       status = null;
       ++_statusEpoch;
       statusError = '';
@@ -223,6 +221,27 @@ class SshConnectionController extends ChangeNotifier {
     } catch (failure) {
       if (!_disposed && epoch == _epoch) _fail(failure);
     } finally {
+      if (!_disposed && epoch == _epoch && client is SshExecutionApi) {
+        final previous = execution;
+        try {
+          final current =
+              await (client as SshExecutionApi).sshExecutionStatus();
+          if (!_disposed && epoch == _epoch) {
+            execution = current['execution'] is Map
+                ? Map<String, dynamic>.from(current['execution'] as Map)
+                : null;
+          }
+        } catch (_) {
+          if (!_disposed && epoch == _epoch) execution = null;
+        }
+        if (!_disposed && epoch == _epoch && !mapEquals(previous, execution)) {
+          try {
+            await onExecutionChanged?.call();
+          } catch (failure) {
+            if (error.isEmpty) _fail(failure);
+          }
+        }
+      }
       if (!_disposed && epoch == _epoch) {
         busy = false;
         busyAction = '';

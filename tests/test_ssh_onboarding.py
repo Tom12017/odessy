@@ -82,3 +82,14 @@ def test_nondefault_port_never_trusts_default_port_key(tmp_path, monkeypatch):
         read_identity(SshHost('test', '192.0.2.10', 'tester', 2222,
                              known_host_files=(str(tmp_path / 'known_hosts'),)))
     assert lookups == ['[192.0.2.10]:2222']
+
+
+def test_revoked_host_key_is_not_reintroduced_as_trusted(monkeypatch):
+    from odessy.ssh.identity import read_identity, SshError
+    def keygen(args, **kwargs):
+        output = ('# Host fixture found: line 1 (RSA)\nfixture rsa SHA256:fixture\n'
+                  if '-l' in args else '@revoked fixture ssh-ed25519 Zml4dHVyZQ==\n')
+        return subprocess.CompletedProcess(args, 0, output, '')
+    monkeypatch.setattr(subprocess, 'run', keygen)
+    with pytest.raises(SshError, match='revoked'):
+        read_identity(SshHost('fixture', 'fixture', 'user'))

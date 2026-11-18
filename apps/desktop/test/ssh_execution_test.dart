@@ -27,7 +27,41 @@ class ExecutionSsh extends FakeSsh implements SshExecutionApi {
   }
 }
 
+class FailedReconnect extends ExecutionSsh {
+  FailedReconnect(this.throws);
+  final bool throws;
+  @override
+  Future<Json> connectSsh(String target,
+      {int? port, String password = ''}) async {
+    execution =
+        null; // The service revokes execution before any reconnect probe.
+    if (throws) throw const SshConnectionFailure(409, 'Host key changed.');
+    return {
+      'connected': false,
+      'test': {'message': 'Authentication failed.'}
+    };
+  }
+}
+
 void main() {
+  for (final throws in [false, true]) {
+    test('failed reconnect refreshes revoked execution (throws=$throws)',
+        () async {
+      final api = FailedReconnect(throws);
+      var reloads = 0;
+      final controller =
+          SshConnectionController(api, onExecutionChanged: () async {
+        reloads++;
+      });
+      await controller.setExecution(true);
+      await controller.connect('tester@192.0.2.10');
+      expect(controller.execution, isNull);
+      expect(reloads, 2);
+      expect(controller.error, isNotEmpty);
+      controller.dispose();
+    });
+  }
+
   test('execution acknowledges service and reloads tools once per change',
       () async {
     final api = ExecutionSsh();

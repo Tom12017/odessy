@@ -275,3 +275,22 @@ def test_authenticated_http_session_approval_and_output(tmp_path, monkeypatch):
         manager.close()
         app.state.conversations.store.close()
     asyncio.run(run())
+
+
+def test_password_remains_redacted_when_lease_clears_during_output(monkeypatch):
+    from odessy.tools.ssh_executor import select
+    async def run():
+        selected = connection()
+        secret = 'fixture-unlabelled-credential'
+        selected.lease = SimpleNamespace(active=True, password=secret, environment=lambda helper: {})
+        select(selected); server = selected.server()
+        async def spawn(*args, **kwargs):
+            selected.lease.password = ''
+            return await asyncio.create_subprocess_exec(sys.executable, '-c',
+                'print(' + repr(secret) + ')', stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE)
+        server.spawn = spawn
+        result = await server.call_tool('ssh.run', {'command': 'hostname'})
+        assert secret not in result.structured_content['stdout']
+        assert '<redacted>' in result.structured_content['stdout']
+    asyncio.run(run())
