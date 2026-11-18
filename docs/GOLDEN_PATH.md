@@ -8,7 +8,7 @@
 
 The model proposes actions; the service applies policy and obtains required approval before execution. Use a disposable workspace. Windows confinement is partial, and cloud requests and permitted tool observations leave your computer for the chosen provider.
 
-**Updated 18 November 2026.** The installer below is based on `1834c1a` plus the recorded uncommitted Piper/setup fixes; the maintainer confirmed successful installation. See the [exact candidate and check scope](verification/windows-piper-installer-2026-11-18.md). Existing screenshots identify their earlier build (`7f3b925`); they do not qualify every newer feature or an external reader's complete walkthrough.
+**Updated 19 November 2026, completing the November 18 release work.** The draft installer was rebuilt from committed application source `6f96e71`, including the review fixes. See the [candidate receipt](verification/windows-piper-installer-2026-11-18.md) for build checks and the prior installed Piper baseline. The final-source isolated upgrade passed, including installed Piper synthesis and saved-configuration preservation. Final maintainer verification is pending; acceptance of the earlier installer does not transfer to this build. Existing screenshots retain their earlier build identity (`7f3b925`).
 
 If this path does not work for you, [open an issue](https://github.com/Trisoma/odessy/issues/new/choose) with the **sanitized doctor output** and the failing step. See [Troubleshooting and reporting](#troubleshooting-and-reporting).
 
@@ -24,7 +24,7 @@ Choose **one** route below. A packaged candidate includes its supported runtime;
 
 ### A. Supplied installer
 
-The Windows x64 candidate **`Odessy-v0.5.0-alpha-windows-x64-setup.exe`** was rebuilt and the maintainer confirmed successful installation on November 18, 2026. Use that candidate, supplied by the maintainer or through the [release page](https://github.com/Trisoma/odessy/releases), with its checksum. This documentation does not publish an asset; the older `v0.5.0-unstable` UI archives are not equivalent. If you cannot obtain the matching candidate, use route B.
+The Windows x64 candidate **`Odessy-v0.5.0-alpha-windows-x64-setup.exe`** is prepared for an **unpublished maintainer-verification draft**. Obtain the exact candidate and checksum from the maintainer; public downloads become available only if the maintainer publishes the [release](https://github.com/Trisoma/odessy/releases). Draft assets are not a public download. Older `v0.5.0-unstable` UI archives are not equivalent. Use route B if no matching installer is available.
 
 Compare the downloaded file with the candidate's SHA-256 before opening it:
 
@@ -32,7 +32,7 @@ Compare the downloaded file with the candidate's SHA-256 before opening it:
 Get-FileHash -Algorithm SHA256 -LiteralPath '.\Odessy-v0.5.0-alpha-windows-x64-setup.exe'
 ```
 
-Expected SHA-256 for this candidate: `15063674bf944db7beae83fa4b55318aca831e47801db7d3828a41f6edf831ae`. A later build must have its own checksum and verification record. See the [candidate receipt](verification/windows-piper-installer-2026-11-18.md).
+Expected SHA-256 for this candidate: `2d634100c87251f3f685fdf0a43b734b534b08b6d8643d7e1458c25992abf47a`. A later build must have its own checksum and verification record. See the [candidate receipt](verification/windows-piper-installer-2026-11-18.md).
 
 1. Open the EXE, choose an installation folder, and keep the default coordinator with local execution unless you need a different role under **Custom setup**. Python, Node and Flutter development SDKs are not required.
 2. Choose **Piper (recommended for CPU)** or **Kokoro** under **Speech output engine**. For automatic speech setup, turn on **Install voice components**. Piper setup needs no pre-existing Piper files: it downloads the pinned engine, English voice, matching model metadata, Whisper.cpp and audio dependencies after you confirm installation. Review the download size and licenses. Internet access is required for these optional downloads.
@@ -41,6 +41,15 @@ Expected SHA-256 for this candidate: `15063674bf944db7beae83fa4b55318aca831e4780
 5. Configure your model below and select a disposable folder through **Workspaces**. After connecting audio, test STT/TTS and explicitly enable wake listening in Settings; successful file installation does not itself prove microphone or speaker behavior.
 
 To update an existing versioned installation, choose its recorded location and use **Manage installation** to review the update. Keep the profile and voice assets; uninstalling first is unnecessary. Automatic in-app update discovery/download is not implemented.
+
+If a Piper update stops because the speech-package cache is missing, your
+previous version remains active. Close the running app; in **Manage Odessy**,
+choose **Pause speech for update**, review it and **Confirm once**, then review
+**Repair or update files** again. This is an explicit text-only choice, not an
+automatic loss of voice settings. Saved devices, component paths, model and
+workspace are retained. **Enable saved speech** is separately reviewed and uses
+the retained provider runtime/files; keep them. It does not download or repair
+missing components. See [speech update recovery](setup/voice-components.md#upgrading-after-removing-the-speech-cache).
 
 ![Chat layout with the project sidebar and composer](view/conversation/projects-and-recent.png)
 

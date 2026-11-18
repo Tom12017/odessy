@@ -10,7 +10,8 @@ It never downloads an LLM or starts an agent turn. Optional speech/wake download
 require an explicit choice and internet access; readiness checks load the selected
 voice models. Setup runs per user without requesting administrator rights.
 The [desktop manual](../GOLDEN_PATH.md#1-install-and-open-odessy) identifies the
-maintainer-confirmed Windows EXE and checksum.
+current Windows candidate and checksum; final human verification of the rebuilt
+EXE remains pending.
 
 ## Packaged flow
 

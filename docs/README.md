@@ -8,7 +8,7 @@ Start with the guide for your task. The [current support matrix](current-status.
 defines implemented behavior, unavailable capabilities and outstanding release gates.
 Historical plans and test receipts describe their recorded snapshots, not today's support.
 
-The [November 18 Windows candidate](verification/windows-piper-installer-2026-11-18.md) now has maintainer-confirmed installation, optional Piper/Kokoro setup and a published checksum in the [manual](GOLDEN_PATH.md). This page does not publish a release asset.
+The [Windows draft candidate](verification/windows-piper-installer-2026-11-18.md) includes optional Piper/Kokoro setup. The [manual](GOLDEN_PATH.md) identifies its checksum and installation steps. Final maintainer verification and publication are pending; older installer acceptance applies to its original checksum.
 
 | Task | Guide |
 | --- | --- |

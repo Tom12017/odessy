@@ -10,7 +10,7 @@
 定义了已实现的行为、尚不可用的能力以及尚未完成的发布关卡。
 历史计划与测试记录描述的是它们被记录时的快照，而非当前的支持状况。
 
-[11 月 18 日 Windows 候选版本](../verification/windows-piper-installer-2026-11-18.md)（English only）已获维护者安装确认，可选 Piper/Kokoro；校验值与操作步骤见[手册](GOLDEN_PATH.md)。本页不会自动发布下载文件。
+[Windows 草稿候选版本](../verification/windows-piper-installer-2026-11-18.md)（English only）可选 Piper/Kokoro；校验值与安装步骤见[手册](GOLDEN_PATH.md)。维护者最终验收及公开发布仍待完成；较早安装包的人工验收仅适用于原校验值。
 
 | 任务 | 指南 |
 | --- | --- |

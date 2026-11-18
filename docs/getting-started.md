@@ -11,9 +11,7 @@ not the normal user workflow. The module CLI still exists for development and di
 
 ## Choose your route
 
-- **Windows installer:** the maintainer-confirmed candidate includes its own runtime;
-  end users need no Python, Node or Flutter SDK. Follow the [manual](GOLDEN_PATH.md#1-install-and-open-odessy)
-  for the exact EXE/checksum, installation, Piper/Kokoro selection and optional wake setup.
+- **Windows installer:** the draft candidate includes its own runtime; end users do not need Python, Node or Flutter SDKs. Follow the [manual](GOLDEN_PATH.md#1-install-and-open-odessy) for its exact checksum, installation, Piper/Kokoro and optional wake setup. Final maintainer verification is pending.
 - **Source checkout:** use the developer steps below. Source builds require SDKs and
   are separate from the supplied installer. This documentation does not publish a download;
   obtain the matching candidate from its distributor or use source. Old UI archives

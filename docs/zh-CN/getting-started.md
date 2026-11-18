@@ -10,7 +10,7 @@
 
 ## 选择你的路径
 
-- **Windows 安装程序：**维护者已确认候选安装包成功安装；其自带运行时，最终用户无需 Python、Node 或 Flutter SDK。请按[手册](./GOLDEN_PATH.md#1-安装并打开-odessy)核对 EXE/校验值，并完成安装、Piper/Kokoro 选择及可选唤醒设置。
+- **Windows 安装程序：**草稿候选版本自带运行时，最终用户无需 Python、Node 或 Flutter SDK。请按[手册](./GOLDEN_PATH.md#1-安装并打开-odessy)核对校验值，并完成安装、Piper/Kokoro 选择及可选唤醒设置。维护者最终验收仍待完成。
 - **源码检出：**使用下方开发者步骤；源码构建需要 SDK，与提供的安装包分开。本页不会发布下载文件；请向分发者取得匹配候选版本，或使用源码。旧 UI 归档不包含当前完整应用。
 
 ## 准备 Windows 源码检出

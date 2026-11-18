@@ -3,20 +3,13 @@
 **English** | [简体中文](zh-CN/current-status.md) | [Español](es/current-status.md)
 
 **Developer Preview · v0.5.0-alpha**  
-Documentation reviewed: November 18, 2026.
+Documentation reviewed: November 19, 2026 (November 18 release work).
 
 ## Source and release baseline
 
-The current Windows x64 candidate is based on `1834c1a441fb444ecb1712429c550bafce7d3b19`
-on `fix/windows-setup-long-paths`, plus the uncommitted Piper/setup fixes recorded in
-its adjacent `verification.json`. It is a recorded dirty source snapshot, not a
-claim that commit `1834c1a` alone contains every packaged fix.
+The Windows x64 draft candidate was built from committed application source `6f96e71c0d1517030bf30729546d4bb90578bdc3` on `fix/windows-setup-long-paths`. The [candidate receipt](verification/windows-piper-installer-2026-11-18.md) records the exact checksum and reused hash-verified dependency closure. Later documentation-only commits do not change its application source identity.
 
-The maintainer confirmed successful installation of the rebuilt EXE on November 18,
-2026. The [candidate receipt](verification/windows-piper-installer-2026-11-18.md) identifies the checksum,
-109 affected Python tests, 650 Flutter tests passed/15 skipped, clean analysis,
-isolated installed Piper synthesis and the remaining limitations. The full Python
-suite was stopped before completion; it is not reported green.
+Final human verification of this rebuilt candidate is pending. Automated checks include 131 affected Python tests, 68 setup and management widgets, clean Flutter analysis, 107 settings contracts and a prior fresh installed Piper baseline. Final-source isolated upgrade/repair passed: installed Piper generated audio, device/model/workspace choices and user-file sentinels were preserved, and installed source hashes matched. Hosted CI passed on `6f96e71`, including full Python/desktop suites and native offline installation. The maintainer accepted the earlier November 18 installer; that acceptance remains historical and applies only to its original hash.
 
 The observed `ssh -G failed` was traced to the qualification launcher's missing
 Windows `ProgramData` environment variable. The same installed app passed its
@@ -25,11 +18,7 @@ confirmed login works. No application files or installer were replaced for that
 repair. Seven regression cases now cover system/profile environment preservation;
 52 focused Windows-launch/installed/SSH checks pass.
 
-The public preview label remains **v0.5.0-alpha**. No upload, signing or publication
-was performed by this documentation update. A supplied, tested candidate and a
-published download remain distinct. Existing manual images and the [earlier installed
-receipt](verification/ssh-voice-installed-update-2026-11-18.md) identify their own
-older source; they do not automatically certify the current candidate.
+The public preview label remains **v0.5.0-alpha**. The intended release is an unpublished prerelease draft for maintainer verification; it must not be published automatically. Signing and clean-machine/hardware/provider acceptance remain separate. Existing screenshots and the [earlier installed receipt](verification/ssh-voice-installed-update-2026-11-18.md) retain their original source identities.
 
 ## First contributor run
 
@@ -59,7 +48,7 @@ an external reader's golden-path acceptance remain unmeasured.
 | Monitoring | Optional Go aggregation with local/paired telemetry and read-only SSH status | Connectivity, permission and freshness remain separate. Monitoring DTOs grant no execution or workspace access. |
 | SSH execution | Explicit temporary Custom target selection and exactly approved `ssh.run` commands | Separate from monitoring; no remote sandbox, PTY, file inspector or Harness SSH execution. Reconnect after service restart. |
 | Voice | Piper recommended for CPU; Kokoro selectable; optional Whisper input and separate wake downloads | Installed Piper model load/synthesis verified; microphone, playback, echo and wake require device-specific acceptance. |
-| Setup | Windows installer with private runtime, versioned maintenance and optional Piper/Kokoro installation | Exact candidate installation accepted by the maintainer; signing, broad hardware and clean-machine qualification remain separate. |
+| Setup | Windows installer with private runtime, versioned maintenance and optional Piper/Kokoro installation | Rebuilt draft awaits final human verification; signing, broad hardware and clean-machine qualification remain separate. |
 
 ## Platform matrix
 

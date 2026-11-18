@@ -10,7 +10,7 @@
 
 El modelo propone acciones; el servicio aplica la política y obtiene la aprobación requerida antes de la ejecución. Usar un espacio de trabajo desechable. El confinamiento en Windows es parcial, y las solicitudes en la nube y las observaciones de herramientas permitidas salen de tu equipo hacia el proveedor elegido.
 
-**Actualizado el 18 de noviembre de 2026.** El instalador siguiente parte de `1834c1a` más los cambios Piper/setup sin confirmar registrados; el mantenedor confirmó la instalación. Consultar la [identidad y alcance de las pruebas](../verification/windows-piper-installer-2026-11-18.md) (solo en inglés). Las capturas existentes corresponden al código anterior (`7f3b925`); no califican todas las funciones nuevas ni el recorrido completo de un usuario externo.
+**Actualizado el 19 de noviembre de 2026, continuando el trabajo de publicación del día 18.** El instalador del borrador se recompiló desde el código confirmado `6f96e71`, incluidas las correcciones de revisión. Las comprobaciones de compilación y la base Piper instalada previamente constan en el [registro del candidato](../verification/windows-piper-installer-2026-11-18.md) (solo en inglés). Falta la verificación final del mantenedor; la aceptación del instalador anterior no se transfiere a esta compilación. Las capturas conservan su identidad anterior (`7f3b925`).
 
 Si esta ruta no funciona en tu caso, [abrir un issue](https://github.com/Trisoma/odessy/issues/new/choose) con la **salida de doctor saneada** y el paso que falló. Consultar [Solución de problemas y reporte](#solución-de-problemas-y-reporte).
 
@@ -26,7 +26,7 @@ Elegir **una** ruta a continuación. Un candidato empaquetado incluye su entorno
 
 ### A. Instalador proporcionado
 
-El candidato Windows x64 **`Odessy-v0.5.0-alpha-windows-x64-setup.exe`** se ha recompilado y el mantenedor confirmó su instalación correcta el 18 de noviembre de 2026. Usar ese candidato con su suma de comprobación, proporcionado por el mantenedor o mediante la [página de versiones](https://github.com/Trisoma/odessy/releases). Esta documentación no publica el archivo; los antiguos archivos de UI `v0.5.0-unstable` no lo sustituyen. Si no se dispone del candidato correspondiente, usar la ruta B.
+El candidato Windows x64 **`Odessy-v0.5.0-alpha-windows-x64-setup.exe`** está preparado para un **borrador sin publicar, pendiente de verificación del mantenedor**. Obtener el archivo exacto y su checksum del mantenedor; solo habrá una descarga pública si decide publicar la [versión](https://github.com/Trisoma/odessy/releases). Los adjuntos de un borrador no son una descarga pública. Los archivos UI `v0.5.0-unstable` no lo sustituyen. Usar la ruta B si no se dispone del candidato correspondiente.
 
 Comparar el SHA-256 del archivo descargado antes de abrirlo:
 
@@ -34,7 +34,7 @@ Comparar el SHA-256 del archivo descargado antes de abrirlo:
 Get-FileHash -Algorithm SHA256 -LiteralPath '.\Odessy-v0.5.0-alpha-windows-x64-setup.exe'
 ```
 
-SHA-256 esperado para este candidato: `15063674bf944db7beae83fa4b55318aca831e47801db7d3828a41f6edf831ae`. Cada compilación posterior necesita su propia suma y registro. Consultar el [registro del candidato](../verification/windows-piper-installer-2026-11-18.md) (solo en inglés).
+SHA-256 esperado para este candidato: `2d634100c87251f3f685fdf0a43b734b534b08b6d8643d7e1458c25992abf47a`. Cada compilación posterior necesita su propia suma y registro. Consultar el [registro del candidato](../verification/windows-piper-installer-2026-11-18.md) (solo en inglés).
 
 1. Abrir el EXE y elegir la carpeta de instalación. Mantener el coordinador con ejecución local predeterminado; los otros roles están en **Custom setup**. El usuario final no necesita los SDK de Python, Node ni Flutter.
 2. Elegir **Piper (recommended for CPU)** o **Kokoro** en **Speech output engine**. Para instalar voz automáticamente, activar **Install voice components**. No se necesita una instalación previa de Piper: tras confirmar la instalación se descargan el motor fijado, una voz inglesa, sus metadatos, Whisper.cpp y las dependencias de audio. Revisar el tamaño y las licencias; estas descargas opcionales requieren internet.
@@ -43,6 +43,15 @@ SHA-256 esperado para este candidato: `15063674bf944db7beae83fa4b55318aca831e478
 5. Configurar el modelo como se describe abajo y elegir una carpeta desechable en **Workspaces**. Tras conectar el audio, probar STT/TTS y activar explícitamente la escucha de palabra de activación en Settings; instalar archivos no verifica el micrófono ni los altavoces.
 
 Para actualizar una instalación versionada existente, elegir su ubicación registrada y revisar la actualización en **Manage installation**. Conservar el perfil y los modelos; no es necesario desinstalar primero. La detección y descarga automática de actualizaciones dentro de la app todavía no están implementadas.
+
+Si una actualización de Piper se detiene porque falta la caché de paquetes de
+voz, la versión anterior sigue activa. Cerrar la aplicación; en **Manage Odessy**,
+elegir **Pause speech for update**, revisar y pulsar **Confirm once**, y volver a
+revisar **Repair or update files**. Es una elección explícita de usar texto; no
+borra la configuración de voz. Se conservan dispositivos, rutas de componentes,
+modelo y espacio de trabajo. **Enable saved speech** requiere otra revisión y
+usa el runtime y los archivos conservados; no eliminarlos. No descarga ni repara
+componentes ausentes. Ver [recuperación de voz al actualizar](../setup/voice-components.md#upgrading-after-removing-the-speech-cache) (solo en inglés).
 
 ![Diseño del chat con la barra de proyectos y el compositor](../view/conversation/projects-and-recent.png)
 

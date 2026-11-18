@@ -38,7 +38,7 @@ Odessy 正朝着**语音优先（voice-first）的个人智能体**方向发展�
 - **已经有完整的候选版本？** 请按[图文手册](docs/zh-CN/GOLDEN_PATH.md)操作。Windows 安装包含其受支持的运行时，并采用带版本号的维护机制。
 - **从源码构建？** 请参阅[入门指南](docs/zh-CN/getting-started.md)。安装开发者 SDK 之后，其桌面端托管模式使用相同的已配置服务生命周期。手动启动服务与 fake-model 命令属于独立的贡献者检查项。
 
-完整的 Windows x64 安装程序已构建，维护者于 2026 年 11 月 18 日确认安装成功。安装时可选 **Piper（推荐用于 CPU）** 或 **Kokoro**，支持主动选择并校验语音下载，唤醒词另行选择。参见[安装步骤及校验值](docs/zh-CN/GOLDEN_PATH.md#1-安装并打开-odessy)。本次更新不会自动发布下载文件；请向分发者或在[发布页面](https://github.com/Trisoma/odessy/releases)取得匹配 EXE。旧的 `v0.5.0-unstable` UI 归档并非当前完整安装包。具体证据及待验证事项见[候选版本回执](docs/verification/windows-piper-installer-2026-11-18.md)（English only）。
+完整的 Windows x64 安装程序已备妥，用于**尚未公开的验收草稿**。可选 **Piper（推荐用于 CPU）** 或 **Kokoro**，支持经校验的可选语音下载，唤醒词另行选择。请按[手册步骤及校验值](docs/zh-CN/GOLDEN_PATH.md#1-安装并打开-odessy)操作。维护者须先验收本次重新构建的候选版本，再决定是否发布；11 月 18 日较早安装包的人工验收仅适用于原文件。请向维护者取得匹配候选版本，或使用源码；[发布页面](https://github.com/Trisoma/odessy/releases)只有正式公开后才提供下载。旧 `v0.5.0-unstable` UI 归档不能替代它。详见[候选版本回执](docs/verification/windows-piper-installer-2026-11-18.md)（English only）。
 
 ## 你可以探索的内容
 

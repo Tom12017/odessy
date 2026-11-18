@@ -13,7 +13,7 @@ no el flujo de trabajo normal del usuario. La CLI del módulo sigue existiendo p
 
 ## Elegir tu ruta
 
-- **Instalador de Windows:** el mantenedor confirmó la instalación del candidato; incluye su propio runtime y no requiere los SDK de Python, Node ni Flutter. Seguir el [manual](./GOLDEN_PATH.md#1-instalar-y-abrir-odessy) para el EXE y su checksum, la instalación, Piper/Kokoro y la activación opcional por voz.
+- **Instalador de Windows:** el candidato del borrador incluye su runtime; el usuario final no necesita SDK de Python, Node ni Flutter. Seguir el [manual](./GOLDEN_PATH.md#1-instalar-y-abrir-odessy) para el checksum exacto, instalación, Piper/Kokoro y activación opcional. Falta la verificación final del mantenedor.
 - **Código fuente:** usar los pasos de desarrollo siguientes. Requiere SDK y es una ruta distinta del instalador proporcionado. Esta documentación no publica una descarga; obtener el candidato del distribuidor o usar el código fuente. Los archivos UI antiguos no contienen la aplicación completa actual.
 
 ## Preparar una copia del código fuente en Windows

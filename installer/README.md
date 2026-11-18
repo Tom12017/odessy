@@ -3,7 +3,8 @@
 > Current Windows candidate: the [desktop manual](../docs/GOLDEN_PATH.md#1-install-and-open-odessy)
 > contains the verified filename/checksum and user installation steps, including
 > automatic Piper or Kokoro setup. The [November 18 receipt](../docs/verification/windows-piper-installer-2026-11-18.md)
-> records maintainer acceptance and exact test scope.
+> records the rebuilt candidate and the earlier human-tested installer with
+> separate verification scopes. Final human verification is pending.
 
 **Developer Preview · v0.5.0-alpha**
 

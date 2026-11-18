@@ -8,7 +8,7 @@
 
 Empezar por la guía correspondiente a la tarea. La [matriz de soporte actual](current-status.md) define el comportamiento implementado, las capacidades no disponibles y las puertas de publicación pendientes. Los planes históricos y los recibos de pruebas describen las instantáneas registradas, no el soporte actual.
 
-El [candidato Windows del 18 de noviembre](../verification/windows-piper-installer-2026-11-18.md) (solo en inglés) tiene instalación confirmada por el mantenedor, Piper/Kokoro opcional y checksum en el [manual](GOLDEN_PATH.md). Esta página no publica un archivo de versión.
+El [candidato Windows del borrador](../verification/windows-piper-installer-2026-11-18.md) (solo en inglés) ofrece Piper/Kokoro opcional. El [manual](GOLDEN_PATH.md) identifica su checksum y pasos de instalación. La verificación final del mantenedor y la publicación están pendientes; la aceptación anterior solo corresponde al checksum original.
 
 | Tarea | Guía |
 | --- | --- |

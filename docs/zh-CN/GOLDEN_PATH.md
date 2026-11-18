@@ -10,7 +10,7 @@
 
 模型提出操作建议；服务在执行前应用策略并取得所需批准。请使用一次性工作区。Windows 的隔离限制并不完整，云请求和经允许的工具观察内容会离开你的计算机，发送给所选提供商。
 
-**更新日期：2026 年 11 月 18 日。**下述安装包基于 `1834c1a` 加已记录的未提交 Piper/安装修复；维护者已确认安装成功。参见[候选版本及检查范围](../verification/windows-piper-installer-2026-11-18.md)（English only）。现有截图对应较早构建（`7f3b925`），不能证明所有较新功能或外部用户的完整操作流程。
+**更新日期：2026 年 11 月 19 日，继续完成 11 月 18 日的发布工作。**草稿安装包根据已提交的应用源码 `6f96e71` 重新构建，包含评审修复。构建检查及较早的安装后 Piper 基线见[候选版本回执](../verification/windows-piper-installer-2026-11-18.md)（English only）。维护者最终验收仍待完成；较早安装包的人工验收不能转移到本次构建。现有截图保留较早源码标识（`7f3b925`）。
 
 如果这条路径对你不适用，请带着**脱敏后的 doctor 输出**和失败的步骤[提交 issue](https://github.com/Trisoma/odessy/issues/new/choose)。参见[故障排查与报告](#故障排查与报告)。
 
@@ -26,7 +26,7 @@
 
 ### A. 提供的安装程序
 
-Windows x64 候选安装程序 **`Odessy-v0.5.0-alpha-windows-x64-setup.exe`** 已重新构建，维护者于 2026 年 11 月 18 日确认安装成功。请使用维护者提供或[发布页面](https://github.com/Trisoma/odessy/releases)上带校验值的匹配候选版本。本文不会自动发布下载文件；旧的 `v0.5.0-unstable` UI 归档不能替代它。如果无法取得匹配安装包，请使用方式 B。
+Windows x64 候选安装程序 **`Odessy-v0.5.0-alpha-windows-x64-setup.exe`** 用于**尚未公开的维护者验收草稿**。请向维护者取得匹配文件及校验值；只有维护者决定[发布](https://github.com/Trisoma/odessy/releases)后才有公开下载。草稿附件不是公开下载，旧的 `v0.5.0-unstable` UI 归档也不能替代本安装包。没有匹配文件时，请使用方式 B。
 
 打开前核对下载文件的 SHA-256：
 
@@ -34,7 +34,7 @@ Windows x64 候选安装程序 **`Odessy-v0.5.0-alpha-windows-x64-setup.exe`** �
 Get-FileHash -Algorithm SHA256 -LiteralPath '.\Odessy-v0.5.0-alpha-windows-x64-setup.exe'
 ```
 
-本候选版本的 SHA-256：`15063674bf944db7beae83fa4b55318aca831e47801db7d3828a41f6edf831ae`。后续构建必须附有自己的校验值及验证记录。参见[候选版本回执](../verification/windows-piper-installer-2026-11-18.md)（English only）。
+本候选版本的 SHA-256：`2d634100c87251f3f685fdf0a43b734b534b08b6d8643d7e1458c25992abf47a`。后续构建必须附有自己的校验值及验证记录。参见[候选版本回执](../verification/windows-piper-installer-2026-11-18.md)（English only）。
 
 1. 打开 EXE，选择安装目录。通常保留默认的协调端与本地执行；其他角色位于 **Custom setup**。最终用户无需 Python、Node 或 Flutter 开发 SDK。
 2. 在 **Speech output engine** 中选择 **Piper (recommended for CPU)** 或 **Kokoro**。要自动安装语音，请开启 **Install voice components**。无需事先安装 Piper：确认安装后，向导会下载固定版本的引擎、英语语音、匹配的模型元数据、Whisper.cpp 及音频依赖。请审阅下载大小及许可证；可选下载需要联网。
@@ -43,6 +43,8 @@ Get-FileHash -Algorithm SHA256 -LiteralPath '.\Odessy-v0.5.0-alpha-windows-x64-s
 5. 按下文配置模型，通过 **Workspaces** 选择一次性工作区。连接音频设备后，在 Settings 中测试 STT/TTS，并主动启用唤醒监听；文件安装成功并不等于麦克风或扬声器已通过验证。
 
 更新现有的带版本安装时，选择原安装位置，通过 **Manage installation** 审阅更新。保留用户配置与语音模型，无需先卸载。目前尚未实现应用内自动发现或下载更新。
+
+如果 Piper 更新因语音软件包缓存缺失而停止，旧版本仍保持激活。先关闭正在运行的应用，在 **Manage Odessy** 中选择 **Pause speech for update**，审核并点击 **Confirm once**，然后重新审核 **Repair or update files**。这是明确选择暂时仅用文字，不会自动丢弃语音配置。已保存的设备、组件路径、模型及工作区都会保留。**Enable saved speech** 需单独审核，并使用保留的提供商运行时及文件；请保留这些文件。该操作不下载或修复缺失组件。详见[语音更新恢复](../setup/voice-components.md#upgrading-after-removing-the-speech-cache)（English only）。
 
 ![包含项目侧栏与输入框的聊天布局](../view/conversation/projects-and-recent.png)
 

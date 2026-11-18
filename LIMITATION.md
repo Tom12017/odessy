@@ -7,7 +7,7 @@
 The [current support matrix](docs/current-status.md) is the maintained capability
 and release baseline. This page summarizes constraints that affect adoption.
 
-- **Release qualification:** the maintainer confirmed installation of the [November 18 candidate](docs/verification/windows-piper-installer-2026-11-18.md). That evidence applies to its checksum and recorded source snapshot. Signing, clean-machine behavior and broader hardware acceptance remain separate gates.
+- **Release qualification:** the rebuilt draft awaits final maintainer verification. The [candidate receipt](docs/verification/windows-piper-installer-2026-11-18.md) separates automated results from acceptance of the earlier installer. Signing, clean-machine behavior and broader hardware acceptance remain separate gates.
 - **Checkpoint safety:** restoration is disabled on Windows at the service and
   write boundary until directory-handle race protection is implemented. Creation,
   listing and preview remain available. Direct restore requests return unsupported;

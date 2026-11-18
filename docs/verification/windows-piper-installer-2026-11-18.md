@@ -1,13 +1,72 @@
-# Windows Piper installer verification — November 18, 2026
+# Windows Piper installer verification — November 18–19, 2026
 
-**Developer Preview · v0.5.0-alpha · Windows x64**
+**Developer Preview · v0.5.0-alpha · Windows x64 · unpublished candidate**
+
+## Current rebuilt draft candidate
+
+- Application source: `6f96e71c0d1517030bf30729546d4bb90578bdc3`; clean working tree at build time.
+- File: `Odessy-v0.5.0-alpha-windows-x64-setup.exe`.
+- SHA-256: `2d634100c87251f3f685fdf0a43b734b534b08b6d8643d7e1458c25992abf47a`.
+- Size: 322,126,953 bytes.
+- Local output: `build/releases/v0.5.0-alpha/6f96e71/windows-x64/`.
+- Python wheel, setup/bootstrap and production Flutter app rebuilt from that source.
+  Unchanged bundled Python/Node/Rust/Go dependency inputs were reused only after
+  verification against the previous closed file inventory. No new dependency download.
+- Generated bootstrap bytecode was excluded. An initial staging-only attempt
+  failed its inventory check before installation; that rejected artifact is not
+  this candidate. Public checksums must identify only the corrected file above.
+- The public alpha label is `v0.5.0-alpha`; embedded Python/Flutter development
+  version metadata retains its recorded value. This is not a stable release.
+- Unsigned. **Final maintainer verification is pending.** Acceptance of the older
+  installer below does not transfer to this rebuilt file.
+
+| Current check | Evidence |
+| --- | --- |
+| Affected Python setup/install suites | 131 passed |
+| Affected setup/management widgets | 68 passed |
+| Flutter analysis / settings contracts | Clean / 107 contracts |
+| Production Windows build | Succeeded from `6f96e71` |
+| Hosted CI at `6f96e71` | Python, desktop, Node, Rust/link, native offline setup and CodeQL checks passed; Windows Python 3.12: 3,969 passed, 51 skipped, 122 subtests |
+| Prior fresh isolated installed Piper (`0da75ae`) | Cached hash-pinned components installed into the packaged Python; model loaded and generated a mono 22,050 Hz WAV (3.622 seconds) |
+| Final-source upgrade/repair of managed Piper | Passed; new runtime verified before activation, interpreter rebound and mono 22,050 Hz WAV generated (5.364 seconds); previous runtime retained |
+| Preservation | Saved audio devices, model/workspace and unrelated user-file/history/reference sentinels preserved; sentinels are not real vault credentials |
+| Cache/error handling | Zero remaining download bytes; missing model sidecar refused; final installed `pip check` passed |
+| Installed source identity | Final installed application sources/resources and desktop executable match build hashes; registration completed |
+| Windows OpenSSH launch environment | Real local configuration resolution passed with the qualification launch environment; no network login implied |
+
+These are packaged bridge and native checks, not microphone/speaker acceptance or
+an external user's full golden path. The final candidate was verified through a real upgrade of the isolated
+`0da75ae` fresh installation. It has not been installed a second time from an empty
+root. The qualification reused verified voice downloads; it is not a new
+empty-cache download test. The earlier empty-cache
+and human reports below retain their original artifact scope. Existing user
+installations were not replaced for this candidate qualification.
+
+Release remains contingent on review/merge gates and final human verification.
+Greptile review is unavailable while organization credits are exhausted; that
+is not a successful review. Keep Windows checkpoint restoration disabled.
+
+## Native extraction scope
+
+The native bootstrap was exercised with the intermediate `0da75ae` candidate
+(`1ceaf100ef23850acb6f9723bc0516856c194ad5f78aa9e184959b35e5172cea`).
+Its 8,350 extracted files and actual packaged helper context verified. The
+longest real extracted path was 256 characters; a separate NSIS boundary test
+covers longer paths. The final candidate retains that bootstrap source and
+passes its package audit and installed helper path, but a repeat GUI launch of
+the final EXE is pending maintainer verification. Computer Use was stopped with
+Escape; no final visual acceptance or full GUI installation is claimed.
+
+## Earlier installer accepted on November 18
+
+The following dated evidence describes the earlier installer only.
 
 The maintainer confirmed that the rebuilt installer completed successfully, then
 confirmed SSH connects after correcting the test launch environment. These are
 human reports, separate from the automated checks below. No new installer run
 was needed to resolve the SSH error.
 
-## Candidate identity
+### Earlier candidate identity
 
 - File: `Odessy-v0.5.0-alpha-windows-x64-setup.exe`
 - SHA-256: `15063674bf944db7beae83fa4b55318aca831e47801db7d3828a41f6edf831ae`
@@ -18,7 +77,7 @@ was needed to resolve the SSH error.
   is insufficient to reproduce it. The adjacent `verification.json` is the build receipt.
 - Unsigned; no release upload, signing or new public asset URL is established here.
 
-## Scope and checks
+### Earlier scope and checks
 
 | Check | Result |
 | --- | --- |
@@ -41,7 +100,7 @@ is no full-suite success claim. Candidate receipt counts precede this documentat
 update and retain their exact source scope. Current focused 135-test results were
 run after adding the launch-environment regression cases.
 
-## SSH incident and resolution
+### SSH incident and resolution
 
 The temporary native-installer qualification launcher constructed a reduced
 environment for an isolated profile but omitted `ProgramData` and `ALLUSERSPROFILE`.
@@ -65,7 +124,7 @@ OpenSSH configuration check passes with the production launch environment.
 Custom launchers must preserve these variables; this evidence is not a guarantee
 against every future host configuration or networking failure.
 
-## Voice delivery and remaining gates
+### Voice delivery and remaining gates
 
 Piper is recommended for CPU, and Kokoro remains selectable. Optional speech
 downloads install the selected engine and model plus Whisper/audio dependencies;
@@ -77,11 +136,10 @@ model and wake licenses retain their separate terms.
 Microphone capture, speaker playback, spoken wake, all hardware, clean-machine
 behavior and the complete external-user golden path are not universally qualified.
 Windows checkpoint restoration remains disabled. Existing screenshots and older
-upgrade receipts keep their own revision and hardware scope. A release draft may
-use this exact human-tested installer; a changed application build needs matching
-artifact checks. Public distribution, signing and hosted CI are separate actions.
+upgrade receipts keep their own revision and hardware scope. The current draft uses the rebuilt candidate above; this older human-tested
+installer is retained as historical evidence only. Public distribution, signing and hosted CI are separate actions.
 
-## Packaged dirty source hashes
+### Packaged dirty source hashes
 
 These are build-time hashes, before the subsequent documentation corrections.
 
