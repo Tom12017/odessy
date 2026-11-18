@@ -1,5 +1,7 @@
 # Known limitations
 
+**English** | [简体中文](docs/zh-CN/LIMITATION.md) | [Español](docs/es/LIMITATION.md)
+
 **Developer Preview · v0.5.0-alpha**
 
 The [current support matrix](docs/current-status.md) is the maintained capability

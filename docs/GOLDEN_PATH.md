@@ -1,5 +1,7 @@
 # Odessy desktop manual
 
+**English** | [简体中文](zh-CN/GOLDEN_PATH.md) | [Español](es/GOLDEN_PATH.md)
+
 **Developer Preview · v0.5.0-alpha · Windows 11**
 
 **First success:** connect a real model, deny one local command, then approve a new request and verify its tool output. Complete sections 1–3 on one Windows laptop. Voice, wake words and SSH are optional exercises after that finish line; they are not prerequisites.

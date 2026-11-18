@@ -1,5 +1,7 @@
 # Odessy documentation
 
+**English** | [简体中文](zh-CN/README.md) | [Español](es/README.md)
+
 **Developer Preview · v0.5.0-alpha**
 
 Start with the guide for your task. The [current support matrix](current-status.md)

@@ -1,5 +1,7 @@
 # Contributing to Odessy
 
+**English** | [简体中文](docs/zh-CN/CONTRIBUTING.md) | [Español](docs/es/CONTRIBUTING.md)
+
 **Developer Preview · v0.5.0-alpha**
 
 Start with the [managed desktop setup](docs/getting-started.md), [open GitHub issues](https://github.com/Trisoma/odessy/issues), the [support matrix](docs/current-status.md) and [architecture](docs/ARCHITECTURE.md). We are looking for collaborators who can take one focused area through review; volunteer availability is welcome.

@@ -1,5 +1,7 @@
 # Odessy architecture: a newcomer map
 
+**English** | [简体中文](zh-CN/ARCHITECTURE.md) | [Español](es/ARCHITECTURE.md)
+
 > Developer Preview · v0.5.0-alpha. Component responsibilities, not individual contributor assignments. The model proposes; Odessy decides.
 
 New here? Read [the story](../Story.md) for the intended end-to-end experience and

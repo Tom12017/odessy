@@ -1,5 +1,7 @@
 # Current support and release status
 
+**English** | [简体中文](zh-CN/current-status.md) | [Español](es/current-status.md)
+
 **Developer Preview · v0.5.0-alpha**  
 Documentation reviewed: November 18, 2026.
 

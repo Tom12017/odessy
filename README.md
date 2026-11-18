@@ -1,5 +1,7 @@
 # Odessy
 
+**English** | [简体中文](README.zh-CN.md) | [Español](README.es.md)
+
 **Developer Preview · v0.5.0-alpha**
 
 > **Unstable developer preview.** Odessy is experimental software. Expect bugs,

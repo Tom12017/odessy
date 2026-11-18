@@ -1,5 +1,7 @@
 # Getting started
 
+**English** | [简体中文](zh-CN/getting-started.md) | [Español](es/getting-started.md)
+
 **Developer Preview · v0.5.0-alpha · Windows 11 x64**
 
 Open the desktop, configure a model in Settings, choose a disposable workspace,
