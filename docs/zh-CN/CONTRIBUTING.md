@@ -14,6 +14,8 @@
 
 关于项目概览，请从 [README](../../README.zh-CN.md) 开始。架构与组件文档请从[文档索引](README.md)开始。
 
+安装及上手流程相关工作请先阅读[候选版本回执](../verification/windows-piper-installer-2026-11-18.md)（English only）和[手册](GOLDEN_PATH.md)。验证启动脚本必须保留包括 `ProgramData` 在内的 Windows 系统及用户目录变量；漏传会使 OpenSSH 在认证前失败。测试启动环境错误不应被描述为 SSH 产品修复。
+
 ## 选择从哪里开始
 
 | 贡献类型 | 如何开始 |

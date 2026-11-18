@@ -7,22 +7,29 @@ Documentation reviewed: November 18, 2026.
 
 ## Source and release baseline
 
-This review uses local `develop` at `1a50944ca717f9b5590063bdf1a7566054cf90be`
-after PR #68, before the contributor/manual and translation documentation commits.
-Runtime metadata and source functionality are separate from those documentation edits.
+The current Windows x64 candidate is based on `1834c1a441fb444ecb1712429c550bafce7d3b19`
+on `fix/windows-setup-long-paths`, plus the uncommitted Piper/setup fixes recorded in
+its adjacent `verification.json`. It is a recorded dirty source snapshot, not a
+claim that commit `1834c1a` alone contains every packaged fix.
 
-The [November 18 installed receipt](verification/ssh-voice-installed-update-2026-11-18.md)
-identifies the upgraded Windows candidate built from `7f3b925`, with preservation,
-component checks and their limits. It does not qualify every later merged revision.
-The manual's real SSH captures identify that installed executable; gallery fixtures
-and deterministic service tests remain separately labeled.
+The maintainer confirmed successful installation of the rebuilt EXE on November 18,
+2026. The [candidate receipt](verification/windows-piper-installer-2026-11-18.md) identifies the checksum,
+109 affected Python tests, 650 Flutter tests passed/15 skipped, clean analysis,
+isolated installed Piper synthesis and the remaining limitations. The full Python
+suite was stopped before completion; it is not reported green.
 
-The intended next public label is **v0.5.0-alpha**, not beta. A matching full installer
-is not on the public release page as of this review; `v0.5.0-unstable` archives are an
-older UI-client snapshot. A functioning supplied/local installer is different from
-a published download. No publication, signing or clean-machine qualification is
-implied by this page. Earlier PR #67 CI/review receipts retain their own scope and
-cannot certify the current head automatically.
+The observed `ssh -G failed` was traced to the qualification launcher's missing
+Windows `ProgramData` environment variable. The same installed app passed its
+authenticated SSH inspection after a corrected relaunch, and the maintainer
+confirmed login works. No application files or installer were replaced for that
+repair. Seven regression cases now cover system/profile environment preservation;
+52 focused Windows-launch/installed/SSH checks pass.
+
+The public preview label remains **v0.5.0-alpha**. No upload, signing or publication
+was performed by this documentation update. A supplied, tested candidate and a
+published download remain distinct. Existing manual images and the [earlier installed
+receipt](verification/ssh-voice-installed-update-2026-11-18.md) identify their own
+older source; they do not automatically certify the current candidate.
 
 ## First contributor run
 
@@ -51,8 +58,8 @@ an external reader's golden-path acceptance remain unmeasured.
 | Checkpoints | Git-backed bounded text snapshots and preview; supported non-Windows restoration uses exact approval and a safety snapshot | Windows restoration is disabled in the service and UI pending handle-based safety. Creation/list/preview remain available; binary/sensitive/unsupported files are excluded. |
 | Monitoring | Optional Go aggregation with local/paired telemetry and read-only SSH status | Connectivity, permission and freshness remain separate. Monitoring DTOs grant no execution or workspace access. |
 | SSH execution | Explicit temporary Custom target selection and exactly approved `ssh.run` commands | Separate from monitoring; no remote sandbox, PTY, file inspector or Harness SSH execution. Reconnect after service restart. |
-| Voice | Existing provider/controller lifecycle and scoped prior audio evidence | Microphone, echo, model assets and device/provider compatibility require their own checks. |
-| Setup | Windows Flutter setup, private runtime closure and versioned maintenance | Final merged source has not been qualified as one new coherent installed release candidate. |
+| Voice | Piper recommended for CPU; Kokoro selectable; optional Whisper input and separate wake downloads | Installed Piper model load/synthesis verified; microphone, playback, echo and wake require device-specific acceptance. |
+| Setup | Windows installer with private runtime, versioned maintenance and optional Piper/Kokoro installation | Exact candidate installation accepted by the maintainer; signing, broad hardware and clean-machine qualification remain separate. |
 
 ## Platform matrix
 

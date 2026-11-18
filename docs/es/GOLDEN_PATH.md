@@ -10,7 +10,7 @@
 
 El modelo propone acciones; el servicio aplica la política y obtiene la aprobación requerida antes de la ejecución. Usar un espacio de trabajo desechable. El confinamiento en Windows es parcial, y las solicitudes en la nube y las observaciones de herramientas permitidas salen de tu equipo hacia el proveedor elegido.
 
-**Revisado el 18 de noviembre de 2026.** El arranque gestionado por el escritorio está respaldado por pruebas de código fuente y de arranque; las comprobaciones de política usan la revisión `1a50944ca717f9b5590063bdf1a7566054cf90be` de `develop`. Las capturas de la instalación del mantenedor y las comprobaciones anteriores usan el código fuente `7f3b925`; no certifican una instalación nueva de la revisión posterior ni cada paso siguiente. Todavía queda por registrar una ejecución nueva de un usuario externo.
+**Actualizado el 18 de noviembre de 2026.** El instalador siguiente parte de `1834c1a` más los cambios Piper/setup sin confirmar registrados; el mantenedor confirmó la instalación. Consultar la [identidad y alcance de las pruebas](../verification/windows-piper-installer-2026-11-18.md) (solo en inglés). Las capturas existentes corresponden al código anterior (`7f3b925`); no califican todas las funciones nuevas ni el recorrido completo de un usuario externo.
 
 Si esta ruta no funciona en tu caso, [abrir un issue](https://github.com/Trisoma/odessy/issues/new/choose) con la **salida de doctor saneada** y el paso que falló. Consultar [Solución de problemas y reporte](#solución-de-problemas-y-reporte).
 
@@ -26,24 +26,27 @@ Elegir **una** ruta a continuación. Un candidato empaquetado incluye su entorno
 
 ### A. Instalador proporcionado
 
-A la fecha de esta revisión, las [releases públicas](https://github.com/Trisoma/odessy/releases) contienen los archivos empaquetados más antiguos del cliente de interfaz `v0.5.0-unstable`, **no un instalador completo actual que corresponda**. No usar esos archivos para este recorrido. Si no has recibido de su distribuidor un candidato completo con una suma de comprobación y una revisión del código fuente, usar la ruta B.
+El candidato Windows x64 **`Odessy-v0.5.0-alpha-windows-x64-setup.exe`** se ha recompilado y el mantenedor confirmó su instalación correcta el 18 de noviembre de 2026. Usar ese candidato con su suma de comprobación, proporcionado por el mantenedor o mediante la [página de versiones](https://github.com/Trisoma/odessy/releases). Esta documentación no publica el archivo; los antiguos archivos de UI `v0.5.0-unstable` no lo sustituyen. Si no se dispone del candidato correspondiente, usar la ruta B.
 
-Para un EXE de instalación de Windows x64 proporcionado, comparar su hash con el manifiesto de sumas de comprobación de ese candidato antes de abrirlo:
+Comparar el SHA-256 del archivo descargado antes de abrirlo:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 -LiteralPath 'C:\path\to\OdessySetup.exe'
+Get-FileHash -Algorithm SHA256 -LiteralPath '.\Odessy-v0.5.0-alpha-windows-x64-setup.exe'
 ```
 
-El nombre de archivo anterior es un marcador de posición para tu descarga. La instalación del mantenedor se actualizó al código fuente `7f3b925` a través de los propietarios de instalación versionados; ese recibo no es una calificación nueva del instalador público. Consultar el [registro de verificación de la instalación](../verification/ssh-voice-installed-update-2026-11-18.md) (solo en inglés).
+SHA-256 esperado para este candidato: `15063674bf944db7beae83fa4b55318aca831e47801db7d3828a41f6edf831ae`. Cada compilación posterior necesita su propia suma y registro. Consultar el [registro del candidato](../verification/windows-piper-installer-2026-11-18.md) (solo en inglés).
 
-1. Abrir el instalador proporcionado y elegir **Coordinator host + local execution** (Host coordinador + ejecución local).
-2. Elegir una carpeta de instalación, revisar los componentes, instalar y seleccionar **Open Odessy** (Abrir Odessy). La [guía del asistente de instalación](../setup/wizard.md) (solo en inglés) explica las opciones disponibles.
-3. Configurar un modelo como se describe a continuación. Una vez conectado, usar **Workspaces** (Espacios de trabajo) para elegir una carpeta que puedas usar de forma segura para experimentos.
-4. Encontrar los proyectos y los chats guardados a la izquierda, el compositor de mensajes debajo del chat y el interruptor del inspector en la parte superior derecha.
+1. Abrir el EXE y elegir la carpeta de instalación. Mantener el coordinador con ejecución local predeterminado; los otros roles están en **Custom setup**. El usuario final no necesita los SDK de Python, Node ni Flutter.
+2. Elegir **Piper (recommended for CPU)** o **Kokoro** en **Speech output engine**. Para instalar voz automáticamente, activar **Install voice components**. No se necesita una instalación previa de Piper: tras confirmar la instalación se descargan el motor fijado, una voz inglesa, sus metadatos, Whisper.cpp y las dependencias de audio. Revisar el tamaño y las licencias; estas descargas opcionales requieren internet.
+3. Activar **Install the wake-word model** por separado si se desea. Su modelo tiene licencia CC BY-NC-SA 4.0. Se pueden omitir voz y activación para usar chat escrito. **Use existing voice components** permite seleccionar archivos existentes; no instala los que falten.
+4. Revisar el plan y pulsar **Install**. Una caché completa puede mostrar cero bytes pendientes; el instalador todavía instala y verifica los paquetes en esta instalación. Esperar a que termine y elegir **Open Odessy**. Consultar [el asistente](../setup/wizard.md) y [los componentes de voz](../setup/voice-components.md) (solo en inglés).
+5. Configurar el modelo como se describe abajo y elegir una carpeta desechable en **Workspaces**. Tras conectar el audio, probar STT/TTS y activar explícitamente la escucha de palabra de activación en Settings; instalar archivos no verifica el micrófono ni los altavoces.
 
-![Diseño del chat con la barra lateral de proyectos y el compositor](../view/conversation/projects-and-recent.png)
+Para actualizar una instalación versionada existente, elegir su ubicación registrada y revisar la actualización en **Manage installation**. Conservar el perfil y los modelos; no es necesario desinstalar primero. La detección y descarga automática de actualizaciones dentro de la app todavía no están implementadas.
 
-*Ejemplo de la galería de escritorio. La barra lateral de proyectos permite alternar entre conversaciones guardadas.*
+![Diseño del chat con la barra de proyectos y el compositor](../view/conversation/projects-and-recent.png)
+
+*Ejemplo de la galería. Las imágenes existentes de la galería y de SSH conservan su identidad de código original; no son capturas nuevas de este instalador.*
 
 ### B. Compilar el escritorio de producción desde el código fuente
 

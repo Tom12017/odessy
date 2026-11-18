@@ -11,11 +11,13 @@ not the normal user workflow. The module CLI still exists for development and di
 
 ## Choose your route
 
-- **Supplied full installer:** follow the [desktop manual](GOLDEN_PATH.md#1-install-and-open-odessy).
-  The package supplies its runtime; no Python, Node or Flutter SDK is an end-user requirement.
-- **Source checkout:** use the steps below. As of November 18, 2026, the public release page
-  only supplies older UI-client archives, not a matching full installer. Do not combine them
-  with current source. Source builds require development tools; first build time varies.
+- **Windows installer:** the maintainer-confirmed candidate includes its own runtime;
+  end users need no Python, Node or Flutter SDK. Follow the [manual](GOLDEN_PATH.md#1-install-and-open-odessy)
+  for the exact EXE/checksum, installation, Piper/Kokoro selection and optional wake setup.
+- **Source checkout:** use the developer steps below. Source builds require SDKs and
+  are separate from the supplied installer. This documentation does not publish a download;
+  obtain the matching candidate from its distributor or use source. Old UI archives
+  do not contain the complete current app.
 
 ## Prepare a Windows source checkout
 

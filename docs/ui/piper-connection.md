@@ -2,6 +2,13 @@
 
 **Developer Preview · v0.5.0-alpha**
 
+For a fresh installation, choose **Piper** and enable the optional speech
+download in setup. Setup downloads the pinned engine and English voice, installs
+the engine in Odessy's active Python runtime, checks model loading, and saves the
+paths automatically. Existing files can still be selected manually below.
+See [voice components in setup](../setup/voice-components.md) for storage,
+verification and license details.
+
 Settings → Text to speech supports the built-in `piper` provider. Set the
 provider to `piper`, browse to a trusted Piper CLI executable (or the Python
 interpreter in its installed environment), and select its ONNX voice model.
@@ -30,9 +37,13 @@ connection does not claim GPU qualification. A local repeat through the connecto
 took about 2 seconds including process startup on the evaluated laptop; initial
 startup was about 14 seconds. These differ from warm in-memory benchmark timings.
 
-The engine and voice remain optional user-installed resources. This application's
-update payload does not redistribute Piper or voice weights. The local evaluation
+The engine and voice remain optional resources. The setup executable contains
+their pinned download manifest; after consent it fetches the wheel and model
+directly from upstream, rather than embedding them in the installer payload.
+The earlier local evaluation
 uses a persistent `<Voice>/piper/runtime` and `<Voice>/piper/models` directory,
 outside versioned app files. See the [license review](../../benchmark/tts/license-review.md)
 before distributing an engine, model or combined installer; process separation
-alone does not settle GPL or model redistribution obligations.
+alone does not settle GPL or model redistribution obligations. Downloaded models
+and metadata live in the persistent Voice directory; automatic setup uses the
+active Odessy Python environment for the engine.

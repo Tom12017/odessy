@@ -93,6 +93,7 @@ computer monitoring. Use an actual Linux computer for these collectors.
 | Status | Next step |
 | --- | --- |
 | Host key unknown/changed | Verify the fingerprint independently; resolve OS SSH trust deliberately, then Connect again. |
+| `ssh -G failed` before login | Start Odessy through its normal shortcut or launcher. Custom/test launchers must preserve Windows `ProgramData` and the user/profile environment; this error alone is not a password failure. Do not bypass host-key checks. |
 | Authentication failed | Check username/password, or unlock the correct key in your SSH agent. |
 | Password needed again | Enter it above and choose Reconnect; passwords expire and do not survive service restart. |
 | Timeout/refused/name unresolved | Check address, network, SSH service and optional port. |

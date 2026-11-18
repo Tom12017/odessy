@@ -7,7 +7,10 @@
 Piper is Odessy's selected TTS engine following the CPU evaluation, replacing
 Kokoro. The [external Piper connector](piper-connection.md) now uses existing
 provider/executable/model settings. Further Kokoro latency tuning is stopped.
-Default installer resources and redistribution qualification remain separate.
+Setup now offers optional automatic Piper engine/model installation and saves
+the selected paths after verification; Kokoro remains selectable. See
+[setup voice components](../setup/voice-components.md). Redistribution
+qualification remains separate from synthesis measurements.
 
 The standalone Piper medium voice generated roughly 12.4 seconds of audio in
 0.38 seconds at eight CPU threads on the tested laptop; four threads took about

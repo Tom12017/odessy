@@ -8,7 +8,7 @@
 
 The model proposes actions; the service applies policy and obtains required approval before execution. Use a disposable workspace. Windows confinement is partial, and cloud requests and permitted tool observations leave your computer for the chosen provider.
 
-**Reviewed 18 November 2026.** The desktop-managed launch is backed by source/launcher tests; policy checks use `develop` revision `1a50944ca717f9b5590063bdf1a7566054cf90be`. The maintainer's installed screenshots and earlier checks use source `7f3b925`; they do not certify a fresh installation of the later revision or every step below. A new external-user run remains to be recorded.
+**Updated 18 November 2026.** The installer below is based on `1834c1a` plus the recorded uncommitted Piper/setup fixes; the maintainer confirmed successful installation. See the [exact candidate and check scope](verification/windows-piper-installer-2026-11-18.md). Existing screenshots identify their earlier build (`7f3b925`); they do not qualify every newer feature or an external reader's complete walkthrough.
 
 If this path does not work for you, [open an issue](https://github.com/Trisoma/odessy/issues/new/choose) with the **sanitized doctor output** and the failing step. See [Troubleshooting and reporting](#troubleshooting-and-reporting).
 
@@ -24,24 +24,27 @@ Choose **one** route below. A packaged candidate includes its supported runtime;
 
 ### A. Supplied installer
 
-As of this review, the [public releases](https://github.com/Trisoma/odessy/releases) contain the older `v0.5.0-unstable` UI-client archives, **not a matching current full installer**. Do not use those archives for this walkthrough. If you have not received a full candidate with a checksum and source revision from its distributor, use route B.
+The Windows x64 candidate **`Odessy-v0.5.0-alpha-windows-x64-setup.exe`** was rebuilt and the maintainer confirmed successful installation on November 18, 2026. Use that candidate, supplied by the maintainer or through the [release page](https://github.com/Trisoma/odessy/releases), with its checksum. This documentation does not publish an asset; the older `v0.5.0-unstable` UI archives are not equivalent. If you cannot obtain the matching candidate, use route B.
 
-For a supplied Windows x64 setup EXE, compare its hash with that candidate's checksum manifest before opening it:
+Compare the downloaded file with the candidate's SHA-256 before opening it:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 -LiteralPath 'C:\path\to\OdessySetup.exe'
+Get-FileHash -Algorithm SHA256 -LiteralPath '.\Odessy-v0.5.0-alpha-windows-x64-setup.exe'
 ```
 
-The filename above is a placeholder for your download. The maintainer's installation was upgraded to source `7f3b925` through the versioned installation owners; that receipt is not a fresh public-installer qualification. See the [installed verification record](verification/ssh-voice-installed-update-2026-11-18.md).
+Expected SHA-256 for this candidate: `15063674bf944db7beae83fa4b55318aca831e47801db7d3828a41f6edf831ae`. A later build must have its own checksum and verification record. See the [candidate receipt](verification/windows-piper-installer-2026-11-18.md).
 
-1. Open the supplied installer and choose **Coordinator host + local execution**.
-2. Choose an installation folder, review the components, install, and select **Open Odessy**. The [setup wizard guide](setup/wizard.md) explains the available choices.
-3. Configure a model as described below. Once connected, use **Workspaces** to choose a folder you can safely use for experiments.
-4. Find projects and saved chats on the left, the message composer below chat, and the inspector toggle at the top right.
+1. Open the EXE, choose an installation folder, and keep the default coordinator with local execution unless you need a different role under **Custom setup**. Python, Node and Flutter development SDKs are not required.
+2. Choose **Piper (recommended for CPU)** or **Kokoro** under **Speech output engine**. For automatic speech setup, turn on **Install voice components**. Piper setup needs no pre-existing Piper files: it downloads the pinned engine, English voice, matching model metadata, Whisper.cpp and audio dependencies after you confirm installation. Review the download size and licenses. Internet access is required for these optional downloads.
+3. Choose **Install the wake-word model** separately if wanted. Its model license is CC BY-NC-SA 4.0. Both speech and wake can be skipped for typed chat. **Use existing voice components** is the manual alternative; it does not install missing components.
+4. Review the plan and select **Install**. Cached downloads can show zero remaining bytes; setup still installs and verifies packages in this installation. Wait for the completed installation state, then choose **Open Odessy**. See [setup details](setup/wizard.md) and [voice components](setup/voice-components.md).
+5. Configure your model below and select a disposable folder through **Workspaces**. After connecting audio, test STT/TTS and explicitly enable wake listening in Settings; successful file installation does not itself prove microphone or speaker behavior.
 
-![Chat layout with project sidebar and composer](view/conversation/projects-and-recent.png)
+To update an existing versioned installation, choose its recorded location and use **Manage installation** to review the update. Keep the profile and voice assets; uninstalling first is unnecessary. Automatic in-app update discovery/download is not implemented.
 
-*Desktop gallery example. The project sidebar lets you switch between saved conversations.*
+![Chat layout with the project sidebar and composer](view/conversation/projects-and-recent.png)
+
+*Desktop gallery example. Existing gallery/SSH images retain their recorded source identity; they are not new captures of this installer.*
 
 ### B. Build the production desktop from source
 
@@ -180,7 +183,7 @@ These are known constraints and likely failure points on this walkthrough. The [
 
 | Symptom or boundary | What to do |
 | --- | --- |
-| No matching installer download | Use source route B. The old UI-client archive is not a complete replacement for the current app/service. |
+| Cannot obtain the matching installer | Ask the distributor for the EXE and checksum above, or use source route B. Old UI archives are not the complete app. |
 | Python, npm or Flutter setup fails | Check the prerequisites, Python 3.13 launcher, Node 22 and `flutter doctor -v`. Windows C++ tools are required for native builds. Do not continue after a failed dependency/build command. |
 | Startup fails, connection refused or HTTP 401 | In the managed app, inspect the startup error and saved configuration, then retry **Connect saved configuration**. It owns its port/token. Source builds need all managed-launch defines. Only a deliberately manual API connection uses operator-entered ports/tokens. |
 | Model reports authentication, model-not-found, rate-limit or credit errors | Check provider endpoint, current model ID and account access/credit. Doctor finding a key does not validate it online. Report the provider error without the key. Do not assume a failed request was free. |

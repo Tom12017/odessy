@@ -13,11 +13,8 @@ no el flujo de trabajo normal del usuario. La CLI del módulo sigue existiendo p
 
 ## Elegir tu ruta
 
-- **Instalador completo proporcionado:** seguir el [manual de escritorio](./GOLDEN_PATH.md#1-instalar-y-abrir-odessy).
-  El paquete incluye su entorno de ejecución; ni Python, ni Node ni el SDK de Flutter son un requisito para el usuario final.
-- **Copia del código fuente:** usar los pasos siguientes. Al 18 de noviembre de 2026, la página pública de releases
-  solo proporciona los archivos empaquetados más antiguos del cliente de interfaz, no un instalador completo que corresponda. No combinarlos
-  con el código fuente actual. Las compilaciones desde el código fuente requieren herramientas de desarrollo; el tiempo de la primera compilación varía.
+- **Instalador de Windows:** el mantenedor confirmó la instalación del candidato; incluye su propio runtime y no requiere los SDK de Python, Node ni Flutter. Seguir el [manual](./GOLDEN_PATH.md#1-instalar-y-abrir-odessy) para el EXE y su checksum, la instalación, Piper/Kokoro y la activación opcional por voz.
+- **Código fuente:** usar los pasos de desarrollo siguientes. Requiere SDK y es una ruta distinta del instalador proporcionado. Esta documentación no publica una descarga; obtener el candidato del distribuidor o usar el código fuente. Los archivos UI antiguos no contienen la aplicación completa actual.
 
 ## Preparar una copia del código fuente en Windows
 

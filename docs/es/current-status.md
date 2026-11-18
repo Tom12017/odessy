@@ -9,22 +9,13 @@ Documentación revisada: 18 de noviembre de 2026.
 
 ## Base de código fuente y de versión
 
-Esta revisión usa la rama local `develop` en `1a50944ca717f9b5590063bdf1a7566054cf90be`
-después del PR #68 y antes de los commits de las guías de colaboración, el manual y las traducciones. Los metadatos
-del runtime y la funcionalidad del código fuente son independientes de esas ediciones de documentación.
+El candidato Windows x64 actual parte de `1834c1a441fb444ecb1712429c550bafce7d3b19` en `fix/windows-setup-long-paths`, más los cambios Piper/setup sin confirmar registrados en el `verification.json` adjunto. Es una instantánea con cambios locales identificados; el commit `1834c1a` por sí solo no contiene todas las correcciones empaquetadas.
 
-El [registro de instalación del 18 de noviembre](../verification/ssh-voice-installed-update-2026-11-18.md)
-identifica el candidato de Windows actualizado y compilado a partir de `7f3b925`, con la preservación,
-las comprobaciones de componentes y sus límites. No califica todas las revisiones fusionadas posteriores.
-Las capturas SSH reales del manual identifican ese ejecutable instalado; los fixtures de la galería
-y las pruebas deterministas de servicio siguen etiquetados por separado.
+El mantenedor confirmó la instalación del EXE recompilado el 18 de noviembre de 2026. El [registro del candidato](../verification/windows-piper-installer-2026-11-18.md) (solo en inglés) identifica el checksum, 109 pruebas Python afectadas, 650 pruebas Flutter aprobadas/15 omitidas, análisis limpio y síntesis Piper instalada en aislamiento, junto con sus límites. La suite Python completa se detuvo antes de terminar; no se presenta como aprobada.
 
-La siguiente etiqueta pública prevista es **v0.5.0-alpha**, no beta. A la fecha de esta revisión no hay
-en la página de versiones públicas un instalador completo que corresponda; los archivos `v0.5.0-unstable`
-son una instantánea más antigua del cliente de UI. Un instalador funcional suministrado/local es distinto
-de una descarga publicada. Esta página no implica publicación, firma ni calificación en una máquina limpia.
-Los registros de CI/revisión del PR #67 anterior conservan su propio alcance y
-no pueden certificar automáticamente el head actual.
+El error `ssh -G failed` procedía del script de verificación, que omitía la variable Windows `ProgramData`. Tras corregir el entorno de arranque, la misma app instalada pasó la inspección SSH autenticada y el mantenedor confirmó el acceso. No se reemplazaron archivos de la app ni el instalador. Siete casos nuevos comprueban la preservación del entorno del sistema/perfil; pasan 52 pruebas de arranque Windows, servicio instalado y SSH.
+
+La etiqueta pública sigue siendo **v0.5.0-alpha**. Esta actualización documental no ha subido, firmado ni publicado un archivo. Un candidato probado y suministrado sigue siendo distinto de una descarga pública. Las capturas existentes y el [registro anterior](../verification/ssh-voice-installed-update-2026-11-18.md) (solo en inglés) conservan su propia identidad de código y no califican automáticamente este candidato.
 
 ## Primera ejecución de un colaborador
 
@@ -53,8 +44,8 @@ y la aceptación del camino dorado por parte de un lector externo siguen sin med
 | Checkpoints | Instantáneas de texto acotadas y vista previa respaldadas por Git; la restauración compatible fuera de Windows usa aprobación exacta y una instantánea de seguridad | La restauración en Windows está deshabilitada en el servicio y en la UI a la espera de una seguridad basada en handles. La creación, el listado y la vista previa siguen disponibles; los archivos binarios/sensibles/no compatibles quedan excluidos. |
 | Monitorización | Agregación opcional en Go con telemetría local/emparejada y estado SSH de solo lectura | La conectividad, el permiso y la frescura de los datos siguen siendo independientes. Los DTO de monitorización no conceden acceso de ejecución ni de espacio de trabajo. |
 | Ejecución SSH | Selección explícita de un destino Custom temporal y comandos `ssh.run` aprobados exactamente | Separada de la monitorización; sin sandbox remoto, PTY, inspector de archivos ni ejecución SSH de Harness. Reconecta tras reiniciar el servicio. |
-| Voz | Ciclo de vida existente de proveedor/controlador y evidencia de audio previa acotada | El micrófono, el eco, los recursos de modelo y la compatibilidad de dispositivo/proveedor requieren sus propias comprobaciones. |
-| Configuración (Setup) | Configuración de Flutter en Windows, entorno de ejecución privado con todas sus dependencias y mantenimiento versionado | El código fuente fusionado final no se ha calificado como un único candidato de versión instalado y coherente. |
+| Voz | Piper recomendado para CPU; Kokoro seleccionable; Whisper y descarga de activación por voz opcionales | Carga/síntesis Piper instalada verificada; micrófono, reproducción, eco y activación necesitan aceptación por dispositivo. |
+| Configuración (Setup) | Instalador Windows con runtime privado, mantenimiento versionado e instalación Piper/Kokoro opcional | Instalación del candidato aceptada por el mantenedor; firma, hardware amplio y máquina limpia siguen siendo verificaciones separadas. |
 
 ## Matriz de plataformas
 

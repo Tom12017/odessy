@@ -14,6 +14,8 @@ Empezar por la [configuración gestionada del escritorio](./getting-started.md),
 
 Para una visión general del proyecto, empezar por el [README](../../README.es.md). La arquitectura y la documentación de componentes comienzan en el [índice de documentación](./README.md).
 
+Para trabajar en instalación e incorporación, consultar el [registro del candidato](../verification/windows-piper-installer-2026-11-18.md) (solo en inglés) y el [manual](GOLDEN_PATH.md). Los scripts de verificación deben preservar las variables Windows del sistema/perfil, incluido `ProgramData`; eliminarlas rompe OpenSSH antes de la autenticación. Un fallo del entorno de prueba no es una corrección del producto SSH.
+
 ## Elegir por dónde empezar
 
 | Contribución | Cómo empezar |

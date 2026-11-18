@@ -7,7 +7,10 @@ It is an optional input/output path, not a separate authority or conversation en
 
 ## Configure and use
 
-Enable compatible voice components in Settings. Saved voice settings apply to idle
+The Windows installer offers Piper (recommended for CPU) or Kokoro, with optional
+speech downloads and a separate wake-model choice. It can install Piper from scratch;
+you do not need a previously installed engine. See the [installer steps](../GOLDEN_PATH.md#1-install-and-open-odessy).
+For existing installations, select compatible voice components in Settings. Saved voice settings apply to idle
 audio without restarting; active recording, playback or wake listening defers the
 change until audio is idle. See [live settings](live-voice-settings.md).
 Opening Settings, listing devices or starting
@@ -48,6 +51,10 @@ Providers without text deltas retain final-answer playback. Text-only turns do
 not start speech. Playback uses short sentences/phrases and prepares at most one
 phrase ahead; Stop invalidates remaining speech. This preserves natural phrasing
 instead of making one synthesis request per word.
+
+The external Piper runtime controls its own acceleration/thread settings; the
+current candidate uses the verified CPU-compatible runtime. Odessy's GPU fallback
+settings below describe retained Kokoro support, not a Piper GPU guarantee.
 
 Kokoro's automatic ONNX selection prefers a compatible installed accelerator and
 falls back to CPU when accelerator initialization fails. A GPU alone is not

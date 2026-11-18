@@ -1,5 +1,10 @@
 # Odessy installation engine
 
+> Current Windows candidate: the [desktop manual](../docs/GOLDEN_PATH.md#1-install-and-open-odessy)
+> contains the verified filename/checksum and user installation steps, including
+> automatic Piper or Kokoro setup. The [November 18 receipt](../docs/verification/windows-piper-installer-2026-11-18.md)
+> records maintainer acceptance and exact test scope.
+
 **Developer Preview · v0.5.0-alpha**
 
 This package is the **shared Python installation engine** used by Odessy's implemented
@@ -174,7 +179,11 @@ directories, caches, test output or build logs.
 
 The engine covers Windows x64 install and maintenance, on-machine deployment of the
 Harness runtime and a pinned local model. Speech components are an explicit opt-in
-download (see `docs/setup/voice-components.md`).
+download (see [voice components](../docs/setup/voice-components.md)). Piper is the
+recommended selection: setup downloads the pinned engine wheel and English voice,
+installs the engine into the active runtime, verifies model loading and saves its
+configuration. Kokoro and manual existing-file selection remain available.
+Cached downloads are reverified; they do not establish installed readiness.
 
 Runtime checks do not guarantee that arbitrary unprobed file damage is found, nor model
 performance on every machine. Acceptance on a clean Windows machine and a formal release
