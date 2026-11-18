@@ -7,8 +7,10 @@ It is an optional input/output path, not a separate authority or conversation en
 
 ## Configure and use
 
-Enable compatible voice components in Settings and restart the owning coordinator
-when saved configuration requires it. Opening Settings, listing devices or starting
+Enable compatible voice components in Settings. Saved voice settings apply to idle
+audio without restarting; active recording, playback or wake listening defers the
+change until audio is idle. See [live settings](live-voice-settings.md).
+Opening Settings, listing devices or starting
 the application does not authorize microphone capture. The microphone control
 records on the coordinator computer identified by the UI; it does not implicitly
 upload local audio to a remote computer.
@@ -38,3 +40,16 @@ installed-package acceptance, acoustic echo/interrupt behavior, assistive-techno
 acceptance or all-platform support. Keep errors and unavailable capabilities visible;
 never substitute fake audio or claim successful hardware capture from a widget test.
 See [current support](../current-status.md).
+
+## Speech latency and acceleration
+
+Spoken main-panel turns consume genuine model-text sentences as they arrive.
+Providers without text deltas retain final-answer playback. Text-only turns do
+not start speech. Playback uses short sentences/phrases and prepares at most one
+phrase ahead; Stop invalidates remaining speech. This preserves natural phrasing
+instead of making one synthesis request per word.
+
+Kokoro's automatic ONNX selection prefers a compatible installed accelerator and
+falls back to CPU when accelerator initialization fails. A GPU alone is not
+enough: its ONNX provider, drivers and model operators must be supported. No driver
+or GPU dependency is downloaded automatically. See [performance and verification](voice-performance.md).

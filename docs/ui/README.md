@@ -19,7 +19,10 @@ advanced details out of the conversation/composer.
 Select the correct project, workspace and model profile before sending a turn.
 Switching panels must preserve drafts and voice/model state. Saved history is
 separate from live sessions: Custom can continue a compatible saved conversation
-in a fresh controller, while Harness restart history is read-only.
+in a fresh controller, while Harness restart history is read-only. Selecting a saved
+chat opens it directly; management is in its right-click/overflow menu. The
+inspector stays on the right at usable widths. Very narrow windows use a
+dismissible right-side sheet; closing it preserves the composer draft.
 
 The inspector provides files, proposed diffs, recorded Output, used context,
 project memory, documents/citations, and available terminal/checkpoint controls.
@@ -34,6 +37,15 @@ text, Text to speech, Voice, Devices and tool access, Advanced, and Installation
 Appearance preferences are local frontend state; runtime/model configuration is
 service-owned. Save/Cancel/Reload, dirty drafts, stale revisions and errors must
 reflect actual acknowledgments. Unsupported controls remain visibly unavailable.
+
+Saving Speech to text, Text to speech or Voice settings also refreshes the idle
+native audio backend, including when the saved device names have not changed.
+The next microphone or wake start uses the saved selection without restarting.
+Recording, wake listening, decoding, playback and cancellation still draining
+are protected: Save reports deferred and applies after audio becomes idle.
+A missing or ambiguous device must be reselected from the available devices;
+refresh never substitutes a different microphone silently. See the
+[source verification receipt](../verification/idle-audio-refresh-2026-11-17.md).
 
 ## Connection and launch modes
 

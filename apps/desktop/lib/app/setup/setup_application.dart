@@ -676,7 +676,7 @@ class _SetupApplicationState extends State<SetupApplication> {
     final controller = InstalledManageController(c.backend,
         progressBackend: _newBackend(),
         spec: {'root': c.root},
-        setupPayload: widget.mode == 'setup' ? widget.payloadRoot : null);
+        setupPayload: widget.payloadRoot);
     setState(() => management = controller);
     controller.load().then((_) {
       if (reviewUninstall && !controller.uninstalled) {
