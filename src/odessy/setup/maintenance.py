@@ -275,6 +275,29 @@ class ManagedInstallation:
             return {'configured':True,'model_configured':selection.model is not None,'role':selection.role,
                     'workspace':configuration['workspace'],'ready':False}
 
+    def voice_configuration_plan(self, voice):
+        """Bind a voice-only change to one exact current configuration snapshot."""
+        record=self.record()
+        if not record['active']: raise ValueError('repair the installation before changing configuration')
+        previous=read_json(self.root/'configuration.json')
+        selection=SetupSelection.from_dict({**previous['selection'], 'voice':voice})
+        configuration={'schema_version':1,'selection':public(selection),
+            'workspace':str(validated_workspace(previous['workspace'],self.root))}
+        plan={'installation_id':record['id'],'active':record['active'],
+            'configuration':configuration,'previous':previous}
+        plan['plan_id']=hashlib.sha256(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()).hexdigest()
+        return plan
+
+    def configure_voice(self, voice, confirm):
+        with self.lock():
+            plan=self.voice_configuration_plan(voice)
+            if confirm!=plan['plan_id']: raise ValueError('review the exact configuration change before applying it')
+            configuration=plan['configuration']
+            atomic(self.root/'configuration.json',configuration)
+            record=self.record();record['selection']=configuration['selection']
+            atomic(self.root/'installation.json',record)
+            return {'configured':True,'ready':False}
+
     def install(self,bundle,selection,confirm,*,cancelled=lambda:False):
         plan=self.plan(bundle,selection)
         if confirm!=plan['plan_id']: raise ValueError('review the exact installation plan before applying')
@@ -331,6 +354,12 @@ class ManagedInstallation:
                         if digest(destination)!=sha:raise ValueError('copied component checksum mismatch')
                         journal['steps_done']+=1;progress.flush()
                 stage('configuration')
+                previous = record.get('active')
+                if previous:
+                    from .voice_install import prepare_piper_upgrade
+                    previous_python = self.root/'versions'/previous/('Scripts/python.exe' if os.name=='nt' else 'bin/python')
+                    selection = prepare_piper_upgrade(selection, previous_python, python,
+                        cancelled=cancelled, payload=self.payload)
                 if selection.model:
                     from .configuration import environment_text
                     from .planning import build_plan

@@ -254,3 +254,40 @@ def test_uninstall_reports_file_progress_and_preserves_modified_files(tmp_path, 
     assert final['files_total'] > 0
     assert final['files_done'] == final['files_total']
     assert any(0 < s.get('files_done', 0) < final['files_total'] for s in snapshots)
+
+
+def test_voice_only_configuration_preserves_model_and_rejects_concurrent_edit(tmp_path):
+    from odessy.setup.native_bridge import manage
+    from odessy.setup import maintenance
+    from odessy.setup.contracts import ModelSelection
+    source = bundle(tmp_path)
+    manager = ManagedInstallation(tmp_path/'installed', runner=fake_runner)
+    selection = SetupSelection(role='combined', model=ModelSelection(provider='deepseek', name='current-model'))
+    manager.install(source, selection, manager.plan(source, selection)['plan_id'])
+    patch = {'root': str(manager.root), 'selection': {'voice': {'enabled': False, 'tts_provider': 'piper'}}}
+    plan = manage({'action': 'package-voice-configure-review', **patch})
+    assert plan['configuration']['selection']['model']['name'] == 'current-model'
+    assert manage({'action': 'package-voice-configure', 'confirm': plan['plan_id'], **patch})['configured']
+    plan = manage({'action': 'package-voice-configure-review', **patch})
+    next_selection = SetupSelection(role='combined', model=ModelSelection(provider='deepseek', name='newer-model'))
+    next_plan = manager.configuration_plan(next_selection)
+    manager.configure(next_selection, None, next_plan['plan_id'])
+    with pytest.raises(ValueError, match='review the exact configuration'):
+        manage({'action': 'package-voice-configure', 'confirm': plan['plan_id'], **patch})
+    assert maintenance.read_json(manager.root/'configuration.json')['selection']['model']['name'] == 'newer-model'
+
+
+def test_piper_upgrade_failure_leaves_previous_version_active(tmp_path, monkeypatch):
+    from odessy.setup import voice_install
+    source = bundle(tmp_path)
+    manager = ManagedInstallation(tmp_path/'installed', runner=fake_runner)
+    selection = SetupSelection(role='combined')
+    manager.install(source, selection, manager.plan(source, selection)['plan_id'])
+    old = manager.record()['active']
+    def fail(*args, **kwargs):
+        raise ValueError('Piper verification failed')
+    monkeypatch.setattr(voice_install, 'prepare_piper_upgrade', fail)
+    with pytest.raises(ValueError, match='Piper verification failed'):
+        manager.repair(source, confirm=manager.plan(source, selection)['plan_id'])
+    assert manager.record()['active'] == old
+    assert manager.verify()['valid']

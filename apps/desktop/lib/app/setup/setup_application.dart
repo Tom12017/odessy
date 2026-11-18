@@ -74,6 +74,7 @@ class _SetupApplicationState extends State<SetupApplication> {
   final piperExecutable = TextEditingController();
   final piperModel = TextEditingController();
   String ttsProvider = 'piper';
+  bool _automaticVoiceVerified = false;
 
   int step = 0;
   String role = 'combined', provider = 'later';
@@ -243,7 +244,11 @@ class _SetupApplicationState extends State<SetupApplication> {
         if (role != 'execution')
           'voice': {
             'tts_provider': ttsProvider,
-            'enabled': voice && _voiceComplete,
+            'enabled': voice &&
+                _voiceComplete &&
+                (ttsProvider != 'piper' ||
+                    !voiceDownloadRequested ||
+                    _automaticVoiceVerified),
             if (voice && _voiceComplete) ...{
               'whisper_bin': whisperBin.text.trim(),
               'whisper_model': whisperModel.text.trim(),
@@ -310,7 +315,7 @@ class _SetupApplicationState extends State<SetupApplication> {
     }
   }
 
-  Future<void> _refreshVoiceState() async {
+  Future<Json?> _refreshVoiceState() async {
     final provider = ttsProvider;
     try {
       // The installation root lets the helper check the interpreter that will
@@ -320,10 +325,13 @@ class _SetupApplicationState extends State<SetupApplication> {
         'features': ['voice'],
         if (c.root.trim().isNotEmpty) 'install_root': c.root,
       });
-      if (!mounted) return;
-      if (provider == ttsProvider) setState(() => voiceState = value);
+      if (!mounted || _closing || provider != ttsProvider) return null;
+      setState(() => voiceState = value);
+      return value;
     } catch (_) {
-      // Observational only; a missing record must not look like a failure.
+      if (mounted && provider == ttsProvider)
+        setState(() => voiceState = const {});
+      return null;
     }
   }
 
@@ -357,18 +365,6 @@ class _SetupApplicationState extends State<SetupApplication> {
           });
           if (!active()) return;
           results[feature] = result;
-          if (feature == 'voice' &&
-              ttsProvider == 'piper' &&
-              result['verified'] == true) {
-            final paths = result['paths'];
-            if (paths is Map && paths['tts_executable'] is String) {
-              piperExecutable.text = paths['tts_executable'] as String;
-            }
-            if (paths is Map && paths['tts_model'] is String) {
-              piperModel.text = paths['tts_model'] as String;
-            }
-            _edit();
-          }
           if (result['verified'] != true) {
             errors.add(
                 '$feature: ${result['manual_step'] ?? 'Python support is not ready.'}');
@@ -390,20 +386,35 @@ class _SetupApplicationState extends State<SetupApplication> {
         voiceDependenciesError = errors.join('\n');
       });
       if (features.contains('voice')) {
-        await _refreshVoiceState();
+        final current = await _refreshVoiceState();
         if (!active()) return;
-        if (ttsProvider == 'piper' &&
-            voiceDownloadRequested &&
-            results['voice']?['verified'] == true) {
+        if (ttsProvider == 'piper' && results['voice']?['verified'] == true) {
           try {
-            if (!_voiceComplete || voiceState['ready'] != true) {
+            if (current == null || current['ready'] != true) {
               throw StateError(
                   'Piper was downloaded but its installed engine and model did not load. Retry speech setup.');
             }
-            final plan = await c.call('package-configure-review');
+            final paths = current['paths'];
+            if (paths is! Map ||
+                paths['tts_executable'] is! String ||
+                paths['tts_model'] is! String) {
+              throw StateError(
+                  'Piper verification did not return its exact runtime and model.');
+            }
+            piperExecutable.text = paths['tts_executable'] as String;
+            piperModel.text = paths['tts_model'] as String;
+            _automaticVoiceVerified = true;
+            _edit();
+            if (!_voiceComplete)
+              throw StateError('Speech paths are incomplete.');
+            final patch = {
+              'selection': {'voice': _selection()['voice']}
+            };
+            final plan = await c.call('package-voice-configure-review',
+                parameters: patch);
             if (!active()) return;
-            await c.call('package-configure',
-                confirm: plan['plan_id'] as String);
+            await c.call('package-voice-configure',
+                confirm: plan['plan_id'] as String, parameters: patch);
           } catch (failure) {
             if (!active()) return;
             setState(() {
@@ -412,6 +423,7 @@ class _SetupApplicationState extends State<SetupApplication> {
                 'voice': {...?results['voice'], 'verified': false},
                 'verified': false,
               };
+              _automaticVoiceVerified = false;
               voiceDependenciesError =
                   'Speech configuration was not activated: $failure';
             });
@@ -622,7 +634,9 @@ class _SetupApplicationState extends State<SetupApplication> {
       });
       if (path.isNotEmpty && previous != path) _edit();
     } catch (_) {
-      // Observational only; a missing record must not look like a failure.
+      if (mounted && provider == ttsProvider)
+        setState(() => voiceState = const {});
+      return null;
     }
   }
 
@@ -762,7 +776,8 @@ class _SetupApplicationState extends State<SetupApplication> {
   Future<void> _browseVoice(TextEditingController target,
       {List<String> extensions = const []}) async {
     final selected = await widget.picker.pickFile(extensions: extensions);
-    if (selected == null || selected.trim().isEmpty) return;
+    if (!mounted || _closing || selected == null || selected.trim().isEmpty)
+      return;
     target.text = selected;
     _edit();
     setState(() {});
@@ -1045,6 +1060,7 @@ class _SetupApplicationState extends State<SetupApplication> {
                       if (value == null || value == ttsProvider) return;
                       setState(() {
                         ttsProvider = value;
+                        _automaticVoiceVerified = false;
                         voicePlan = const {};
                         voiceState = const {};
                         voiceError = '';
@@ -1143,9 +1159,11 @@ class _SetupApplicationState extends State<SetupApplication> {
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Install voice components'),
                 subtitle: Text(voicePlan['total_bytes'] is int
-                    ? (voicePlan['total_bytes'] == 0
+                    ? (voicePlan['nothing_to_do'] == true
                         ? 'No downloads needed; cached files will be verified and installed.'
-                        : 'About ${_megabytes(voicePlan['total_bytes'] as int)} will be downloaded.')
+                        : (voicePlan['installable'] == true
+                            ? 'About ${_megabytes(voicePlan['total_bytes'] as int)} will be downloaded.'
+                            : 'Automatic speech components are unavailable in this build.'))
                     : 'Choose this to see the download size first.'),
                 value: voiceDownloadRequested,
                 onChanged: c.busy || installingVoice
@@ -1718,7 +1736,9 @@ class _SetupApplicationState extends State<SetupApplication> {
                   child: Text('${result['registration_error']}',
                       style: _theme.textTheme.bodySmall)),
           ])),
-      if (_speechSelected || (_wakeSelected && wakeInstalled))
+      if (_speechSelected ||
+          (voiceDownloadRequested && role != 'execution') ||
+          (_wakeSelected && wakeInstalled))
         _voiceDependenciesSection(),
       if (launchError.isNotEmpty)
         SetupMessage(

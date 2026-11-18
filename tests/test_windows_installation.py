@@ -512,14 +512,14 @@ def test_installed_launch_preserves_windows_system_and_profile_folders(tmp_path,
 
 @pytest.mark.skipif(sys.platform != 'win32', reason='Windows OpenSSH environment')
 def test_real_openssh_config_resolution_with_production_launch_environment(tmp_path):
-    import shutil
+    import os
     from odessy.setup.platform_installation import desktop_environment
-    binary = shutil.which('ssh')
-    if binary is None:
+    binary = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32/OpenSSH/ssh.exe'
+    if not binary.is_file():
         pytest.skip('OpenSSH client unavailable')
     config = tmp_path / 'ssh_config'
     config.write_text('Host *\n  BatchMode yes\n', encoding='utf-8')
-    result = subprocess.run([binary, '-G', '-F', str(config), '-p', '10015',
+    result = subprocess.run([str(binary), '-G', '-F', str(config), '-p', '10015',
                              'diagnostic@example.invalid'],
                             env=desktop_environment(), stdin=subprocess.DEVNULL,
                             capture_output=True, text=True, encoding='utf-8',

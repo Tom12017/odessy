@@ -638,9 +638,14 @@ class _GetStartedPageState extends State<GetStartedPage> {
                 initialValue: ttsProvider,
                 decoration:
                     const InputDecoration(labelText: 'Speech output engine'),
-                items: const [
-                  DropdownMenuItem(value: 'piper', child: Text('Piper')),
-                  DropdownMenuItem(value: 'kokoro', child: Text('Kokoro')),
+                items: [
+                  const DropdownMenuItem(value: 'piper', child: Text('Piper')),
+                  const DropdownMenuItem(
+                      value: 'kokoro', child: Text('Kokoro')),
+                  if (!const ['piper', 'kokoro'].contains(ttsProvider))
+                    DropdownMenuItem(
+                        value: ttsProvider,
+                        child: Text('Custom: $ttsProvider')),
                 ],
                 onChanged: _busy
                     ? null
@@ -648,7 +653,7 @@ class _GetStartedPageState extends State<GetStartedPage> {
                         setState(() => ttsProvider = value ?? ttsProvider),
               ),
               for (final entry in voicePaths.entries.where((entry) =>
-                  ttsProvider == 'piper'
+                  ttsProvider != 'kokoro'
                       ? !entry.key.startsWith('kokoro_')
                       : !entry.key.startsWith('tts_')))
                 PathField(

@@ -726,8 +726,11 @@ def test_dispatch_selects_engine_artifacts(monkeypatch, tmp_path, provider):
 def test_provider_change_invalidates_download_consent(monkeypatch, tmp_path):
     monkeypatch.setattr(voice_install, 'default_root', lambda: tmp_path / 'voice')
     old = voice_install.dispatch({'action': 'voice-plan', 'features': ['voice'], 'tts_provider': 'kokoro'})
-    with pytest.raises(ValueError):
+    called = []
+    monkeypatch.setattr(voice_install, '_download', lambda *args: called.append(args))
+    with pytest.raises(ValueError, match='review the exact voice installation'):
         voice_install.dispatch({'action': 'voice-install', 'features': ['voice'], 'tts_provider': 'piper', 'confirm': old['plan_id']})
+    assert called == []
     with pytest.raises(ValueError, match='Piper or Kokoro'):
         voice_install.dispatch({'action': 'voice-plan', 'tts_provider': 'unknown'})
 
@@ -772,3 +775,59 @@ def test_piper_python_install_returns_active_runtime_path_and_checks_engine(monk
                                           tts_provider='piper', runner=runner)
     assert result['paths']['tts_executable'] == str(voice_install._runtime_python(install_root))
     assert any('import piper' in ' '.join(argv) or ', piper' in ' '.join(argv) for argv in calls)
+
+
+def test_direct_status_and_python_install_filter_fallback_provider(monkeypatch, tmp_path):
+    entries = voice_install.load_manifest(_manifest(tmp_path, [
+        _artifact(tmp_path, 'kokoro.onnx', b'kokoro', id='kokoro-model', field='kokoro_model'),
+        _artifact(tmp_path, 'piper.onnx', b'piper', id='piper-model', field='tts_model'),
+        _artifact(tmp_path, 'piper.onnx.json', b'{}', id='piper-config', field='piper_config'),
+        _wheel_artifact(tmp_path, 'piper_tts-1.3.0-py3-none-any.whl', b'piper-wheel', ['voice']),
+        _wheel_artifact(tmp_path, 'kokoro_onnx-1.0-py3-none-any.whl', b'kokoro-wheel', ['voice']),
+    ]))
+    monkeypatch.setattr(voice_install, 'load_manifest', lambda *args: entries)
+    root = tmp_path/'voice'
+    chosen = voice_install._provider_entries(entries, 'piper')
+    plan = voice_install.plan(manifest=chosen, root=root, features=['voice'])
+    voice_install.install({**plan, 'entries': chosen}, confirm=plan['plan_id'])
+    install_root = _installed_runtime(tmp_path)
+    assert voice_install.python_install(install_root, root, features=['voice'], tts_provider='piper', runner=_import_ok)['verified']
+    status = voice_install.status(root=root, install_root=install_root, features=['voice'], tts_provider='piper', runner=_import_ok)
+    assert status['ready'] and 'kokoro-model' not in status['missing']
+    assert status['paths']['tts_executable'] == str(voice_install._runtime_python(install_root))
+
+
+def test_piper_status_rejects_active_runtime_change(monkeypatch, tmp_path):
+    entries = voice_install.load_manifest(_manifest(tmp_path, [
+        _artifact(tmp_path, 'piper.onnx', b'piper', id='piper-model', field='tts_model'),
+        _artifact(tmp_path, 'piper.onnx.json', b'{}', id='piper-config', field='piper_config'),
+        _wheel_artifact(tmp_path, 'piper_tts-1.3.0-py3-none-any.whl', b'wheel', ['voice']),
+    ]))
+    root = tmp_path/'voice'
+    plan = voice_install.plan(manifest=entries, root=root, features=['voice'])
+    voice_install.install({**plan, 'entries': entries}, confirm=plan['plan_id'])
+    install_root = _installed_runtime(tmp_path)
+    original = voice_install._runtime_python(install_root)
+    def runner(argv, **kwargs):
+        if 'PiperVoice.load' in ' '.join(argv):
+            monkeypatch.setattr(voice_install, '_runtime_python', lambda root: original.with_name('new-python.exe'))
+        return _import_ok(argv, **kwargs)
+    state = voice_install.status(manifest=entries, root=root, install_root=install_root, features=['voice'], tts_provider='piper', runner=runner)
+    assert not state['ready'] and not state['piper']['ready']
+    assert 'tts_executable' not in state['paths']
+
+
+def test_upgrade_rebinds_only_managed_piper_after_exact_model_verification(monkeypatch, tmp_path):
+    from odessy.setup.contracts import SetupSelection, VoiceSelection
+    old, new = tmp_path/'old/python.exe', tmp_path/'new/python.exe'
+    selection = SetupSelection(role='combined', voice=VoiceSelection(enabled=True, tts_provider='piper', tts_executable=str(old), tts_model='voice.onnx'))
+    calls = []
+    monkeypatch.setattr(voice_install, 'python_install', lambda *args, **kwargs: calls.append(kwargs) or {'verified': True})
+    monkeypatch.setattr(voice_install, 'status', lambda *args, **kwargs: {'ready': True, 'paths': {'tts_model': 'voice.onnx'}})
+    updated = voice_install.prepare_piper_upgrade(selection, old, new)
+    assert updated.voice.tts_executable == str(new)
+    assert calls[0]['_interpreter'] == new and calls[0]['tts_provider'] == 'piper'
+    assert voice_install.prepare_piper_upgrade(selection, tmp_path/'external', new) == selection
+    monkeypatch.setattr(voice_install, 'status', lambda *args, **kwargs: {'ready': False})
+    with pytest.raises(ValueError, match='previous version remains active'):
+        voice_install.prepare_piper_upgrade(selection, old, new)

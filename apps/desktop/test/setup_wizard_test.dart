@@ -7,6 +7,27 @@ import 'package:odessy_desktop/features/setup/presentation/setup_wizard.dart';
 import 'setup_controller_test.dart' show Backend;
 
 void main() {
+  testWidgets('saved custom speech provider remains selected', (tester) async {
+    final controller = SetupController(Backend());
+    controller.update({
+      'role': 'combined',
+      'voice': {
+        'enabled': true,
+        'tts_provider': 'my_speech:make_tts',
+        'tts_executable': 'my-command'
+      }
+    }, '/tmp/config.json');
+    await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+            body: SetupWizardPage(controller: controller, initialStep: 3))));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.text('Custom: my_speech:make_tts'), findsOneWidget);
+    expect(controller.selection['voice']['tts_provider'], 'my_speech:make_tts');
+    await tester.pumpWidget(const SizedBox());
+    controller.dispose();
+  });
+
   testWidgets(
       'successful navigation never cancels coordinator during activation',
       (tester) async {

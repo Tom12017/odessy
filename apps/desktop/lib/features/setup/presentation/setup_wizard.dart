@@ -184,7 +184,11 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
       'tts_model'
     ]) {
       final values = candidates[name] as List? ?? [];
-      if (values.length == 1 && fields[name]!.text != values.single) {
+      if (values.length == 1 &&
+          fields[name]!.text.trim().isEmpty &&
+          (ttsProvider == 'piper'
+              ? !name.startsWith('kokoro_')
+              : !name.startsWith('tts_'))) {
         fields[name]!.text = values.single as String;
         changed = true;
       }
@@ -422,13 +426,21 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
                                                   decoration: const InputDecoration(
                                                       labelText:
                                                           'Speech output engine'),
-                                                  items: const [
-                                                    DropdownMenuItem(
+                                                  items: [
+                                                    const DropdownMenuItem(
                                                         value: 'piper',
                                                         child: Text('Piper')),
-                                                    DropdownMenuItem(
+                                                    const DropdownMenuItem(
                                                         value: 'kokoro',
-                                                        child: Text('Kokoro'))
+                                                        child: Text('Kokoro')),
+                                                    if (!const [
+                                                      'piper',
+                                                      'kokoro'
+                                                    ].contains(ttsProvider))
+                                                      DropdownMenuItem(
+                                                          value: ttsProvider,
+                                                          child: Text(
+                                                              'Custom: $ttsProvider')),
                                                   ],
                                                   onChanged: locked
                                                       ? null
@@ -464,8 +476,8 @@ class _SetupWizardPageState extends State<SetupWizardPage> {
                                                       'Whisper executable'),
                                                   _field('whisper_model',
                                                       'Whisper model file'),
-                                                  if (ttsProvider ==
-                                                      'piper') ...[
+                                                  if (ttsProvider !=
+                                                      'kokoro') ...[
                                                     _field('tts_executable',
                                                         'Piper executable or Python interpreter'),
                                                     _field('tts_model',

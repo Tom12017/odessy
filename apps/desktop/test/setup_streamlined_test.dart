@@ -71,10 +71,70 @@ Future<void> _openVoiceStep(WidgetTester tester, FlowBackend backend,
 }
 
 void main() {
+  for (final failure in ['dependencies', 'model-load']) {
+    testWidgets('Piper $failure failure stays disabled and offers retry',
+        (tester) async {
+      final backend = failure == 'dependencies'
+          ? MissingVoiceWheelsBackend()
+          : (FlowBackend()..piperModelLoads = false);
+      await _openVoiceStep(tester, backend, kokoro: false);
+      await tester.ensureVisible(find.byKey(const Key('setup-voice-download')));
+      await tester.tap(find.byKey(const Key('setup-voice-download')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Continue'));
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Install'));
+      for (var i = 0; i < 90; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(
+          backend.requests.where(
+              (r) => r.parameters['action'] == 'package-voice-configure'),
+          isEmpty);
+      expect(find.text('Install speech dependencies'), findsOneWidget);
+      expect(
+          find.textContaining(
+              'components and their Python dependencies are installed'),
+          findsNothing);
+    });
+  }
+  testWidgets('Piper retry cannot reuse a previous ready status',
+      (tester) async {
+    final backend = FlowBackend()
+      ..failActions = {'package-voice-configure'}
+      ..failureReason = 'configuration conflict';
+    await _openVoiceStep(tester, backend, kokoro: false);
+    await tester.ensureVisible(find.byKey(const Key('setup-voice-download')));
+    await tester.tap(find.byKey(const Key('setup-voice-download')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Continue'));
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Install'));
+    for (var i = 0; i < 90; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    backend.failActions = {'voice-status'};
+    backend.failureReason = 'status unavailable';
+    await tester.ensureVisible(find.text('Install speech dependencies'));
+    await tester.tap(find.text('Install speech dependencies'));
+    for (var i = 0; i < 40; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(
+        backend.requests
+            .where((r) => r.parameters['action'] == 'package-voice-configure')
+            .length,
+        1);
+    expect(find.textContaining('Speech configuration was not activated'),
+        findsOneWidget);
+  });
+
   testWidgets('Piper configuration failure never claims speech is installed',
       (tester) async {
     final backend = FlowBackend()
-      ..failActions = {'package-configure'}
+      ..failActions = {'package-voice-configure'}
       ..failureReason = 'Configuration could not be saved';
     await _openVoiceStep(tester, backend, kokoro: false);
     await tester.ensureVisible(find.byKey(const Key('setup-voice-download')));
@@ -94,6 +154,20 @@ void main() {
             'components and their Python dependencies are installed'),
         findsNothing);
     expect(find.text('Install speech dependencies'), findsOneWidget);
+    backend.failActions = {};
+    backend.failureReason = '';
+    await tester.ensureVisible(find.text('Install speech dependencies'));
+    await tester.tap(find.text('Install speech dependencies'));
+    for (var i = 0; i < 30; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    expect(
+        backend.requests
+            .where((r) => r.parameters['action'] == 'package-voice-configure')
+            .length,
+        2);
+    expect(find.textContaining('Speech configuration was not activated'),
+        findsNothing);
   });
 
   testWidgets(
@@ -120,12 +194,18 @@ void main() {
         .firstWhere((r) => r.parameters['action'] == 'voice-python-install');
     expect(install.parameters['tts_provider'], 'piper');
     final saved = backend.requests
-        .lastWhere((r) => r.parameters['action'] == 'package-configure');
+        .lastWhere((r) => r.parameters['action'] == 'package-voice-configure');
+    final initial = backend.requests
+        .firstWhere((r) => r.parameters['action'] == 'package-install');
+    expect(
+        ((initial.parameters['selection'] as Map)['voice'] as Map)['enabled'],
+        isFalse);
     final audio = (saved.parameters['selection'] as Map)['voice'] as Map;
     expect(audio['enabled'], isTrue);
     expect(audio['tts_provider'], 'piper');
-    expect(audio['tts_executable'], isNotEmpty);
-    expect(audio['tts_model'], isNotEmpty);
+    expect(audio['tts_executable'],
+        '${install.parameters['install_root']}\\versions\\${'a' * 32}\\Scripts\\python.exe');
+    expect(audio['tts_model'], voicePath('en_US-ljspeech-medium.onnx'));
   });
 
   testWidgets(
@@ -141,6 +221,17 @@ void main() {
     expect(find.textContaining('unknown size'), findsNothing);
     expect(find.textContaining('No downloads needed'), findsOneWidget);
     expect(find.textContaining('Cached files'), findsOneWidget);
+    await tester.ensureVisible(find.text('Continue'));
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Install'));
+    for (var i = 0; i < 90; i++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+    final actions =
+        backend.requests.map((r) => r.parameters['action']).toList();
+    expect(actions.indexOf('voice-python-install'),
+        lessThan(actions.indexOf('package-voice-configure')));
   });
 
   testWidgets('Piper default saves external runtime and model without Kokoro',
