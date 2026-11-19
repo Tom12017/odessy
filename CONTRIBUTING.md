@@ -16,6 +16,8 @@ include when submitting a change.
 For an overview of the project, start with the [README](README.md). Architecture
 and component documentation start at the [documentation index](docs/README.md).
 
+For installer/onboarding work, start from the [maintainer-confirmed candidate receipt](docs/verification/windows-piper-installer-2026-11-18.md) and [manual](docs/GOLDEN_PATH.md). Qualification launchers must preserve Windows system/profile variables, including `ProgramData`; stripping them breaks OpenSSH before authentication. Do not call a test-launch environment failure an SSH product fix.
+
 ## Choose where to start
 
 | Contribution | How to get started |

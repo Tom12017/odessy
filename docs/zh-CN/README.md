@@ -10,6 +10,8 @@
 定义了已实现的行为、尚不可用的能力以及尚未完成的发布关卡。
 历史计划与测试记录描述的是它们被记录时的快照，而非当前的支持状况。
 
+[Windows 草稿候选版本](../verification/windows-piper-installer-2026-11-18.md)（English only）可选 Piper/Kokoro；校验值与安装步骤见[手册](GOLDEN_PATH.md)。维护者最终验收及公开发布仍待完成；较早安装包的人工验收仅适用于原校验值。
+
 | 任务 | 指南 |
 | --- | --- |
 | 运行应用并验证一个本地动作 | [桌面端手册](GOLDEN_PATH.md) · [受管的源码启动](getting-started.md) |

@@ -54,11 +54,7 @@ authentication. Users do not manually run Python or exchange bearer tokens.
   Its desktop-managed mode uses the same configured-service lifecycle, after installing
   the developer SDKs. Manual server and fake-model commands are separate contributor checks.
 
-No matching full installer is publicly published as of November 18, 2026. The older
-[`v0.5.0-unstable` UI-client archives](https://github.com/Trisoma/odessy/releases)
-do not contain the current complete app. This distribution gap and Windows build-tool
-setup make onboarding rougher than it should be. See the [installed evidence](docs/verification/ssh-voice-installed-update-2026-11-18.md)
-for the specific candidate exercised; it does not qualify every later build.
+A full Windows x64 installer is prepared for an **unpublished verification draft**. It offers **Piper (recommended for CPU)** or **Kokoro**, optional verified speech downloads and a separate wake-word choice. Follow the [installer steps and checksum](docs/GOLDEN_PATH.md#1-install-and-open-odessy). The maintainer must verify this rebuilt candidate before deciding to publish it; acceptance of the earlier November 18 installer applies only to that earlier file. Obtain the exact candidate from the maintainer, or use source. Public files will appear on the [release page](https://github.com/Trisoma/odessy/releases) only after publication. Older `v0.5.0-unstable` UI archives are not equivalent. See the [candidate receipt](docs/verification/windows-piper-installer-2026-11-18.md).
 
 ## What you can explore
 

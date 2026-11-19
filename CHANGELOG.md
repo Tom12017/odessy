@@ -11,8 +11,10 @@ User-visible changes are recorded here, starting with the next release.
 - Disable checkpoint restoration on Windows at the service/write boundary pending directory-handle safety; retain creation/list/preview and show the restriction in the desktop.
 - Refresh user/developer documentation and distinguish current capabilities from historical release/qualification evidence.
 
-- Add trusted SSH targets with read-only monitoring; SSH execution and workspace capabilities remain disabled.
-
+- Add temporary SSH connections, read-only monitoring and separately selected, policy-gated Custom SSH commands; remote workspaces and remote PTY remain unavailable.
+- Offer Piper or Kokoro during Windows setup; verify the installed runtime/model before automatic Piper activation and rebind managed Piper safely during repair/upgrade.
+- Fix deeply nested Windows installer extraction and retain system/profile launch variables required by OpenSSH.
+- Update the illustrated manual and essential English, Chinese and Spanish guides for the draft installer.
 - Keep Harness available after repair and upgrade, and reject incomplete Windows installers.
 - Prevent repeated streamed voice replies and reset timing correctly for follow-up recordings.
 - Preserve unsaved API keys on status refresh and wait for credential saves before leaving setup.

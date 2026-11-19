@@ -5,26 +5,17 @@
 > Nota: la versión en inglés es la versión canónica; esta traducción es solo de referencia. Las capturas muestran la interfaz en inglés; la aplicación aún no está localizada.
 
 **Developer Preview · v0.5.0-alpha**
-Documentación revisada: 18 de noviembre de 2026.
+Documentación revisada: 19 de noviembre de 2026 (trabajo de publicación del día 18).
 
 ## Base de código fuente y de versión
 
-Esta revisión usa la rama local `develop` en `1a50944ca717f9b5590063bdf1a7566054cf90be`
-después del PR #68 y antes de los commits de las guías de colaboración, el manual y las traducciones. Los metadatos
-del runtime y la funcionalidad del código fuente son independientes de esas ediciones de documentación.
+El candidato Windows x64 del borrador se compiló desde el código confirmado `6f96e71c0d1517030bf30729546d4bb90578bdc3` en `fix/windows-setup-long-paths`. El [registro del candidato](../verification/windows-piper-installer-2026-11-18.md) (solo en inglés) identifica el checksum y las dependencias reutilizadas y verificadas mediante hash. Los commits posteriores solo de documentación no cambian la identidad del código de la aplicación.
 
-El [registro de instalación del 18 de noviembre](../verification/ssh-voice-installed-update-2026-11-18.md)
-identifica el candidato de Windows actualizado y compilado a partir de `7f3b925`, con la preservación,
-las comprobaciones de componentes y sus límites. No califica todas las revisiones fusionadas posteriores.
-Las capturas SSH reales del manual identifican ese ejecutable instalado; los fixtures de la galería
-y las pruebas deterministas de servicio siguen etiquetados por separado.
+Falta la verificación humana final de este candidato recompilado. Las comprobaciones automáticas incluyen 131 pruebas Python afectadas, 68 widgets de instalación y gestión, análisis Flutter limpio, 107 contratos y una base Piper instalada previamente. La actualización/reparación aislada del código final pasó: Piper generó audio, se conservaron dispositivos/modelo/espacio de trabajo y archivos de prueba, y coincidieron los hashes del código instalado. El CI alojado pasó en `6f96e71`, incluidas las suites completas Python/escritorio y la instalación nativa sin conexión. La aceptación del instalador anterior del 18 de noviembre sigue siendo histórica y solo corresponde a su hash original.
 
-La siguiente etiqueta pública prevista es **v0.5.0-alpha**, no beta. A la fecha de esta revisión no hay
-en la página de versiones públicas un instalador completo que corresponda; los archivos `v0.5.0-unstable`
-son una instantánea más antigua del cliente de UI. Un instalador funcional suministrado/local es distinto
-de una descarga publicada. Esta página no implica publicación, firma ni calificación en una máquina limpia.
-Los registros de CI/revisión del PR #67 anterior conservan su propio alcance y
-no pueden certificar automáticamente el head actual.
+El error `ssh -G failed` procedía del script de verificación, que omitía la variable Windows `ProgramData`. Tras corregir el entorno de arranque, la misma app instalada pasó la inspección SSH autenticada y el mantenedor confirmó el acceso. No se reemplazaron archivos de la app ni el instalador. Siete casos nuevos comprueban la preservación del entorno del sistema/perfil; pasan 52 pruebas de arranque Windows, servicio instalado y SSH.
+
+La etiqueta pública sigue siendo **v0.5.0-alpha**. Se prepara un borrador de preversión sin publicar para la verificación del mantenedor; no debe publicarse automáticamente. Firma y aceptación en máquina limpia, hardware y proveedores siguen siendo verificaciones separadas. Las capturas y el [registro anterior](../verification/ssh-voice-installed-update-2026-11-18.md) (solo en inglés) conservan sus identidades originales.
 
 ## Primera ejecución de un colaborador
 
@@ -53,8 +44,8 @@ y la aceptación del camino dorado por parte de un lector externo siguen sin med
 | Checkpoints | Instantáneas de texto acotadas y vista previa respaldadas por Git; la restauración compatible fuera de Windows usa aprobación exacta y una instantánea de seguridad | La restauración en Windows está deshabilitada en el servicio y en la UI a la espera de una seguridad basada en handles. La creación, el listado y la vista previa siguen disponibles; los archivos binarios/sensibles/no compatibles quedan excluidos. |
 | Monitorización | Agregación opcional en Go con telemetría local/emparejada y estado SSH de solo lectura | La conectividad, el permiso y la frescura de los datos siguen siendo independientes. Los DTO de monitorización no conceden acceso de ejecución ni de espacio de trabajo. |
 | Ejecución SSH | Selección explícita de un destino Custom temporal y comandos `ssh.run` aprobados exactamente | Separada de la monitorización; sin sandbox remoto, PTY, inspector de archivos ni ejecución SSH de Harness. Reconecta tras reiniciar el servicio. |
-| Voz | Ciclo de vida existente de proveedor/controlador y evidencia de audio previa acotada | El micrófono, el eco, los recursos de modelo y la compatibilidad de dispositivo/proveedor requieren sus propias comprobaciones. |
-| Configuración (Setup) | Configuración de Flutter en Windows, entorno de ejecución privado con todas sus dependencias y mantenimiento versionado | El código fuente fusionado final no se ha calificado como un único candidato de versión instalado y coherente. |
+| Voz | Piper recomendado para CPU; Kokoro seleccionable; Whisper y descarga de activación por voz opcionales | Carga/síntesis Piper instalada verificada; micrófono, reproducción, eco y activación necesitan aceptación por dispositivo. |
+| Configuración (Setup) | Instalador Windows con runtime privado, mantenimiento versionado e instalación Piper/Kokoro opcional | El borrador recompilado espera verificación humana final; firma, hardware amplio y máquina limpia siguen siendo verificaciones separadas. |
 
 ## Matriz de plataformas
 
