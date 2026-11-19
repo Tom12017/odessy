@@ -2,6 +2,11 @@
 
 **Developer Preview · v0.5.0-alpha · Windows x64 · unpublished candidate**
 
+**Superseded for publication on 2026-11-19:** the recorded EXE predates the
+OpenTelemetry 1.45.2, `@hono/node-server` 2.1.6 and audio error-disclosure fixes.
+Its hashes and test results remain historical evidence. A new matching installer
+build and qualification are required before distributing these fixes.
+
 ## Current rebuilt draft candidate
 
 - Application source: `6f96e71c0d1517030bf30729546d4bb90578bdc3`; clean working tree at build time.

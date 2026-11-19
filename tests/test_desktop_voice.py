@@ -13,6 +13,48 @@ class Audio:
 def controller():return SessionController(model_factory=lambda _:object(),agent_factory=lambda *a,**k:object(),profiles={'local':{}})
 
 
+@pytest.mark.parametrize('action', ['test_output', 'start_capture'])
+@pytest.mark.parametrize('error_kind', ['runtime', 'device'])
+def test_voice_failures_do_not_expose_backend_exception_text(action, error_kind):
+    httpx = pytest.importorskip('httpx')
+    from odessy.application.desktop_voice import DesktopVoice
+    from odessy.application.api import create_app
+    from odessy.voice.native_audio import AudioDeviceUnavailable
+
+    private = 'private-driver-path /users/private/token-secret Traceback internal.py:123'
+    error = AudioDeviceUnavailable if error_kind == 'device' else RuntimeError
+
+    class BrokenAudio(Audio):
+        async def start(self):
+            raise error(private)
+        async def speak(self, text):
+            raise error(private)
+
+    async def run():
+        voice = DesktopVoice(BrokenAudio, host='local')
+        created = []
+        def factory():
+            session = controller()
+            created.append(session)
+            return session
+        app = create_app(factory, token='secret', desktop_voice=voice)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://test',
+                                     headers={'Authorization': 'Bearer secret'}) as client:
+            sid = (await client.post('/v1/sessions')).json()['id']
+            route = f'/v1/sessions/{sid}/voice'
+            response = await client.post(route, json={'action': action})
+            assert response.status_code == 503
+            state = await client.get(route)
+            events = created[0].events
+            for public_text in (response.text, state.text, str(events)):
+                assert 'token-secret' not in public_text
+                assert 'private-driver-path' not in public_text
+            if error_kind == 'device':
+                assert 'Settings > Audio devices' in state.json()['message']
+        await voice.close()
+    asyncio.run(run())
+
+
 def test_explicit_output_failure_is_not_acknowledged_as_idle_success_and_retry_clears_error():
     httpx=pytest.importorskip('httpx')
     from odessy.application.desktop_voice import DesktopVoice

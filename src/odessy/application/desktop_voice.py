@@ -157,7 +157,8 @@ class DesktopVoice:
         except Exception as exc:
             from odessy.voice.native_audio import AudioDeviceUnavailable
             await self._cancel_audio();self.owner=None;self.state='error'
-            self.error=str(exc) if isinstance(exc,AudioDeviceUnavailable) else 'Audio input unavailable. Typed input remains available.'
+            self.error=('Selected microphone is unavailable. Connect it and retry, or choose a device in Settings > Audio devices.'
+                        if isinstance(exc,AudioDeviceUnavailable) else 'Audio input unavailable. Typed input remains available.')
             self._emit(c)
             raise VoiceError(self.error,503) from None
         finally:self._preparing=False
@@ -322,7 +323,8 @@ class DesktopVoice:
         except Exception as exc:
             from odessy.voice.native_audio import AudioDeviceUnavailable
             self.state='error'
-            self.error=str(exc) if isinstance(exc,AudioDeviceUnavailable) else 'Audio output unavailable. The completed text answer was not retried.'
+            self.error=('Selected speaker is unavailable. Connect it and retry, or choose a device in Settings > Audio devices.'
+                        if isinstance(exc,AudioDeviceUnavailable) else 'Audio output unavailable. The completed text answer was not retried.')
             c.emit('audio_error',{'message':self.error})
         finally:
             self._speaking=False

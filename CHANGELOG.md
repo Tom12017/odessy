@@ -4,6 +4,9 @@ User-visible changes are recorded here, starting with the next release.
 
 ## Unreleased — v0.5.0-alpha (Developer Preview)
 
+- Update the pinned OpenTelemetry API to 1.45.2 and Node HTTP adapter to 2.1.6 for denial-of-service and request-path security fixes.
+- Keep backend exception text out of desktop audio errors while preserving device-selection guidance.
+- Make fake Harness protocol tests independent of runner sandbox capabilities; required production isolation still refuses unsupported boundaries.
 - Consolidate the production desktop with project/recent navigation, preserved Activity & usage, Jobs/Handoffs, inspector panels and local appearance preferences.
 - Add durable conversation/project history, search/export and bounded Custom restart continuation; Harness restart history remains read-only.
 - Add service-owned Custom access modes, explicit project memory and opt-in lexical document retrieval.
