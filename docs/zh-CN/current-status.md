@@ -4,24 +4,15 @@
 
 > 说明：英文文档为权威版本（canonical），本页为简体中文翻译，仅供参照；界面截图显示英文界面，应用本身尚未本地化。
 
-**Developer Preview · v0.5.0-alpha**
-文档审阅日期：2026 年 11 月 19 日（继续完成 11 月 18 日发布工作）。
-
 ## 源码与发布基线
 
-Windows x64 草稿候选版本由 `fix/windows-setup-long-paths` 分支已提交的应用源码 `6f96e71c0d1517030bf30729546d4bb90578bdc3` 构建。[候选版本回执](../verification/windows-piper-installer-2026-11-18.md)（English only）记录准确校验值及复用且经哈希验证的依赖闭环。后续仅文档提交不会改变其应用源码标识。
+[v0.5.0-alpha](https://github.com/Trisoma/odessy/releases/tag/v0.5.0-alpha) 是 2026 年 11 月 19 日公开发布的预览版，包含 Windows x64 安装包。
 
-本次重新构建的候选版本仍待最终人工验收。自动检查包括 131 项相关 Python 测试、68 项安装与管理控件测试、无问题的 Flutter 分析、107 项设置契约，以及较早隔离全新安装的 Piper 基线。最终源码的隔离升级／修复验证已通过：安装后的 Piper 生成了音频，设备、模型、工作区及用户文件标记保持不变，安装源码哈希匹配。`6f96e71` 的托管 CI 已通过，包括完整 Python/桌面测试及原生离线安装。维护者对 11 月 18 日较早安装包的验收属于历史证据，仅适用于原校验值。
-
-`ssh -G failed` 来自验证启动脚本漏传 Windows `ProgramData` 环境变量。修正启动环境后，同一已安装应用的认证 SSH 检查通过，维护者确认登录成功。本次修复没有替换应用文件或安装包。新增七项回归用例覆盖系统/用户目录变量保留；52 项 Windows 启动、已安装服务及 SSH 检查通过。
-
-公开预览标签仍为 **v0.5.0-alpha**。计划创建供维护者验收的未公开预发布草稿，禁止自动公开。签名及干净机器、硬件、提供商验收仍需分别完成。现有截图及[较早安装回执](../verification/ssh-voice-installed-update-2026-11-18.md)（English only）保留各自原始源码标识。
+安装包基于应用源码 `6f96e71`，早于 `08efca9` 的安全修复。[验证记录](../verification/windows-piper-installer-2026-11-18.md)列出了 EXE 的校验值，以及针对该文件的隔离升级和 Piper 合成检查。要使用之后的修复，请[从源码启动](getting-started.md)。
 
 ## 首次贡献者运行
 
-常规的已安装使用流程是：**open app → Settings → model/workspace → chat**（打开应用 → 设置 → 模型/工作区 → 对话）。桌面端会启动自身经过认证的服务，无需用户自行操作后端终端。[源码方式安装](./getting-started.md)在安装开发用 SDK 后使用同一套受管生命周期。CLI 假模型与手工令牌握手属于独立的组件/API 检查，不是产品的主要上手途径。
-
-[GitHub issue 列表](https://github.com/Trisoma/odessy/issues)与[领域归属路径](./CONTRIBUTING.md#通往领域负责人的路径)提供了具体的贡献途径。它们不能证明外部贡献者能够成功上手，也不能证明维护者的响应时间或会授予贡献者权限。首次运行的耗时情况，以及外部读者对 golden path 的验收情况，仍未测量。
+先看[入门指南](getting-started.md)，再按[手册](GOLDEN_PATH.md)核对一条获批的本地命令。[贡献指南](CONTRIBUTING.md)列出了组件检查。
 
 ## 能力矩阵
 
@@ -38,7 +29,7 @@ Windows x64 草稿候选版本由 `fix/windows-setup-long-paths` 分支已提交
 | Monitoring（监控） | 可选的 Go 聚合组件，支持本地/配对遥测与只读 SSH 状态 | 连通性、权限与数据新鲜度仍需分别判断。监控 DTO 不授予执行或工作区访问权限。 |
 | SSH execution（SSH 执行） | 显式选择临时的 Custom 目标，并执行逐条精确批准的 `ssh.run` 命令 | 与监控相互独立；不提供远程沙箱、PTY、文件检查器，也不支持 Harness 通过 SSH 执行。服务重启后需重新连接。 |
 | Voice（语音） | CPU 推荐 Piper，可选 Kokoro；Whisper 输入与唤醒下载分别选择 | 已验证安装后的 Piper 模型加载/合成；麦克风、播放、回声和唤醒需按设备验收。 |
-| Setup（安装设置） | Windows 安装程序、私有运行时、带版本维护及可选 Piper/Kokoro 安装 | 重新构建的草稿仍待最终人工验收；签名、广泛硬件及干净机器验收仍需分别完成。 |
+| 安装 | Windows 安装包自带运行时，可选 Piper/Kokoro | 可下载公开的 alpha 版。安装包源码版本和检查见上文。 |
 
 ## 平台矩阵
 

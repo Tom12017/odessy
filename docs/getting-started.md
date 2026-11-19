@@ -4,18 +4,11 @@
 
 **Developer Preview · v0.5.0-alpha · Windows 11 x64**
 
-Open the desktop, configure a model in Settings, choose a disposable workspace,
-and send a request. The desktop starts and authenticates its local service for you.
-Manual Python service startup and token copying are **advanced integration checks**,
-not the normal user workflow. The module CLI still exists for development and diagnostics.
-
 ## Choose your route
 
-- **Windows installer:** the draft candidate includes its own runtime; end users do not need Python, Node or Flutter SDKs. Follow the [manual](GOLDEN_PATH.md#1-install-and-open-odessy) for its exact checksum, installation, Piper/Kokoro and optional wake setup. Final maintainer verification is pending.
-- **Source checkout:** use the developer steps below. Source builds require SDKs and
-  are separate from the supplied installer. This documentation does not publish a download;
-  obtain the matching candidate from its distributor or use source. Old UI archives
-  do not contain the complete current app.
+Use this guide to run Odessy from a Windows checkout. The app starts the local service using that checkout’s Python. For the [published Windows installer](https://github.com/Trisoma/odessy/releases/tag/v0.5.0-alpha), skip the SDKs and follow the [manual](GOLDEN_PATH.md).
+
+If you only need to check Python, [run the fake-model check](../CONTRIBUTING.md#check-python-without-a-model-key) first. It needs no model key or desktop build.
 
 ## Prepare a Windows source checkout
 
@@ -63,30 +56,7 @@ flutter pub get
 flutter run -d windows @previewDefines
 ```
 
-These defines select `LocalDesktopApplication` in production `lib/main.dart` and
-bind both the service owner and setup helper to this checkout's Python. Plain
-`flutter run -d windows` selects the disconnected client surface instead. Neither is
-`--demo`; the managed mode must report a startup failure rather than substitute fixtures.
-
-No second backend terminal, manually generated token or API key in the command line is
-needed. Use **Settings → Models and connections** to configure your provider/model and
-masked credential. Save, follow the indicated apply/reconnect step, and use
-**Connect saved configuration** if not already connected. The [manual](GOLDEN_PATH.md#2-configure-deepseek)
-walks through DeepSeek as one tested example; another compatible provider is optional.
-Cloud requests can incur charges and send permitted observations to that provider.
-
-If a previous source configuration is discovered, review its model and workspace
-before connecting. Preview connector/runtime state uses `build/local-desktop/state`;
-the desktop can also remember a source configuration pointer in the user's Odessy
-settings. This is a checkout build, not a claim of complete profile isolation or an
-installer update. Closing the app shuts down its owned service.
-
-## Reach the finish line
-
-Choose a disposable folder through **Workspaces**, save and apply any restart prompt,
-then start a **Custom** chat. Follow the manual's [local Deny → Approve once exercise](GOLDEN_PATH.md#3-run-a-command-on-your-windows-laptop).
-Check the actual tool output and exit code. A fixture greeting or an assistant's
-success claim does not prove a real tool ran.
+When Odessy opens, follow the manual to [connect a model and get a reply](GOLDEN_PATH.md#2-configure-deepseek), then [run one local command and check Output](GOLDEN_PATH.md#3-run-a-command-on-your-windows-laptop).
 
 Voice and SSH are optional next steps. Source setup does not download their assets or
 build the optional monitoring/password helpers. See [voice components](setup/voice-components.md)
@@ -94,22 +64,18 @@ and [SSH setup](setup/ssh-computers.md) for their separate requirements.
 
 ## Diagnose a failed start
 
-Start with the visible error in Settings. For a source CLI diagnostic, return to the
-repository root, point doctor at the source-managed profile and select the backend
-you configured, for example:
+If the desktop opens disconnected, check that you used all five defines from the same PowerShell session. A plain `flutter run -d windows` opens a client without a managed service. Source startup uses `build/local-desktop/state` and can remember a source configuration pointer in your user settings. See the [desktop launch modes](ui/README.md#connection-and-launch-modes).
+
+Start with the error in Settings. For a source diagnostic, open PowerShell in the checkout root. This example uses DeepSeek; replace it with your configured backend.
 
 ```powershell
-Set-Location $previewRepo
+$previewRepo = (Get-Location).Path.Replace('\', '/')
+$previewPython = "$previewRepo/.venv/Scripts/python.exe"
 $env:ODESSY_CONFIG_FILE = "$previewRepo/build/local-desktop/state/odessy.env"
 & $previewPython -m odessy doctor --model-backend deepseek
 ```
 
-The selected configuration and model credentials also have setup/secure-store owners;
-doctor is not a complete replica of the running desktop state. A session-only API key
-is deliberately absent from another process. Do not copy a key into a plaintext file
-to satisfy doctor. An unrelated default Ollama failure does not prove the configured
-DeepSeek service failed. Doctor can probe configured endpoints or list configured tools;
-it does not download models, run a live cloud inference or test physical audio.
+Doctor can probe configured endpoints and list tools. It does not run cloud inference or test audio. A session-only key stays in the desktop; don’t copy it into a file for this check.
 
 Use the manual's [troubleshooting and sanitized reporting steps](GOLDEN_PATH.md#troubleshooting-and-reporting).
 For deterministic component tests or a manually managed API server, see

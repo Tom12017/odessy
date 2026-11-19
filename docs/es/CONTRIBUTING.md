@@ -2,41 +2,38 @@
 
 [English](../../CONTRIBUTING.md) | [简体中文](../zh-CN/CONTRIBUTING.md) | **Español**
 
+**Vista previa para desarrolladores · v0.5.0-alpha**
+
 > Nota: la versión en inglés es la versión canónica; esta traducción es solo de referencia. Las capturas muestran la interfaz en inglés; la aplicación aún no está localizada.
 
-**Developer Preview · v0.5.0-alpha**
+¡Bienvenido a bordo! ⛵ Si necesitas arrancar el escritorio, sigue [Primeros pasos](getting-started.md). Para tu primer PR, elige un issue abierto en la [hoja de ruta](../ROADMAP.md), reproduce el problema y ejecuta la prueba correspondiente. Solo necesitas las herramientas del componente que vas a cambiar.
 
-Empezar por la [configuración gestionada del escritorio](./getting-started.md), los [issues abiertos de GitHub](https://github.com/Trisoma/odessy/issues), la [matriz de soporte](current-status.md) y la [arquitectura](ARCHITECTURE.md). Buscamos colaboradores capaces de llevar un área concreta a través de la revisión; la disponibilidad voluntaria es bienvenida.
-
-> Una breve historia de este proyecto en [Story](../../Story.md) (solo en inglés).
-
-¡Bienvenidos a bordo! ⛵ Gracias por ayudar a mejorar Odessy. Los informes de errores, las correcciones concretas y una documentación más clara ayudan a que esta Developer Preview sea más fácil de usar. Esta guía explica por dónde empezar, cómo preparar el entorno y qué incluir al enviar un cambio.
-
-Para una visión general del proyecto, empezar por el [README](../../README.es.md). La arquitectura y la documentación de componentes comienzan en el [índice de documentación](./README.md).
-
-Para trabajar en instalación e incorporación, consultar el [registro del candidato](../verification/windows-piper-installer-2026-11-18.md) (solo en inglés) y el [manual](GOLDEN_PATH.md). Los scripts de verificación deben preservar las variables Windows del sistema/perfil, incluido `ProgramData`; eliminarlas rompe OpenSSH antes de la autenticación. Un fallo del entorno de prueba no es una corrección del producto SSH.
+[Comprueba Python sin una clave de modelo](#comprueba-python-sin-una-clave-de-modelo) antes de compilar la aplicación de escritorio.
 
 ## Elegir por dónde empezar
 
-| Contribución | Cómo empezar |
-|---|---|
-| Correcciones de errores y de documentación pequeñas | Abrir un pull request concreto directamente. Vincular un issue existente cuando corresponda. |
-| Nuevas funcionalidades, mejoras o cambios más grandes | Abrir primero un issue para explicar el problema y el enfoque propuesto antes de empezar la implementación. |
-| Cambios solo de refactorización o de CI | No abrir pull requests independientes para estos cambios. |
-| Vulnerabilidades de seguridad | Seguir [SECURITY.md](../../SECURITY.md) (solo en inglés). No revelar vulnerabilidades en issues públicos. |
+| Cambio | Punto de partida | Carpeta | Primera prueba |
+| --- | --- | --- | --- |
+| Salida registrada [#72](https://github.com/Trisoma/odessy/issues/72) | [`workspace_inspector.dart`](../../apps/desktop/lib/features/workspaces/presentation/workspace_inspector.dart) | `apps/desktop` | `flutter test test/workspace_inspector_test.dart test/saved_chat_navigation_test.dart` |
+| Estado de la conexión SSH [#70](https://github.com/Trisoma/odessy/issues/70) | [Vistas de dispositivos](../../apps/desktop/lib/features/devices/presentation/) | `apps/desktop` | `flutter test test/ssh_connection_test.dart test/device_page_test.dart` |
+| Detección de Piper [#69](https://github.com/Trisoma/odessy/issues/69) | [`setup/voice_assets.py`](../../src/odessy/setup/voice_assets.py) | Raíz del repositorio | `python -m pytest tests/test_piper_provider.py tests/test_doctor.py -q` |
+| API de la aplicación Python | [`application/api.py`](../../src/odessy/application/api.py) | Raíz del repositorio | `python -m pytest tests/test_application_api.py -q` |
+| Herramientas MCP | [`tools/src/`](../../tools/src/) | `tools` | `npm run typecheck` · `npm test` |
+| Cliente Dart | [`packages/odessy_client/`](../../packages/odessy_client/) | `packages/odessy_client` | `dart analyze` · `dart test` |
+| Monitoreo | [`services/monitoring/`](../../services/monitoring/) | `services/monitoring` | `go test ./... -count=1` |
+| Emparejamiento | [`native/odessy-link/`](../../native/odessy-link/) | `native/odessy-link` | `cargo test --locked` |
 
-Es bienvenido reportar un problema aunque no se pueda implementar una corrección. Indicar si se planea trabajar en él para que otras personas puedan coordinarse.
+Para mediciones de TTS, consulta la [guía de benchmarks](../../benchmark/tts/README.md) y el [#71](https://github.com/Trisoma/odessy/issues/71).
+
+Antes de ejecutar los comandos, prepara el [entorno de desarrollo](#configuración-del-entorno-de-desarrollo). Para cambios de documentación, comprueba los enlaces e imágenes locales, verifica los comandos que edites y previsualiza el Markdown de cada idioma afectado.
+
+Aceptamos PR pequeños de documentación, pruebas, CI y refactorizaciones que preserven el comportamiento. Explica qué arreglas, qué comportamiento o controles se conservan y cómo lo verificaste. Para un cambio mayor, acuerda el alcance en un issue antes de escribir código. Comunica las vulnerabilidades en privado. [Política de seguridad](../../SECURITY.md)
 
 ## Ruta hacia la responsabilidad de un área
 
-1. Elegir un [issue abierto de GitHub](https://github.com/Trisoma/odessy/issues), reproducir el comportamiento y comentar con el alcance propuesto. Revisar la discusión y las asignaciones actuales antes de empezar, y buscar trabajo que se solape.
-2. Enviar un único PR concreto con sus comprobaciones de aceptación. Explicar qué evidencia proviene de fixtures y qué evidencia proviene de proveedores o hardware reales. La primera contribución puede ser una prueba de regresión, una mejora de diagnóstico, una corrección de presentación o un informe de benchmark reproducible.
-3. Tras contribuciones revisadas, proponer la responsabilidad de un área concreta: mantener sus pruebas y documentación, clasificar los informes pertinentes y ayudar a revisar cambios posteriores. Acordar los límites y la disponibilidad con el mantenedor del proyecto en un issue público.
-4. Los permisos del repositorio o un rol de mantenedor concreto requieren una decisión explícita por separado. Un PR fusionado, la autoasignación o un plan escrito por IA no otorgan acceso.
+Comenta en el issue cómo lo reprodujiste y qué quieres cambiar. Empieza por un cambio y su prueba. Tras varias contribuciones revisadas, puedes proponer encargarte de los documentos, las pruebas y la clasificación de errores de un área. Acuerda el alcance y tu disponibilidad con el mantenedor. El acceso al repositorio y los roles de mantenimiento requieren una decisión aparte.
 
-La política y el despacho, las credenciales, el emparejamiento y la identidad del host, la propiedad de la instalación y la seguridad de la restauración requieren la revisión del propietario del proyecto. El escritorio `lib/app/`, los controladores y los clientes compartidos también requieren la revisión del propietario según su `AGENTS.md`; el trabajo de presentación puede comenzar en los archivos de vista acordados. Leer el [mapa de arquitectura](ARCHITECTURE.md) y las instrucciones locales antes de cambiar un contrato compartido.
-
-Se trata de mantenimiento voluntario, sin un SLA de tiempo de respuesta garantizado. Incluir la reproducción, los criterios de aceptación y las comprobaciones en el issue/PR para que el progreso no dependa de mensajes privados. Si no ha habido respuesta tras una semana, añadir un único recordatorio breve antes de emprender un cambio mayor. La confianza de quien contribuye y los tiempos de respuesta deben demostrarse en interacciones reales; el volumen de commits no prueba ninguna de las dos cosas.
+Pide revisión del mantenedor para cambios en política y despacho, credenciales, identidad y emparejamiento de equipos, propiedad de la instalación o restauración segura. El escritorio y el cliente Dart tienen reglas de revisión propias para controladores y contratos compartidos. [Arquitectura](ARCHITECTURE.md) · [Instrucciones del escritorio](../../apps/desktop/AGENTS.md) · [Instrucciones del cliente Dart](../../packages/odessy_client/AGENTS.md)
 
 ## Antes de abrir un issue
 
@@ -76,43 +73,47 @@ Nunca confirmar claves de API, tokens, grabaciones privadas ni credenciales espe
 
 ## Configuración del entorno de desarrollo
 
-Los comandos siguientes provienen de [CI](../../.github/workflows/ci.yml) (solo en inglés) y del [CI de la vista previa del escritorio](../../.github/workflows/desktop-preview.yml) (solo en inglés). La CI cubre Python 3.10/3.13 en Ubuntu y 3.12/3.13 en Windows, Node 22/24 en ambas, Rust stable y Flutter 3.47.7 (stable) en Ubuntu. Esta cobertura no establece compatibilidad con hardware, macOS ni proveedores en vivo.
+Para arrancar el escritorio completo en Windows, sigue [Primeros pasos](getting-started.md). Si solo necesitas una prueba de componente, prepara lo que indique la tabla.
 
-Crear y activar un entorno virtual con Python 3.10-3.13:
+### Qué espera el inicio rápido
+
+| Componente | Preparación |
+| --- | --- |
+| Python | Usa Python 3.10–3.13 en un entorno virtual. Desde la raíz, ejecuta `python -m pip install -e ".[test,ui]"`. |
+| Servidor MCP | Usa Node 22 (también para las pruebas de integración de Python) o 24. Desde `tools/`, ejecuta `npm ci --no-audit --no-fund` y `npm run build`. |
+| Flutter y Dart | Usa Flutter 3.47.7 estable con su SDK de Dart. Ejecuta `flutter pub get` en `apps/desktop` o `dart pub get` en `packages/odessy_client`. |
+| Monitoreo | Usa la versión de Go indicada en [go.mod](../../services/monitoring/go.mod). |
+| Emparejamiento | Usa Rust estable y Cargo. |
+
+Desde la raíz del repositorio, crea y activa el entorno de Python en PowerShell:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-En Linux, activar con `source .venv/bin/activate`. Usar Node 22 para las comprobaciones de integración de Python y Rust stable para el trabajo de emparejamiento. Desde la raíz del repositorio:
+En Linux, crea el entorno con el mismo primer comando y ejecuta `source .venv/bin/activate`. Para las pruebas con modelo simulado o al estilo del CI, apunta `ODESSY_CONFIG_FILE` a un archivo vacío que crees en una copia desechable para evitar que se cargue tu configuración real.
 
 ```powershell
-cd tools
-npm ci --no-audit --no-fund
-npm run build
-cd ..
-python -m pip install -e ".[test,ui]" "pytest-xdist>=3.6,<4"
-$env:ODESSY_CONFIG_FILE="$PWD/.ci-no-config.env"
-$env:PYTHONUTF8="1"
+$env:ODESSY_CONFIG_FILE = "$PWD/.ci-no-config.env"
+$env:PYTHONUTF8 = "1"
 ```
 
-En Linux, usar `export ODESSY_CONFIG_FILE="$PWD/.ci-no-config.env"` y `export PYTHONUTF8=1` en lugar de las asignaciones de entorno de PowerShell.
+En Linux, usa `export ODESSY_CONFIG_FILE="$PWD/.ci-no-config.env"` y `export PYTHONUTF8=1`.
 
-### Qué espera el inicio rápido
+Instala `pytest-xdist>=3.6,<4` si vas a ejecutar la prueba paralela de Python de abajo.
 
-Estos son los requisitos con los que se comprueban los comandos siguientes; la instalación de la aplicación empaquetada no solicita ninguno de ellos.
+## Comprueba Python sin una clave de modelo
 
-| Componente | Requisito verificado |
-|---|---|
-| Python | 3.10–3.13; la CI ejecuta 3.10/3.13 en Ubuntu y 3.12/3.13 en Windows |
-| Node | 22 o 24 para el servidor de herramientas (`tools/`), instalado con `npm ci` |
-| Flutter | 3.47.7 stable para `apps/desktop`; su SDK de Dart incluido para `packages/odessy_client` |
-| Rust | stable, solo para el trabajo de emparejamiento de `native/odessy-link` |
+Después de [preparar el entorno de Python](#configuración-del-entorno-de-desarrollo), ejecuta este comando desde la raíz del repositorio con el entorno activo y la configuración vacía seleccionada. La respuesta debería empezar por `The current time is`. Esta prueba comprueba la CLI de Python con un modelo simulado.
+
+```text
+python -m odessy --fake-model "what time is it?"
+```
 
 ## Ejecutar la aplicación de escritorio
 
-Usar [Primeros pasos](./getting-started.md) para el arranque gestionado por el escritorio ya configurado. La aplicación inicia el servicio y gestiona la autenticación local. Configurar un modelo real en Settings → Models and connections (Configuración → Modelos y conexiones) para la [ruta dorada](./GOLDEN_PATH.md). Las pruebas de arranque desde el código fuente incluyen `local_desktop_application_test.dart`, `source_setup_wiring_test.dart` y la prueba opcional `source_model_integration_test.dart` en `apps/desktop/test/`. La última usa un servicio Python real y un fixture de proveedor en loopback, no inferencia de pago.
+Sigue [Primeros pasos](getting-started.md) para el arranque administrado y el ejercicio con un modelo real.
 
 ## Comprobaciones avanzadas de componentes y API
 
@@ -142,8 +143,6 @@ python -m odessy serve --fake-model
 Después, ejecutar `flutter run -d linux` desde `apps/desktop`. Usar el token generado al conectar la aplicación de escritorio. Mostrarlo localmente con `$env:ODESSY_API_TOKEN` en PowerShell o `printf '%s\n' "$ODESSY_API_TOKEN"` en Linux antes de introducirlo en la aplicación. Mantenerlo privado. Generar un token distinto en cada máquina.
 
 Hacer clic en el icono de conexión, introducir la dirección de loopback impresa y el token, y luego enviar `what time is it?`. El token permanece en la memoria de la aplicación; el backend nunca lo imprime. Sin `--fake-model`, los mismos pasos usan el modelo real configurado y su presupuesto existente, y eso es lo que hace que las comprobaciones con proveedores en vivo sean trabajo aparte. Borrar primero la anulación del inicio rápido (`unset ODESSY_CONFIG_FILE` en Linux o `Remove-Item Env:ODESSY_CONFIG_FILE` en PowerShell), o apuntarla a la configuración personal. De lo contrario, la ejecución en vivo seguirá usando `.ci-no-config.env`.
-
-`python -m odessy --fake-model "what time is it?"` ejecuta el mismo bucle de texto sin el escritorio, que es la comprobación de extremo a extremo más pequeña del lado de Python.
 
 ## Diagnosticar este equipo
 

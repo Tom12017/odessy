@@ -7,7 +7,7 @@
 The [current support matrix](docs/current-status.md) is the maintained capability
 and release baseline. This page summarizes constraints that affect adoption.
 
-- **Release qualification:** the rebuilt draft awaits final maintainer verification. The [candidate receipt](docs/verification/windows-piper-installer-2026-11-18.md) separates automated results from acceptance of the earlier installer. Signing, clean-machine behavior and broader hardware acceptance remain separate gates.
+- **Installer:** the [public alpha](https://github.com/Trisoma/odessy/releases/tag/v0.5.0-alpha) was built before the security fixes in `08efca9`. Use [source](docs/getting-started.md) for those fixes. See [release status](docs/current-status.md) for the build and its checks.
 - **Checkpoint safety:** restoration is disabled on Windows at the service and
   write boundary until directory-handle race protection is implemented. Creation,
   listing and preview remain available. Direct restore requests return unsupported;

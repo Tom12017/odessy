@@ -2,36 +2,17 @@
 
 **English** | [简体中文](zh-CN/current-status.md) | [Español](es/current-status.md)
 
-**Developer Preview · v0.5.0-alpha**  
-Documentation reviewed: November 19, 2026 (November 18 release work).
+**Developer Preview · v0.5.0-alpha**
 
 ## Source and release baseline
 
-The Windows x64 draft candidate was built from committed application source `6f96e71c0d1517030bf30729546d4bb90578bdc3` on `fix/windows-setup-long-paths`. The [candidate receipt](verification/windows-piper-installer-2026-11-18.md) records the exact checksum and reused hash-verified dependency closure. Later documentation-only commits do not change its application source identity.
+[v0.5.0-alpha](https://github.com/Trisoma/odessy/releases/tag/v0.5.0-alpha) is a public prerelease, published November 19, 2026. It includes a Windows x64 installer.
 
-Final human verification of this rebuilt candidate is pending. Automated checks include 131 affected Python tests, 68 setup and management widgets, clean Flutter analysis, 107 settings contracts and a prior fresh installed Piper baseline. Final-source isolated upgrade/repair passed: installed Piper generated audio, device/model/workspace choices and user-file sentinels were preserved, and installed source hashes matched. Hosted CI passed on `6f96e71`, including full Python/desktop suites and native offline installation. The maintainer accepted the earlier November 18 installer; that acceptance remains historical and applies only to its original hash.
-
-The observed `ssh -G failed` was traced to the qualification launcher's missing
-Windows `ProgramData` environment variable. The same installed app passed its
-authenticated SSH inspection after a corrected relaunch, and the maintainer
-confirmed login works. No application files or installer were replaced for that
-repair. Seven regression cases now cover system/profile environment preservation;
-52 focused Windows-launch/installed/SSH checks pass.
-
-The public preview label remains **v0.5.0-alpha**. The intended release is an unpublished prerelease draft for maintainer verification; it must not be published automatically. Signing and clean-machine/hardware/provider acceptance remain separate. Existing screenshots and the [earlier installed receipt](verification/ssh-voice-installed-update-2026-11-18.md) retain their original source identities.
+The installer was built from application source `6f96e71` and predates the security fixes in `08efca9`. The [verification record](verification/windows-piper-installer-2026-11-18.md) identifies the EXE by checksum and records the isolated upgrade and Piper synthesis checks for that file. [Run from source](getting-started.md) to use the later fixes.
 
 ## First contributor run
 
-The normal installed workflow is **open app → Settings → model/workspace → chat**.
-The desktop starts its authenticated service; no user-operated backend terminal is
-needed. [Source setup](getting-started.md) uses the same managed lifecycle after
-installing development SDKs. The CLI fake model and manual token handshake are
-separate component/API checks, not the product's main onboarding route.
-
-[Open GitHub issues](https://github.com/Trisoma/odessy/issues) and the [path to area ownership](../CONTRIBUTING.md#path-to-area-ownership)
-give concrete contribution routes. They do not prove external onboarding success,
-maintainer response times or a contributor permission grant. First-run timing and
-an external reader's golden-path acceptance remain unmeasured.
+Follow [Getting started](getting-started.md), then check one approved local command in the [manual](GOLDEN_PATH.md). See [Contributing](../CONTRIBUTING.md) for component checks.
 
 ## Capability matrix
 
@@ -48,7 +29,7 @@ an external reader's golden-path acceptance remain unmeasured.
 | Monitoring | Optional Go aggregation with local/paired telemetry and read-only SSH status | Connectivity, permission and freshness remain separate. Monitoring DTOs grant no execution or workspace access. |
 | SSH execution | Explicit temporary Custom target selection and exactly approved `ssh.run` commands | Separate from monitoring; no remote sandbox, PTY, file inspector or Harness SSH execution. Reconnect after service restart. |
 | Voice | Piper recommended for CPU; Kokoro selectable; optional Whisper input and separate wake downloads | Installed Piper model load/synthesis verified; microphone, playback, echo and wake require device-specific acceptance. |
-| Setup | Windows installer with private runtime, versioned maintenance and optional Piper/Kokoro installation | Rebuilt draft awaits final human verification; signing, broad hardware and clean-machine qualification remain separate. |
+| Setup | Windows installer with a bundled runtime and optional Piper/Kokoro | Download the published alpha. See above for the installer’s source and checks. |
 
 ## Platform matrix
 

@@ -4,79 +4,43 @@
 
 **Developer Preview · v0.5.0-alpha · Windows 11**
 
-**First success:** connect a real model, deny one local command, then approve a new request and verify its tool output. Complete sections 1–3 on one Windows laptop. Voice, wake words and SSH are optional exercises after that finish line; they are not prerequisites.
-
-The model proposes actions; the service applies policy and obtains required approval before execution. Use a disposable workspace. Windows confinement is partial, and cloud requests and permitted tool observations leave your computer for the chosen provider.
-
-**Updated 19 November 2026, completing the November 18 release work.** The draft installer was rebuilt from committed application source `6f96e71`, including the review fixes. See the [candidate receipt](verification/windows-piper-installer-2026-11-18.md) for build checks and the prior installed Piper baseline. The final-source isolated upgrade passed, including installed Piper synthesis and saved-configuration preservation. Final maintainer verification is pending; acceptance of the earlier installer does not transfer to this build. Existing screenshots retain their earlier build identity (`7f3b925`).
-
-If this path does not work for you, [open an issue](https://github.com/Trisoma/odessy/issues/new/choose) with the **sanitized doctor output** and the failing step. See [Troubleshooting and reporting](#troubleshooting-and-reporting).
+Open Odessy on Windows 11 x64, connect a model and check the actual output of a local command. The first run needs one PC; voice and SSH can wait.
 
 ## 1. Install and open Odessy
 
 ### Prerequisites
 
-- Windows 11 x64, an internet connection, and a disposable local folder for commands.
-- For this walkthrough, a DeepSeek API account with an active API key, access to the chosen model and sufficient API credit. Provider usage can incur charges. A GPU, microphone and second computer are not required.
-- **Source setup only:** [Git](https://git-scm.com/downloads/win), Python 3.13 with the Windows `py` launcher, [Node.js 22](https://nodejs.org/en/download), and [Flutter 3.47.7 stable](https://docs.flutter.dev/install). Flutter Windows builds require Visual Studio's **Desktop development with C++** workload and a Windows SDK; check `flutter doctor -v`. Native Node modules may also need those build tools. The full source setup is larger than an end-user install.
+You’ll need internet access, a disposable local folder and a DeepSeek key with model access for this example. No GPU, microphone or second computer is needed.
 
-Choose **one** route below. A packaged candidate includes its supported runtime; its users do not need the development SDKs.
+DeepSeek can charge for requests and receives request data and permitted tool observations. Windows confinement is partial.
 
-### A. Supplied installer
+### A. Install on Windows
 
-The Windows x64 candidate **`Odessy-v0.5.0-alpha-windows-x64-setup.exe`** is prepared for an **unpublished maintainer-verification draft**. Obtain the exact candidate and checksum from the maintainer; public downloads become available only if the maintainer publishes the [release](https://github.com/Trisoma/odessy/releases). Draft assets are not a public download. Older `v0.5.0-unstable` UI archives are not equivalent. Use route B if no matching installer is available.
-
-Compare the downloaded file with the candidate's SHA-256 before opening it:
+[Download the Windows x64 installer](https://github.com/Trisoma/odessy/releases/download/v0.5.0-alpha/Odessy-v0.5.0-alpha-windows-x64-setup.exe). This EXE predates the security fixes in `08efca9`. If you need those fixes, [run from source](getting-started.md). To check the published EXE before opening it, run this in PowerShell from your download folder:
 
 ```powershell
 Get-FileHash -Algorithm SHA256 -LiteralPath '.\Odessy-v0.5.0-alpha-windows-x64-setup.exe'
 ```
 
-Expected SHA-256 for this candidate: `2d634100c87251f3f685fdf0a43b734b534b08b6d8643d7e1458c25992abf47a`. A later build must have its own checksum and verification record. See the [candidate receipt](verification/windows-piper-installer-2026-11-18.md).
+Expected SHA-256: `2d634100c87251f3f685fdf0a43b734b534b08b6d8643d7e1458c25992abf47a`.
 
-1. Open the EXE, choose an installation folder, and keep the default coordinator with local execution unless you need a different role under **Custom setup**. Python, Node and Flutter development SDKs are not required.
-2. Choose **Piper (recommended for CPU)** or **Kokoro** under **Speech output engine**. For automatic speech setup, turn on **Install voice components**. Piper setup needs no pre-existing Piper files: it downloads the pinned engine, English voice, matching model metadata, Whisper.cpp and audio dependencies after you confirm installation. Review the download size and licenses. Internet access is required for these optional downloads.
-3. Choose **Install the wake-word model** separately if wanted. Its model license is CC BY-NC-SA 4.0. Both speech and wake can be skipped for typed chat. **Use existing voice components** is the manual alternative; it does not install missing components.
-4. Review the plan and select **Install**. Cached downloads can show zero remaining bytes; setup still installs and verifies packages in this installation. Wait for the completed installation state, then choose **Open Odessy**. See [setup details](setup/wizard.md) and [voice components](setup/voice-components.md).
-5. Configure your model below and select a disposable folder through **Workspaces**. After connecting audio, test STT/TTS and explicitly enable wake listening in Settings; successful file installation does not itself prove microphone or speaker behavior.
+1. Open the verified EXE, choose a folder and keep the default coordinator with local execution. The installer includes its runtime.
+2. For typed chat, skip speech and wake. To add speech now, select **Install voice components**, choose **Piper** (recommended on CPU) or **Kokoro**, and review the downloads and licenses. The wake model is a separate opt-in. See [Voice components](setup/voice-components.md).
+3. Review the plan, select **Install** and wait for completion. Choose **Open Odessy**.
 
-To update an existing versioned installation, choose its recorded location and use **Manage installation** to review the update. Keep the profile and voice assets; uninstalling first is unnecessary. Automatic in-app update discovery/download is not implemented.
+For an existing versioned installation, use its recorded location and review **Manage installation**. Keep the profile and voice assets. See [maintenance](setup/wizard.md#management) and [speech-cache recovery](setup/voice-components.md#upgrading-after-removing-the-speech-cache).
 
-If a Piper update stops because the speech-package cache is missing, your
-previous version remains active. Close the running app; in **Manage Odessy**,
-choose **Pause speech for update**, review it and **Confirm once**, then review
-**Repair or update files** again. This is an explicit text-only choice, not an
-automatic loss of voice settings. Saved devices, component paths, model and
-workspace are retained. **Enable saved speech** is separately reviewed and uses
-the retained provider runtime/files; keep them. It does not download or repair
-missing components. See [speech update recovery](setup/voice-components.md#upgrading-after-removing-the-speech-cache).
+### B. Build the production desktop from source
+
+Follow [Getting started](getting-started.md), then return here to configure a model.
 
 ![Chat layout with the project sidebar and composer](view/conversation/projects-and-recent.png)
 
 *Desktop gallery example. Existing gallery/SSH images retain their recorded source identity; they are not new captures of this installer.*
 
-### B. Build the production desktop from source
-
-Follow [Getting started](getting-started.md) for the exact Windows dependencies and
-**desktop-managed source launch**. It starts the configured service from the app;
-you do not manually start Python, copy a bearer token, or enter a provider key in a terminal.
-Then return to section 2. Manual server and fake-model commands belong to advanced
-contributor checks and are not required for this walkthrough.
-
 ## 2. Configure DeepSeek
 
-Choose **Custom** as the runtime for new chats. Custom selects the agent runtime and DeepSeek supplies the model. Source configuration calls this engine `legacy`; it is the same Custom engine.
-
-The installed app and the managed source desktop both configure the model through
-Settings and own their service's lifecycle. Save and follow any indicated apply or
-restart step. If the service is not connected, use **Connect saved configuration**;
-do not substitute the manual **Connect local service** token dialog.
-
-1. In **Settings → Models and connections**, choose **DeepSeek**. Use the provider default endpoint (`https://api.deepseek.com/v1`) and select or enter `deepseek-flash`, the model ID recorded in the maintainer's installation.
-2. Enter your DeepSeek API key in the masked field. Choose **Save securely** or **Use for this session only**, then save the model configuration. See [model credentials](setup/secure-model-credentials.md).
-3. Start a new Custom chat and type “Reply with one sentence confirming you can see this message.” Check the active model and look for a reply. If it fails, check the provider, model ID, credential status and connection error.
-
-DeepSeek API is the maintainer-tested example in this guide. Odessy also supports other API providers and local models. With limited testing resources, we have not human-verified those configurations for this walkthrough.
+In **Settings → Models and connections**, choose **DeepSeek**, keep `https://api.deepseek.com/v1`, and select `deepseek-flash`, the model I tested. Enter the API key in the masked field. Choose **Save securely** or **Use for this session only** and save. Follow any apply/reconnect prompt or use **Connect saved configuration**. In a new Custom chat, send a short message and check the active model and reply. [Credentials](setup/secure-model-credentials.md)
 
 ![Models and connections settings](view/settings/models-and-connections.png)
 
@@ -84,35 +48,27 @@ DeepSeek API is the maintainer-tested example in this guide. Odessy also support
 
 ## 3. Run a command on your Windows laptop
 
-This is the core approval exercise. It needs only your Windows laptop. The Windows command `hostname` prints your computer's name, such as `MY-LAPTOP`, then exits without changing files or settings. We use it because its real tool output is easy to compare with PowerShell. `terminal.run` is Odessy's tool for running that command; it is not another command you need to install. Keep execution local; disconnect any selected SSH/LAN execution target first. Select a disposable folder through **Workspaces**, save, and follow any restart prompt before creating the chat. This applies to both the installed and managed source app.
+In **Workspaces**, select a disposable local folder and apply any restart prompt. Disconnect any active SSH or LAN execution target. Run `hostname` first. It prints the computer’s name without changing files.
 
-1. Start a **new Custom chat** with your real model. In the composer's shield menu (**Service permissions**), select **Ask every time**. Wait for the service acknowledgment; if the control reports unavailable or an error, stop. Ordinary allowed reads can still run without prompting; this exercise uses `hostname`, which the default policy classifies as requiring confirmation.
-2. Send this exact prompt:
+1. Open a new **Custom** chat. In the composer’s shield menu (**Service permissions**), choose **Ask every time** and wait for the service to confirm the change.
+2. Send this prompt:
 
    ```text
    Use terminal.run to run exactly hostname on this Windows laptop in the current workspace. Do not use SSH, substitute another command, or retry if I deny it. Show the tool's stdout and exit code.
    ```
 
-3. Inspect the approval's tool, exact arguments and target. It must be local `terminal.run` with command `hostname` in your chosen workspace. Select **Deny**. Expect a denied result and no successful execution result for that request. If the model proposes an alternative, deny it and stop the turn rather than approving a different action.
-4. Send the same prompt as a **new request**. Review its new approval, then choose **Approve once**. If the arguments or target differ, deny and investigate. This approval does not grant blanket access to later commands.
-5. Open the inspector's **Output** panel while this live session is active. Expect the `terminal.run` result to contain a nonempty hostname and exit code `0`. Run `hostname` yourself in PowerShell and compare the names. An assistant sentence saying it succeeded is not sufficient.
+3. Check the approval. It should show local `terminal.run`, the command `hostname`, and the workspace you selected. If the approval is missing or anything differs, stop and [check your settings](#if-the-approval-never-appears). When it matches, choose **Approve once**.
+4. Open **Output** in the active chat. Look for exit code `0` and the same name you get by running `hostname` yourself in PowerShell.
 
-**Finish line:** a real model replied, a local request was denied, a separately approved request returned matching tool output, and the local target was clear. You can stop here and report your result; the remaining exercises are optional.
-
-With the default policy, the non-executing check below reports `decision: confirm` and `asks: true`. Run it from your disposable workspace using the source environment's Python if the UI unexpectedly skips the approval:
-
-```powershell
-$previewPython = 'C:\path\to\odessy-preview\.venv\Scripts\python.exe'
-& $previewPython -m odessy permissions check 'hostname' --json
-```
-
-Replace `C:\path\to\odessy-preview` with your actual source checkout. This optional diagnostic requires that checkout's Python environment; installed-only users can report the visible approval and Output instead.
-
-This check never runs `hostname` and does not override live mode, custom rules, hooks or saved preapprovals. **Ask every time** does not mean every harmless read prompts. If your configuration differs, report it; do not weaken policy to force this exercise to pass.
+**You can stop here.** Your model replied and Odessy showed the result of an approved command on your laptop.
 
 [![Installed Windows chat with terminal.run results in Output](view/main/basic-chat.png)](view/main/basic-chat.png)
 
-*Installed Windows preview: Output shows underlying `terminal.run` results. This recorded exchange lists workspace/Desktop files; it is not a capture of the `hostname` exercise above. One Desktop-path lookup failed with exit `1`; a later command resolved the redirected Desktop path and completed with exit `0`. Check each tool result rather than relying only on the assistant's reply.*
+*Installed Windows preview showing actual command output from a file listing. Open **Output** in the same place to see your own result.*
+
+### Optional: check that Deny stops a command
+
+Send the same prompt as a new request. Check that it names the same local command and workspace, then choose **Deny**. Look for a denied result and no successful command output for that request. If the model proposes a replacement command, stop the turn.
 
 ## 4. Optional: configure voice and the wake word
 
@@ -192,12 +148,11 @@ These are known constraints and likely failure points on this walkthrough. The [
 
 | Symptom or boundary | What to do |
 | --- | --- |
-| Cannot obtain the matching installer | Ask the distributor for the EXE and checksum above, or use source route B. Old UI archives are not the complete app. |
 | Python, npm or Flutter setup fails | Check the prerequisites, Python 3.13 launcher, Node 22 and `flutter doctor -v`. Windows C++ tools are required for native builds. Do not continue after a failed dependency/build command. |
 | Startup fails, connection refused or HTTP 401 | In the managed app, inspect the startup error and saved configuration, then retry **Connect saved configuration**. It owns its port/token. Source builds need all managed-launch defines. Only a deliberately manual API connection uses operator-entered ports/tokens. |
 | Model reports authentication, model-not-found, rate-limit or credit errors | Check provider endpoint, current model ID and account access/credit. Doctor finding a key does not validate it online. Report the provider error without the key. Do not assume a failed request was free. |
 | Secure key save fails | Use **Use for this session only** deliberately or repair the supported OS credential backend. Both managed launch routes pass session credentials privately; saving a key in plaintext is not a workaround. |
-| No approval, or a different command/target appears | Check Custom, effective **Ask every time**, local target, selected workspace and any saved command preapprovals/hooks. Deny mismatched requests; inspect the non-executing policy check above. Neither a panel nor a mode selection grants new workspace rights. |
+| No approval, or a different command/target appears | Check Custom, effective **Ask every time**, local target, selected workspace and any saved command preapprovals/hooks. Deny mismatched requests; see [the policy check](#if-the-approval-never-appears). Neither a panel nor a mode selection grants new workspace rights. |
 | Denied command is proposed again | Denial does not execute that proposal. Stop the turn and report the repeated proposal; do not approve it merely to make the UI progress. |
 | Command fails or exit code is nonzero | Read the actual Output and approval arguments. Check workspace validity and shell/tool readiness. Do not disable confinement or use Full control as a setup workaround. Windows confinement remains partial even when the command succeeds. |
 | Output is empty after reopening history | The maintainer observed an empty resumed SSH Output panel. Inspect and capture the live tool result before closing the chat; do not rerun an action just to recreate evidence. History and assistant prose are not proof of new execution. |
@@ -205,43 +160,25 @@ These are known constraints and likely failure points on this walkthrough. The [
 | Optional voice or Devices is unavailable | Typed local chat does not require either feature. Check the selected audio device and individual STT/TTS tests; SSH login, monitoring readiness and command authorization are separate. Reconnect temporary SSH sessions after service restart. |
 | A cloud or shell action exposes data | Cloud requests and allowed tool observations are sent to the configured provider. Shell actions have the documented host permissions; approvals are not a complete OS sandbox. Use disposable, non-sensitive data. Windows checkpoint restoration is disabled and is not a rollback for executed commands. |
 
-### Collect diagnostics
+### If the approval never appears
 
-For **source route B**, keep the visible startup/model error and source revision.
-From the repository root in a separate development terminal, use the same checkout's
-Python and source-managed profile for a supplementary diagnostic:
+With the default policy, the non-executing check below reports `decision: confirm` and `asks: true`. Run it from your disposable workspace using the source environment's Python if the UI unexpectedly skips the approval:
 
 ```powershell
-$previewRepo = (Get-Location).Path.Replace('\', '/')
-$previewPython = "$previewRepo/.venv/Scripts/python.exe"
-$env:ODESSY_CONFIG_FILE = "$previewRepo/build/local-desktop/state/odessy.env"
-& $previewPython -m odessy doctor --model-backend deepseek 2>&1 |
-    Tee-Object -FilePath "$previewRepo/build/local-desktop/doctor.txt"
+$previewPython = 'C:\path\to\odessy-preview\.venv\Scripts\python.exe'
+& $previewPython -m odessy permissions check 'hostname' --json
 ```
 
-Replace `deepseek` with your configured backend. Add `--voice` only when diagnosing
-the optional wake/voice exercise. Doctor checks one process's configuration and
-available tooling; a desktop session-only key is deliberately not inherited by this
-separate terminal. It does not fully verify the selected desktop configuration,
-provider inference, Piper compatibility or physical audio. Record that limitation
-instead of putting credentials in a file to make doctor pass. It can probe configured
-endpoints or list configured tools; it does not download models.
+Replace `C:\path\to\odessy-preview` with your actual source checkout. This optional diagnostic requires that checkout's Python environment; installed-only users can report the visible approval and Output instead.
 
-For an **installed candidate**, collect **Settings → Manage installation → Check installed files** results and its build/version identity. If you also run doctor, use that candidate's own interpreter and profile, not an unrelated system Python or checkout. If you cannot locate those, report the installation check and request the matching diagnostic command; do not guess a different runtime or reinstall first.
+This check never runs `hostname` and does not override live mode, custom rules, hooks or saved preapprovals. **Ask every time** does not mean every harmless read prompts. If your configuration differs, report it; do not weaken policy to force this exercise to pass.
 
-Read the report before sharing. Remove API keys, bearer tokens, credential-bearing URLs, private addresses/account names, sensitive paths and any private tool/file content. Redaction is best-effort; never attach your environment, profile files or history database as a substitute.
+### Collect diagnostics
 
-[Open an issue with sanitized diagnostics](https://github.com/Trisoma/odessy/issues/new/choose), including:
+**Installer:** open **Settings → Manage installation → Check installed files** and record the build. **Source:** use [Diagnose a failed start](getting-started.md#diagnose-a-failed-start) for the command and its limits.
 
-- Installation route, source/build revision and Windows version.
-- The exact numbered step, expected result and observed error.
-- Sanitized doctor output (or the installed-file check when doctor is unavailable).
-- For the core exercise, whether Deny prevented execution and whether Approve once produced matching `hostname` output with exit `0`.
+[Open an issue](https://github.com/Trisoma/odessy/issues/new/choose) with the version, Windows version, the step that failed, and what you saw. For a command, include the target, output and exit code you saw. If you tried **Deny**, say what happened. Remove keys, tokens, private addresses and sensitive paths before sharing logs or screenshots.
 
 ## Help improve the part you just tried
 
-- **Verify another model.** Try a different API provider or a local model and report the exact configuration and first successful turn. Start with the [provider registry](../src/odessy/model_providers.py) and [desktop model round-trip test](../tests/test_desktop_cloud_roundtrip.py).
-- **Measure a slow voice turn.** Record the device, model and where you noticed the delay. Start with [voice performance](ui/voice-performance.md) and the [hybrid audio tests](../tests/test_hybrid_audio.py).
-- **Improve SSH onboarding.** Try connecting a device from a fresh profile and identify the step that made it hard to tell whether commands were enabled. Start with the [SSH connection controller](../apps/desktop/lib/app/ssh_connection_controller.dart) and [SSH execution UI tests](../apps/desktop/test/ssh_execution_test.dart).
-
-For a focused first PR, choose an [open GitHub issue](https://github.com/Trisoma/odessy/issues) and comment with your proposed scope. The issues include files, acceptance criteria and checks. See [Contributing](../CONTRIBUTING.md#path-to-area-ownership) for review and continuing area responsibility.
+Pick an issue in the [roadmap](ROADMAP.md) and check the [contribution guide](../CONTRIBUTING.md) for its first test.

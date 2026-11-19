@@ -2,15 +2,15 @@
 
 [English](../ARCHITECTURE.md) | **简体中文** | [Español](../es/ARCHITECTURE.md)
 
+**开发者预览 · v0.5.0-alpha**
+
 > 说明：英文文档为权威版本（canonical），本页为简体中文翻译，仅供参照；界面截图显示英文界面，应用本身尚未本地化。
 
-> Developer Preview · v0.5.0-alpha。这里讲的是组件职责，而非个人贡献者分工。模型提出建议；Odessy 决定。
+桌面端启动服务。模型提出操作，服务在派发前检查策略和审批。执行目标可以是本机，也可以是另行授权的电脑。这套设计支撑 Odessy 以语音为主的目标。
 
-初次接触？请阅读[背景故事](../../Story.md)（English only），了解预期的端到端体验及其与当前已验证范围的区别，然后使用[贡献指南](./CONTRIBUTING.md#选择从哪里开始)选择一个聚焦的任务。
+第一次改动时可查[文件与测试表](CONTRIBUTING.md#选择从哪里开始)。
 
 ## 架构主张
-
-模型是提议者；Python 策略和调度校验掌握权威。语音是预期的主要界面，并与键入输入共享同一边界。协调可以留在笔记本上，而显式选择的执行适配器面向另一台计算机。本地/云端模型选择与本地/远程工具选择相互独立：SSH 目标不会收到模型或 API 密钥来运行其命令。这些主张是设计承诺，不是排他性发明，也不构成完全隔离的证明。
 
 ```mermaid
 flowchart LR
@@ -47,23 +47,28 @@ flowchart LR
 
 `python -m odessy` 是一个已实现的模块入口，也作为 `odessy` 控制台命令暴露。`doctor`、无头 CLI 和手动管理的 `serve` 是开发者或操作员接口。它们的存在并不意味着桌面用户应交换 token 或启动第二个服务。引擎标识 `legacy` 当前指的是 **Custom**；它并不标记每个 Python 模块或 CLI 命令都已弃用。
 
-Go 监控是可选的打包组件，并且保持主动选择（opt-in）。共享计算机模型、能力边界和夹具检查见 [SSH 贡献者路径](../../src/odessy/ssh/README.md)（English only）。打包一个辅助程序或通过本地夹具，并不能验证每个已安装平台或远程方向。下面的命令是在[开发环境设置](./CONTRIBUTING.md#开发环境搭建)之后的组件入口，而不是整产品验证。
+Go 监控是可选的打包组件，并且保持主动选择（opt-in）。共享计算机模型、能力边界和夹具检查见 [SSH 贡献者路径](../../src/odessy/ssh/README.md)（English only）。打包一个辅助程序或通过本地夹具，并不能验证每个已安装平台或远程方向。
 
-| 组件 / 目录 | 语言与职责 | 单独构建 / 检查 | 建议的贡献者 |
-|---|---|---|---|
-| [`src/odessy/runtime/`](../../src/odessy/runtime) 和 [`models/`](../../src/odessy/models) | Python 循环、会话、模型适配器 | 仓库根目录：`python -m pip install -e ".[test,ui]"`；`python -m pytest -q` | 运行时/模型贡献者；调度安全需要维护者审阅 |
-| [`src/odessy/authority/`](../../src/odessy/authority)、[`execution/`](../../src/odessy/execution) | Python 策略、工作区权威、沙箱 | 仓库根目录：`python -m pytest -q tests/test_authority_boundary.py tests/test_permission_hardening.py` | **需要维护者审阅**；不是入门工作 |
-| [`src/odessy/voice/`](../../src/odessy/voice) | Python 采集、STT/TTS 适配器和语音会话 | 仓库根目录：`python -m pytest -q tests/test_speech_providers.py` | 提供商示例/测试；批准相关变更需要维护者审阅 |
-| [`tools/`](../../tools) | TypeScript/Node MCP 工具和宿主检查 | 在该目录：`npm ci --no-audit --no-fund`、`npm run typecheck`、`npm test` | 工具贡献者；防护与沙箱：**需要维护者审阅** |
-| [`native/odessy-link/`](../../native/odessy-link) | Rust 身份、注册、mTLS 中继、遥测 | 在该目录：`cargo build --locked`、`cargo test --locked` | Rust 贡献者；注册、授权与密钥：**需要维护者审阅** |
-| [`apps/desktop/`](../../apps/desktop) | Dart/Flutter 会话、设置、交互 | 在该目录：`flutter pub get`、`flutter analyze`、`flutter test`；Windows 构建：`flutter build windows` | UI/无障碍贡献者；UI 不是执行权威 |
-| [`packages/odessy_client/`](../../packages/odessy_client) | Dart 后端客户端和数据模型 | 在该目录：`dart pub get`、`dart analyze`、`dart test` | 客户端/API 贡献者；认证需要维护者审阅 |
-| [`services/monitoring/`](../../services/monitoring) | Go 聚合/内部 API；可选，主动选择 | 在该目录：`go build ./cmd/odessy-monitor`、`go test ./...` | Go/可观测性贡献者；此处没有执行授权 |
-| [`docs/`](./README.md) | Markdown/MDX 指南与证据 | 解析链接；对照工作流验证命令 | 从[开放的 GitHub issue](https://github.com/Trisoma/odessy/issues)和[归属路径](./CONTRIBUTING.md#通往领域负责人的路径)开始 |
+- [`tool/`](../../tool/) 放构建和验证脚本。
+- [`tools/`](../../tools/) 是 Node MCP 服务。
+- [`src/odessy/tools/`](../../src/odessy/tools/) 放 Python 工具适配器，包括 SSH 执行器。
+
+| 组件 / 目录 | 语言与职责 | 贡献与评审 |
+|---|---|---|
+| [`src/odessy/runtime/`](../../src/odessy/runtime) 和 [`models/`](../../src/odessy/models) | Python 循环、会话、模型适配器 | 运行时/模型贡献者；调度安全需要维护者审阅 |
+| [`src/odessy/authority/`](../../src/odessy/authority)、[`execution/`](../../src/odessy/execution) | Python 策略、工作区权威、沙箱 | **需要维护者审阅**；不是入门工作 |
+| [`src/odessy/voice/`](../../src/odessy/voice) | Python 采集、STT/TTS 适配器和语音会话 | 提供商示例/测试；批准相关变更需要维护者审阅 |
+| [`tools/`](../../tools) | TypeScript/Node MCP 工具和宿主检查 | 工具贡献者；防护与沙箱：**需要维护者审阅** |
+| [`native/odessy-link/`](../../native/odessy-link) | Rust 身份、注册、mTLS 中继、遥测 | Rust 贡献者；注册、授权与密钥：**需要维护者审阅** |
+| [`apps/desktop/`](../../apps/desktop) | Dart/Flutter 会话、设置、交互 | UI/无障碍贡献者；UI 不是执行权威 |
+| [`packages/odessy_client/`](../../packages/odessy_client) | Dart 后端客户端和数据模型 | 客户端/API 贡献者；认证需要维护者审阅 |
+| [`services/monitoring/`](../../services/monitoring) | Go 聚合/内部 API；可选，主动选择 | Go/可观测性贡献者；此处没有执行授权 |
+| [`docs/`](./README.md) | Markdown/MDX 指南与证据 | 从[开放的 GitHub issue](https://github.com/Trisoma/odessy/issues)和[归属路径](./CONTRIBUTING.md#通往领域负责人的路径)开始 |
 
 凭据存储和操作系统钥匙串集成，包括 [`src/odessy/credentials.py`](../../src/odessy/credentials.py) 和[凭据设置边界](../setup/secure-model-credentials.md)（English only）：**需要维护者审阅**。编辑桌面/客户端代码前，请先阅读组件本地的 `AGENTS.md` 说明。
 
 **证据：**[运行时概览](../../README.zh-CN.md)、[批准](../reference/permissions.mdx#approval)（English only）、[当前配对范围](../reference/host-pairing.mdx)（English only）、[监控状态](../monitoring/README.md)（English only）、[发布限制](./current-status.md)。MCU 支持仍是未来方向；隔离限制和物理语音可靠性需要链接的支持矩阵中平台特定的检查。
+
 
 ## 持久的应用服务
 

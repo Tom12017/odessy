@@ -49,6 +49,8 @@ refresh never substitutes a different microphone silently. See the
 
 ## Connection and launch modes
 
+Start with [Getting started](../getting-started.md) for the managed Windows launch.
+
 - Installed launch (`--installed` with its recorded root): the desktop owns verified
   runtime selection, configuration, service startup and authentication.
 - Source-managed `main.dart` (`ODESSY_LOCAL_DESKTOP=true`, plus the documented Python/root

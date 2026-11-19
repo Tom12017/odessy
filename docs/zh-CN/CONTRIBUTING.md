@@ -2,41 +2,38 @@
 
 [English](../../CONTRIBUTING.md) | **简体中文** | [Español](../es/CONTRIBUTING.md)
 
+**开发者预览 · v0.5.0-alpha**
+
 > 说明：英文文档为权威版本（canonical），本页为简体中文翻译，仅供参照；界面截图显示英文界面，应用本身尚未本地化。
 
-**Developer Preview · v0.5.0-alpha**
+欢迎上船！⛵ 如果要运行桌面端，先看[入门指南](getting-started.md)。第一次提交 PR，可以从[路线图](../ROADMAP.md)选一个还没解决的问题，复现后运行下表对应的检查。只需准备你要改的组件所用的工具。
 
-请先阅读[受管的桌面端安装](getting-started.md)、[开放的 GitHub issue](https://github.com/Trisoma/odessy/issues)、[支持矩阵](./current-status.md)与[架构](ARCHITECTURE.md)。我们正在寻找能够承担一个聚焦领域并推进到评审的协作者；欢迎以志愿者身份投入你可用的时间。
-
-> 这个项目的简短故事见 [Story](../../Story.md)（English only）
-
-欢迎加入！⛵ 感谢你帮助改进 Odessy。缺陷报告、聚焦的修复以及更清晰的文档，都有助于让这个开发者预览版更易使用。本指南说明从哪里开始、如何搭建环境，以及提交改动时应包含哪些内容。
-
-关于项目概览，请从 [README](../../README.zh-CN.md) 开始。架构与组件文档请从[文档索引](README.md)开始。
-
-安装及上手流程相关工作请先阅读[候选版本回执](../verification/windows-piper-installer-2026-11-18.md)（English only）和[手册](GOLDEN_PATH.md)。验证启动脚本必须保留包括 `ProgramData` 在内的 Windows 系统及用户目录变量；漏传会使 OpenSSH 在认证前失败。测试启动环境错误不应被描述为 SSH 产品修复。
+想先检查 Python，可以[用模拟模型跑一次](#不用模型密钥也能检查-python)，再编译桌面端。
 
 ## 选择从哪里开始
 
-| 贡献类型 | 如何开始 |
-|---|---|
-| 缺陷修复与小型文档修复 | 直接提交一个聚焦的 pull request。相关时请链接已有的 issue。 |
-| 新功能、增强或较大改动 | 先开一个 issue，说明问题与拟采用的方案，然后再开始实现。 |
-| 仅重构或 CI 变更 | 请不要为这类改动单独发起 pull request。 |
-| 安全漏洞 | 请遵循 [SECURITY.md](../../SECURITY.md)（English only）。不要在公开 issue 中披露漏洞。 |
+| 改动 | 入口文件 | 执行目录 | 第一项检查 |
+| --- | --- | --- | --- |
+| 记录输出 [#72](https://github.com/Trisoma/odessy/issues/72) | [`workspace_inspector.dart`](../../apps/desktop/lib/features/workspaces/presentation/workspace_inspector.dart) | `apps/desktop` | `flutter test test/workspace_inspector_test.dart test/saved_chat_navigation_test.dart` |
+| SSH 连接状态 [#70](https://github.com/Trisoma/odessy/issues/70) | [设备界面](../../apps/desktop/lib/features/devices/presentation/) | `apps/desktop` | `flutter test test/ssh_connection_test.dart test/device_page_test.dart` |
+| Piper 检测 [#69](https://github.com/Trisoma/odessy/issues/69) | [`setup/voice_assets.py`](../../src/odessy/setup/voice_assets.py) | 仓库根目录 | `python -m pytest tests/test_piper_provider.py tests/test_doctor.py -q` |
+| Python 应用 API | [`application/api.py`](../../src/odessy/application/api.py) | 仓库根目录 | `python -m pytest tests/test_application_api.py -q` |
+| MCP 工具 | [`tools/src/`](../../tools/src/) | `tools` | `npm run typecheck` · `npm test` |
+| Dart 客户端 | [`packages/odessy_client/`](../../packages/odessy_client/) | `packages/odessy_client` | `dart analyze` · `dart test` |
+| 监控 | [`services/monitoring/`](../../services/monitoring/) | `services/monitoring` | `go test ./... -count=1` |
+| 配对 | [`native/odessy-link/`](../../native/odessy-link/) | `native/odessy-link` | `cargo test --locked` |
 
-即使你无法自行实现修复，也欢迎报告问题。请告知你是否有意着手处理，以便他人与你协调。
+TTS 基准测试见[基准指南](../../benchmark/tts/README.md)和 [#71](https://github.com/Trisoma/odessy/issues/71)。
+
+运行命令前，先按[开发环境搭建](#开发环境搭建)准备工具。改文档时，检查本地链接和图片，验证改过的命令，并预览受影响语言的 Markdown。
+
+欢迎小范围的文档、测试、CI 修复和保持行为不变的重构 PR。说明解决了什么问题、保留了哪些行为或必需检查，以及如何验证。较大的改动先在 issue 里讨论范围。安全漏洞请私下报告。[安全政策](../../SECURITY.md)
 
 ## 通往领域负责人的路径
 
-1. 选择一个[开放的 GitHub issue](https://github.com/Trisoma/odessy/issues)，复现该行为，并评论说明你拟处理的范围。开始之前请查看该 issue 当前的讨论与分工，并搜索是否已有重叠的工作。
-2. 提交一个聚焦的 PR，并附上其验收检查。请说明哪些证据来自 fixture、哪些来自真实的服务提供方/硬件。第一份贡献可以是一个回归测试、诊断改进、展示层修复，或一份可复现的基准测试报告。
-3. 在已有经评审的贡献之后，可以申请承担某个具名领域的职责：维护其测试与文档、分诊相关报告，并协助评审后续改动。请在公开 issue 中与项目维护者就边界与可投入时间达成一致。
-4. 仓库权限或具名维护者角色需要另行明确决定。已合并的 PR、自行认领任务，或由 AI 撰写的计划，都不会带来任何权限。
+在 issue 里写下复现结果和准备改动的范围。先做一个改动，跑对应的检查。积累几次通过评审的贡献后，可以提议负责某个领域的文档、测试和问题分流。和维护者商定范围与可投入的时间。仓库权限和维护者身份需要另行决定。
 
-策略/派发、凭据、配对/主机身份、安装归属以及恢复安全性需要项目负责人评审。桌面端的 `lib/app/`、各控制器与共享客户端同样需要依据各自的 `AGENTS.md` 由负责人评审；展示层工作可以在商定的视图文件中开始。在改动某个共享约定之前，请阅读[架构图](ARCHITECTURE.md)与本地说明。
-
-这是志愿者维护，不保证响应时间 SLA。请把复现步骤、验收标准与检查项写进 issue/PR，使进展不依赖私信。若一周之后仍无回应，可补充一次简短的跟进，然后再着手较大的改动。贡献者的可信度与响应速度必须在实际互动中体现；提交量既不能证明前者，也不能证明后者。
+策略与派发、凭据、主机身份与配对、安装所有权和恢复安全需要维护者评审。桌面端及 Dart 客户端的控制器和共享契约也有各自的评审规则。[架构](ARCHITECTURE.md) · [桌面端约定](../../apps/desktop/AGENTS.md) · [Dart 客户端约定](../../packages/odessy_client/AGENTS.md)
 
 ## 在开 issue 之前
 
@@ -76,47 +73,47 @@
 
 ## 开发环境搭建
 
-以下命令来自 [CI](../../.github/workflows/ci.yml)（English only）与
-[桌面端预览 CI](../../.github/workflows/desktop-preview.yml)（English only）。CI 覆盖 Ubuntu 上的 Python
-3.10/3.13、Windows 上的 3.12/3.13，两个平台上的 Node 22/24，
-stable Rust，以及 Ubuntu 上的 Flutter 3.47.7（stable）。这一覆盖范围并不构成对硬件、macOS 或实时服务提供方支持的确认。
+要运行完整的 Windows 桌面端，请看[入门指南](getting-started.md)。只跑组件测试时，按下表准备对应的工具。
 
-使用 Python 3.10-3.13 创建并激活虚拟环境：
+### 快速开始的前提要求
+
+| 组件 | 准备 |
+| --- | --- |
+| Python | 用 Python 3.10–3.13 创建虚拟环境。在仓库根目录运行 `python -m pip install -e ".[test,ui]"`。 |
+| MCP 工具服务 | 使用 Node 22（Python 集成检查也用这个版本）或 24。在 `tools/` 运行 `npm ci --no-audit --no-fund` 和 `npm run build`。 |
+| Flutter 和 Dart | 使用 Flutter 3.47.7 stable 及其自带的 Dart SDK。在 `apps/desktop` 运行 `flutter pub get`，或在 `packages/odessy_client` 运行 `dart pub get`。 |
+| 监控 | 使用 [go.mod](../../services/monitoring/go.mod) 指定的 Go 版本。 |
+| 配对 | 使用稳定版 Rust 和 Cargo。 |
+
+在仓库根目录用 PowerShell 创建并激活 Python 环境：
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
-在 Linux 上，使用 `source .venv/bin/activate` 激活。Python 集成检查使用 Node 22，配对相关的工作使用 stable Rust。在仓库根目录执行：
+在 Linux 上，用同一条命令创建环境，再运行 `source .venv/bin/activate`。 跑下文的假模型或 CI 式检查时，将 `ODESSY_CONFIG_FILE` 指向你在临时检出目录里创建的空文件，避免加载真实模型配置。
 
 ```powershell
-cd tools
-npm ci --no-audit --no-fund
-npm run build
-cd ..
-python -m pip install -e ".[test,ui]" "pytest-xdist>=3.6,<4"
-$env:ODESSY_CONFIG_FILE="$PWD/.ci-no-config.env"
-$env:PYTHONUTF8="1"
+$env:ODESSY_CONFIG_FILE = "$PWD/.ci-no-config.env"
+$env:PYTHONUTF8 = "1"
 ```
 
-在 Linux 上，请使用 `export ODESSY_CONFIG_FILE="$PWD/.ci-no-config.env"` 与
-`export PYTHONUTF8=1`，代替 PowerShell 中的环境变量赋值。
+Linux 上用 `export ODESSY_CONFIG_FILE="$PWD/.ci-no-config.env"` 和 `export PYTHONUTF8=1`。
 
-### 快速开始的前提要求
+如果使用下文的 Python 并行检查，先安装 `pytest-xdist>=3.6,<4`。
 
-以下是下文命令所依据的要求；安装打包好的应用并不需要其中的任何一项。
+## 不用模型密钥也能检查 Python
 
-| 组件 | 已验证的要求 |
-|---|---|
-| Python | 3.10–3.13；CI 在 Ubuntu 上运行 3.10/3.13，在 Windows 上运行 3.12/3.13 |
-| Node | 工具服务器（`tools/`）使用 22 或 24，通过 `npm ci` 安装 |
-| Flutter | `apps/desktop` 使用 3.47.7 stable；`packages/odessy_client` 使用其自带的 Dart SDK |
-| Rust | stable，仅用于 `native/odessy-link` 的配对工作 |
+[准备好 Python 环境](#开发环境搭建)后，在仓库根目录运行下面的命令。先激活环境，并选用空配置。回复应以 `The current time is` 开头。这一步用模拟模型检查 Python 命令行。
+
+```text
+python -m odessy --fake-model "what time is it?"
+```
 
 ## 运行桌面端
 
-经配置的、由桌面端托管的启动方式见[入门指南](getting-started.md)。应用会启动服务并处理本地认证。为了走通 [golden path](GOLDEN_PATH.md)，请在 Settings（设置）中配置真实模型。源码启动测试包括 `local_desktop_application_test.dart`、`source_setup_wiring_test.dart`，以及 `apps/desktop/test/` 下需显式启用的 `source_model_integration_test.dart`。最后一项使用真实的 Python 服务与一个回环地址的服务提供方 fixture，不涉及付费推理。
+按[入门指南](getting-started.md)托管启动桌面端并试用真实模型。
 
 ## 高级组件与 API 检查
 
@@ -146,8 +143,6 @@ python -m odessy serve --fake-model
 然后在 `apps/desktop` 中运行 `flutter run -d linux`。连接桌面应用时请使用生成的 token。在把 token 填入应用之前，可在 PowerShell 中用 `$env:ODESSY_API_TOKEN`、在 Linux 上用 `printf '%s\n' "$ODESSY_API_TOKEN"` 在本地显示它。请保持其私密。每台机器应生成各自的 token。
 
 点击连接图标，输入打印出的回环地址与 token，然后发送 `what time is it?`。token 只保留在应用内存中；后端永远不会打印它。若不加 `--fake-model`，同样的步骤会使用已配置的真实模型及其现有预算，正因如此，实时服务提供方检查属于另一项独立工作。请先清除快速开始阶段的覆盖设置（Linux 上 `unset ODESSY_CONFIG_FILE`，PowerShell 中 `Remove-Item Env:ODESSY_CONFIG_FILE`），或将其指向你的个人配置。否则实时运行仍会使用 `.ci-no-config.env`。
-
-`python -m odessy --fake-model "what time is it?"` 会在不启动桌面端的情况下运行同样的文本循环，这是对 Python 侧最小的端到端检查。
 
 ## 诊断本机工作站
 

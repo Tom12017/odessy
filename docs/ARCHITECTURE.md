@@ -4,18 +4,11 @@
 
 > Developer Preview · v0.5.0-alpha. Component responsibilities, not individual contributor assignments. The model proposes; Odessy decides.
 
-New here? Read [the story](../Story.md) for the intended end-to-end experience and
-how it differs from what is qualified today, then use the
-[contribution guide](../CONTRIBUTING.md#choose-where-to-start) to choose a focused task.
+The desktop starts the service. The model proposes an action, then the service checks policy and approval before dispatch. The execution target can be local or a separately authorized computer. This is the design behind Odessy’s voice-first goal.
+
+For a first change, use the [file and test map](../CONTRIBUTING.md#choose-where-to-start).
 
 ## Architectural bets
-
-The model is a proposer; Python policy and dispatch validation own authority.
-Voice is an intended primary interface and shares that boundary with typed input.
-Coordination can stay on the laptop while an explicitly selected execution adapter
-targets another computer. Local/cloud model selection and local/remote tool selection
-are independent: an SSH target does not receive a model or API key to run its command.
-These bets are design commitments, not exclusive inventions or proof of full isolation.
 
 ```mermaid
 flowchart LR
@@ -67,20 +60,22 @@ Go monitoring is an optional packaged component and remains opt-in. Use the
 [SSH contributor path](../src/odessy/ssh/README.md) for the shared computer model,
 capability boundaries and fixture checks. Packaging a helper or passing a local
 fixture does not qualify every installed platform or remote direction.
-Commands below are component entry points after
-[development setup](../CONTRIBUTING.md#development-setup), not whole-product qualification.
 
-| Component / directory | Language and responsibility | Build / check alone | Suggested contributors |
-|---|---|---|---|
-| [`src/odessy/runtime/`](../src/odessy/runtime) and [`models/`](../src/odessy/models) | Python loop, sessions, model adapters | Root: `python -m pip install -e ".[test,ui]"`; `python -m pytest -q` | Runtime/model contributors; dispatch security needs maintainer review |
-| [`src/odessy/authority/`](../src/odessy/authority), [`execution/`](../src/odessy/execution) | Python policy, workspace authority, sandbox | Root: `python -m pytest -q tests/test_authority_boundary.py tests/test_permission_hardening.py` | **maintainer review required**; not starter work |
-| [`src/odessy/voice/`](../src/odessy/voice) | Python capture, STT/TTS adapters and voice sessions | Root: `python -m pytest -q tests/test_speech_providers.py` | Provider examples/tests; approval changes need maintainer review |
-| [`tools/`](../tools) | TypeScript/Node MCP tools and host checks | In directory: `npm ci --no-audit --no-fund`, `npm run typecheck`, `npm test` | Tool contributors; guards and sandbox: **maintainer review required** |
-| [`native/odessy-link/`](../native/odessy-link) | Rust identity, enrollment, mTLS relay, telemetry | In directory: `cargo build --locked`, `cargo test --locked` | Rust contributors; enrollment, grants and keys: **maintainer review required** |
-| [`apps/desktop/`](../apps/desktop) | Dart/Flutter conversation, settings, interactions | In directory: `flutter pub get`, `flutter analyze`, `flutter test`; Windows build: `flutter build windows` | UI/accessibility contributors; UI is not execution authority |
-| [`packages/odessy_client/`](../packages/odessy_client) | Dart backend client and models | In directory: `dart pub get`, `dart analyze`, `dart test` | Client/API contributors; authentication needs maintainer review |
-| [`services/monitoring/`](../services/monitoring) | Go aggregation/internal API; optional, opt-in | In directory: `go build ./cmd/odessy-monitor`, `go test ./...` | Go/observability contributors; no execution authorization here |
-| [`docs/`](README.md) | Markdown/MDX guidance and evidence | Resolve links; verify commands against workflows | Start with [open GitHub issues](https://github.com/Trisoma/odessy/issues) and the [ownership path](../CONTRIBUTING.md#path-to-area-ownership) |
+- [`tool/`](../tool/) contains scripts to build and verify the project.
+- [`tools/`](../tools/) is the Node MCP server.
+- [`src/odessy/tools/`](../src/odessy/tools/) contains Python tool adapters, including the SSH executor.
+
+| Component / directory | Language and responsibility | Contribution and review |
+|---|---|---|
+| [`src/odessy/runtime/`](../src/odessy/runtime) and [`models/`](../src/odessy/models) | Python loop, sessions, model adapters | Runtime/model contributors; dispatch security needs maintainer review |
+| [`src/odessy/authority/`](../src/odessy/authority), [`execution/`](../src/odessy/execution) | Python policy, workspace authority, sandbox | **maintainer review required**; not starter work |
+| [`src/odessy/voice/`](../src/odessy/voice) | Python capture, STT/TTS adapters and voice sessions | Provider examples/tests; approval changes need maintainer review |
+| [`tools/`](../tools) | TypeScript/Node MCP tools and host checks | Tool contributors; guards and sandbox: **maintainer review required** |
+| [`native/odessy-link/`](../native/odessy-link) | Rust identity, enrollment, mTLS relay, telemetry | Rust contributors; enrollment, grants and keys: **maintainer review required** |
+| [`apps/desktop/`](../apps/desktop) | Dart/Flutter conversation, settings, interactions | UI/accessibility contributors; UI is not execution authority |
+| [`packages/odessy_client/`](../packages/odessy_client) | Dart backend client and models | Client/API contributors; authentication needs maintainer review |
+| [`services/monitoring/`](../services/monitoring) | Go aggregation/internal API; optional, opt-in | Go/observability contributors; no execution authorization here |
+| [`docs/`](README.md) | Markdown/MDX guidance and evidence | Start with [open GitHub issues](https://github.com/Trisoma/odessy/issues) and the [ownership path](../CONTRIBUTING.md#path-to-area-ownership) |
 
 Credential storage and OS keyring integration, including
 [`src/odessy/credentials.py`](../src/odessy/credentials.py) and the
@@ -93,6 +88,7 @@ Read component-local `AGENTS.md` instructions before editing desktop/client code
 [monitoring status](monitoring/README.md), [release limits](current-status.md).
 MCU support remains a future direction; confinement and physical voice reliability
 require the platform-specific checks in the linked support matrix.
+
 
 ## Durable application services
 

@@ -2,18 +2,15 @@
 
 [English](../ARCHITECTURE.md) | [简体中文](../zh-CN/ARCHITECTURE.md) | **Español**
 
+**Vista previa para desarrolladores · v0.5.0-alpha**
+
 > Nota: la versión en inglés es la versión canónica; esta traducción es solo de referencia. Las capturas muestran la interfaz en inglés; la aplicación aún no está localizada.
 
-> Developer Preview · v0.5.0-alpha. Responsabilidades de componentes, no asignaciones de colaboradores individuales. El modelo propone; Odessy decide.
+El escritorio inicia el servicio. El modelo propone una acción y el servicio verifica la política y la aprobación antes de ejecutarla. El destino puede ser local u otro equipo con autorización propia. Este diseño sostiene la idea de usar la voz como interfaz principal.
 
-¿Es tu primera vez aquí? Lee [la historia](../../Story.md) (solo en inglés) para conocer la experiencia integral prevista y en qué se diferencia de lo que está calificado hoy, y luego usa la [guía de contribución](./CONTRIBUTING.md#elegir-por-dónde-empezar) para elegir una tarea concreta.
+Para un primer cambio, consulta el [mapa de archivos y pruebas](CONTRIBUTING.md#elegir-por-dónde-empezar).
 
 ## Apuestas arquitectónicas
-
-El modelo es un proponente; la política de Python y la validación del despacho poseen la autoridad.
-La voz es una interfaz principal prevista y comparte ese límite con la entrada escrita.
-La coordinación puede quedarse en el portátil mientras un adaptador de ejecución seleccionado explícitamente apunta a otra computadora. La selección de modelo local/en la nube y la selección de herramientas locales/remotas son independientes: un destino SSH no recibe un modelo ni una clave de API para ejecutar su comando.
-Estas apuestas son compromisos de diseño, no invenciones exclusivas ni prueba de aislamiento total.
 
 ```mermaid
 flowchart LR
@@ -53,19 +50,22 @@ Consulta los [comandos de lanzamiento gestionado](./getting-started.md).
 `python -m odessy` es un punto de entrada de módulo implementado, también expuesto como el comando de consola `odessy`. `doctor`, la CLI sin interfaz y el `serve` gestionado manualmente son interfaces para desarrolladores u operadores. Su presencia no significa que los usuarios de escritorio deban intercambiar tokens ni iniciar un segundo servicio. El identificador de motor `legacy` actualmente nombra a **Custom**; no marca todos los módulos de Python ni todos los comandos de CLI como obsoletos.
 
 La monitorización en Go es un componente empaquetado opcional y sigue siendo opt-in. Usa la [vía de colaboración de SSH](../../src/odessy/ssh/README.md) (solo en inglés) para el modelo de computadora compartida, los límites de capacidad y las comprobaciones con fixtures. Empaquetar un helper o pasar un fixture local no califica todas las plataformas instaladas ni todas las direcciones remotas.
-Los comandos siguientes son puntos de entrada de componentes después de la [configuración del entorno de desarrollo](./CONTRIBUTING.md#configuración-del-entorno-de-desarrollo), no una calificación del producto completo.
 
-| Componente / directorio | Lenguaje y responsabilidad | Compilación / verificación por separado | Colaboradores sugeridos |
-|---|---|---|---|
-| [`src/odessy/runtime/`](../../src/odessy/runtime) y [`models/`](../../src/odessy/models) | Bucle de Python, sesiones, adaptadores de modelo | Raíz: `python -m pip install -e ".[test,ui]"`; `python -m pytest -q` | Colaboradores de runtime/modelos; la seguridad del despacho requiere revisión de mantenedores |
-| [`src/odessy/authority/`](../../src/odessy/authority), [`execution/`](../../src/odessy/execution) | Política de Python, autoridad de espacio de trabajo, sandbox | Raíz: `python -m pytest -q tests/test_authority_boundary.py tests/test_permission_hardening.py` | **se requiere revisión de mantenedores**; no es trabajo para principiantes |
-| [`src/odessy/voice/`](../../src/odessy/voice) | Captura en Python, adaptadores STT/TTS y sesiones de voz | Raíz: `python -m pytest -q tests/test_speech_providers.py` | Ejemplos/pruebas de proveedores; los cambios de aprobación requieren revisión de mantenedores |
-| [`tools/`](../../tools) | Herramientas MCP en TypeScript/Node y comprobaciones de host | En el directorio: `npm ci --no-audit --no-fund`, `npm run typecheck`, `npm test` | Colaboradores de herramientas; guardas y sandbox: **se requiere revisión de mantenedores** |
-| [`native/odessy-link/`](../../native/odessy-link) | Identidad Rust, enrolamiento, relay mTLS, telemetría | En el directorio: `cargo build --locked`, `cargo test --locked` | Colaboradores de Rust; enrolamiento, concesiones y claves: **se requiere revisión de mantenedores** |
-| [`apps/desktop/`](../../apps/desktop) | Conversación, ajustes e interacciones en Dart/Flutter | En el directorio: `flutter pub get`, `flutter analyze`, `flutter test`; compilación para Windows: `flutter build windows` | Colaboradores de UI/accesibilidad; la UI no es autoridad de ejecución |
-| [`packages/odessy_client/`](../../packages/odessy_client) | Cliente backend y modelos en Dart | En el directorio: `dart pub get`, `dart analyze`, `dart test` | Colaboradores de cliente/API; la autenticación requiere revisión de mantenedores |
-| [`services/monitoring/`](../../services/monitoring) | Agregación/API interna en Go; opcional, opt-in | En el directorio: `go build ./cmd/odessy-monitor`, `go test ./...` | Colaboradores de Go/observabilidad; aquí no hay autorización de ejecución |
-| [`docs/`](README.md) | Guías y evidencia en Markdown/MDX | Resolver los enlaces; verificar los comandos contra los flujos de trabajo | Empieza con los [issues abiertos en GitHub](https://github.com/Trisoma/odessy/issues) y la [ruta hacia la responsabilidad de un área](./CONTRIBUTING.md#ruta-hacia-la-responsabilidad-de-un-área) |
+- [`tool/`](../../tool/) reúne los scripts de compilación y verificación.
+- [`tools/`](../../tools/) es el servidor MCP en Node.
+- [`src/odessy/tools/`](../../src/odessy/tools/) contiene los adaptadores de herramientas de Python, incluido el ejecutor SSH.
+
+| Componente / directorio | Lenguaje y responsabilidad | Contribución y revisión |
+|---|---|---|
+| [`src/odessy/runtime/`](../../src/odessy/runtime) y [`models/`](../../src/odessy/models) | Bucle de Python, sesiones, adaptadores de modelo | Colaboradores de runtime/modelos; la seguridad del despacho requiere revisión de mantenedores |
+| [`src/odessy/authority/`](../../src/odessy/authority), [`execution/`](../../src/odessy/execution) | Política de Python, autoridad de espacio de trabajo, sandbox | **se requiere revisión de mantenedores**; no es trabajo para principiantes |
+| [`src/odessy/voice/`](../../src/odessy/voice) | Captura en Python, adaptadores STT/TTS y sesiones de voz | Ejemplos/pruebas de proveedores; los cambios de aprobación requieren revisión de mantenedores |
+| [`tools/`](../../tools) | Herramientas MCP en TypeScript/Node y comprobaciones de host | Colaboradores de herramientas; guardas y sandbox: **se requiere revisión de mantenedores** |
+| [`native/odessy-link/`](../../native/odessy-link) | Identidad Rust, enrolamiento, relay mTLS, telemetría | Colaboradores de Rust; enrolamiento, concesiones y claves: **se requiere revisión de mantenedores** |
+| [`apps/desktop/`](../../apps/desktop) | Conversación, ajustes e interacciones en Dart/Flutter | Colaboradores de UI/accesibilidad; la UI no es autoridad de ejecución |
+| [`packages/odessy_client/`](../../packages/odessy_client) | Cliente backend y modelos en Dart | Colaboradores de cliente/API; la autenticación requiere revisión de mantenedores |
+| [`services/monitoring/`](../../services/monitoring) | Agregación/API interna en Go; opcional, opt-in | Colaboradores de Go/observabilidad; aquí no hay autorización de ejecución |
+| [`docs/`](README.md) | Guías y evidencia en Markdown/MDX | Empieza con los [issues abiertos en GitHub](https://github.com/Trisoma/odessy/issues) y la [ruta hacia la responsabilidad de un área](./CONTRIBUTING.md#ruta-hacia-la-responsabilidad-de-un-área) |
 
 El almacenamiento de credenciales y la integración con el llavero del sistema operativo, incluidos
 [`src/odessy/credentials.py`](../../src/odessy/credentials.py) y el
@@ -78,6 +78,7 @@ Lee las instrucciones de los `AGENTS.md` locales de cada componente antes de edi
 [estado de la monitorización](../monitoring/README.md) (solo en inglés), [límites de la versión](./current-status.md).
 El soporte de MCU sigue siendo una dirección futura; el confinamiento y la fiabilidad de la voz física
 requieren las comprobaciones específicas de plataforma de la matriz de soporte enlazada.
+
 
 ## Servicios de aplicación duraderos
 
