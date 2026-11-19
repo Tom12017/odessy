@@ -114,3 +114,24 @@ def _hermetic_harness_credentials(request, monkeypatch):
     monkeypatch.setattr(credentials, '_backend', lambda: EmptyVault())
     yield
     credentials.clear_sessions()
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_harness_protocol_host(request, monkeypatch):
+    """Protocol fakes do not test or depend on the runner's kernel confinement.
+
+    Keep the sandbox contract tests on their own explicit/capable registries and
+    leave the separate native sandbox acceptance tests unchanged.
+    """
+    module = request.module.__name__.split('.')[-1]
+    if module in {
+        'test_harness_approval', 'test_harness_installed', 'test_harness_questions',
+        'test_harness_resources', 'test_harness_review_regressions',
+        'test_harness_routes', 'test_harness_runtime', 'test_harness_stop',
+        'test_harness_stream', 'test_harness_upstreams',
+    }:
+        from odessy.execution.providers import UnconfinedProvider
+        from odessy.execution.registry import ProviderRegistry
+        from odessy.runtime_backends.harness import sandbox
+        monkeypatch.setattr(sandbox, 'host_registry',
+                            lambda: ProviderRegistry([UnconfinedProvider()]))
