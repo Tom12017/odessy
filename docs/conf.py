@@ -30,6 +30,7 @@ release = version
 
 extensions = [
     "myst_parser",  # Parse Markdown (.md and .mdx) sources.
+    "sphinxcontrib.mermaid",
     "sphinx.ext.autosectionlabel",  # Auto-anchor section headings for cross-refs.
     "sphinx.ext.githubpages",  # Emit a .nojekyll file for GitHub Pages.
 ]
@@ -39,6 +40,8 @@ myst_enable_extensions = [
     "deflist",
     "tasklist",
 ]
+myst_fence_as_directive = ["mermaid"]
+mermaid_version = "12.3.0"
 myst_heading_anchors = 3
 # Frontmatter `title:` keys are promoted to the document H1 heading. Several
 # existing .mdx files carry their title only in frontmatter, not as a leading
@@ -108,7 +111,4 @@ def link_to_repository(app, doctree):
 
 
 def setup(app):
-    from pygments.lexers import TextLexer
-
-    app.add_lexer("mermaid", TextLexer)
     app.connect("doctree-read", link_to_repository)
