@@ -6,27 +6,25 @@
 
 import os
 import sys
+from pathlib import Path
+from urllib.parse import quote, unquote, urlsplit
 
-# -- Path setup --------------------------------------------------------------
+from docutils import nodes
+from sphinx import addnodes
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.realpath(os.path.join(HERE, ".."))
-sys.path.insert(0, os.path.join(ROOT, "src"))
-
-# -- Project information -----------------------------------------------------
+DOCS = Path(__file__).resolve().parent
+ROOT = DOCS.parent
+sys.path.insert(0, str(ROOT / "src"))
 
 project = "Odessy"
 author = "Odessy contributors"
 
-# Version is read from pyproject.toml metadata; fall back to "dev" when the
-# package is not importable (docs should build without the full runtime).
 try:
-    from odessy import __version__ as _odessy_version
-except Exception:
-    _odessy_version = os.environ.get("DOC_VERSION", "dev")
+    from odessy import __version__ as version
+except ImportError:
+    version = os.environ.get("DOC_VERSION", "dev")
 
-version = _odessy_version
-release = _odessy_version
+release = version
 
 # -- General configuration ---------------------------------------------------
 
@@ -58,18 +56,10 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 master_doc = "index"
 
-# Some existing source files contain relative Markdown links to files that live
-# outside `docs/` (e.g. top-level README, evals results, THIRD-PARTY licenses).
-# Myst tries to resolve those as in-tree cross-references and warns when the
-# target has no corresponding document. The links still render as plain URLs,
-# so suppress the noise; a follow-up pass should fix the links themselves.
-#
-suppress_warnings = ["myst.xref_missing"]
-
 # -- Options for HTML output -------------------------------------------------
 
 html_theme = "furo"
-html_title = f"Odessy {_odessy_version}"
+html_title = f"Odessy {version}"
 
 html_static_path = ["_static"]
 html_css_files = ["custom.css"]
@@ -80,13 +70,7 @@ html_theme_options = {
 
 html_show_sphinx = False
 
-# -- GitHub Pages -----------------------------------------------------------
-
-# GitHub Pages serves project sites under `https://<user>.github.io/<repo>/`.
-# Without a base URL, Sphinx emits root-relative asset links (e.g. /_static/...)
-# that resolve to the wrong host on GitHub Pages and 404. Point at the published
-# site so assets, search, and cross-page links carry the `/odessy/` prefix.
-# Local previews leave this unset (empty base URL) so `127.0.0.1` keeps working.
+# Set the canonical URL when building for GitHub Pages.
 html_baseurl = os.environ.get("ODESSY_DOCS_BASEURL", "")
 
 # -- sphinx.ext.autosectionlabel --------------------------------------------
@@ -94,14 +78,37 @@ html_baseurl = os.environ.get("ODESSY_DOCS_BASEURL", "")
 autosectionlabel_prefix_document = True
 
 
-def setup(app):
-    """Register unknown lexers so code blocks don't emit ``lexer not known`` warnings.
+def link_to_repository(app, doctree):
+    """Send links to source files and directories to GitHub."""
+    source = Path(app.env.doc2path(app.env.docname)).parent
+    for link in list(doctree.findall(lambda node: isinstance(
+        node, (addnodes.pending_xref, addnodes.download_reference)
+    ))):
+        if link.get("reftype") != "myst":
+            continue
+        target = urlsplit(link["reftarget"])
+        raw_path = link["reftarget"] if link.get("refdomain") == "doc" else unquote(target.path)
+        if not raw_path:
+            continue
+        candidate = (source / raw_path).resolve()
+        if link.get("refdomain") == "doc" and not candidate.exists():
+            # MyST strips the source suffix from links to Markdown documents.
+            candidate = candidate.with_name(candidate.name + ".md")
+        if candidate.is_relative_to(DOCS) or not candidate.is_relative_to(ROOT) or not candidate.exists():
+            continue
+        route = "tree" if candidate.is_dir() else "blob"
+        path = quote(candidate.relative_to(ROOT).as_posix())
+        fragment = link.get("reftargetid") or target.fragment
+        url = f"https://github.com/Trisoma/odessy/{route}/develop/{path}"
+        if fragment:
+            url += "#" + quote(fragment, safe="%")
+        reference = nodes.reference("", "", refuri=url)
+        reference.extend(link.children)
+        link.replace_self(reference)
 
-    ``ARCHITECTURE.md`` uses a ```mermaid`` block. Sphinx 8.1's highlighter logs
-    "Pygments lexer name 'mermaid' is not known" without a warning type, so it
-    cannot be silenced through ``suppress_warnings``. Mapping it to a plain-text
-    lexer keeps the block rendered as text without the warning.
-    """
-    from pygments.lexers import TextLexer  # noqa: PLC0415
+
+def setup(app):
+    from pygments.lexers import TextLexer
 
     app.add_lexer("mermaid", TextLexer)
+    app.connect("doctree-read", link_to_repository)

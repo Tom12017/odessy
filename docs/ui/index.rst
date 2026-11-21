@@ -15,6 +15,9 @@ Flutter desktop client architecture, contracts, and UX decisions.
    context-memory-retrieval
    conversation-history
    desktop-voice
+   live-voice-settings
+   piper-connection
+   voice-performance
    running-configuration
    usage-history
    settings-extension

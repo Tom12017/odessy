@@ -16,6 +16,7 @@ Release records, planned work, and project-level notes.
    :maxdepth: 1
    :caption: Development Notes
 
+   ../contributing
    ../README
    ../agent-handoff
    ../ARCHITECTURE
@@ -26,3 +27,12 @@ Release records, planned work, and project-level notes.
    ../database/README
    ../view/README
    ../view/verification/README
+
+.. toctree::
+   :hidden:
+   :glob:
+
+   ../verification/*
+   ../view/ssh-history-inspector/README
+   ../view/ssh-history-inspector/direct-connect-20261117/README
+   ../setup/live-voice-update-verification

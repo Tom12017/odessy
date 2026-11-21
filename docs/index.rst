@@ -1,22 +1,14 @@
-Odessy Documentation
+Odessy documentation
 ====================
 
-Odessy is a local, single-user edge-AI agent runtime. It runs on one computer,
-or split across a Jetson (model and voice) and a laptop (controlled command
-execution). An optional cloud model backend can replace the local model;
-policy, authorization, and confirmation stay local in every configuration.
+Odessy is an experimental Windows desktop agent for local or cloud models. The
+model proposes an action and Odessy checks permissions before it runs. Start
+with a typed command on your laptop. Add voice or connect another computer when
+you need it.
 
-The model proposes actions. Python Odessy validates and authorizes them. MCP
-transports them. The model is never the authority.
-
-.. code-block:: text
-
-    Voice command
-        -> local AI reasoning
-        -> policy and intent validation
-        -> device/tool orchestration
-        -> observation and feedback
-        -> spoken response
+* :doc:`Install on Windows and run your first command <GOLDEN_PATH>`
+* :doc:`Build from source <getting-started>`
+* :doc:`Find a file to change and a test to run <contributing>`
 
 .. toctree::
     :maxdepth: 2
